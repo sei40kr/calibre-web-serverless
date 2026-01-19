@@ -1,66 +1,107 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+"use client";
+
+import {
+	Box,
+	Button,
+	Container,
+	Flex,
+	Heading,
+	Input,
+	Stack,
+	Text,
+} from "@chakra-ui/react";
+import { useForm } from "react-hook-form";
+import { Field } from "@/components/ui/field";
+
+interface LoginFormData {
+	email: string;
+	password: string;
+}
 
 export default function Home() {
+	const {
+		register,
+		handleSubmit,
+		formState: { errors, isSubmitting },
+	} = useForm<LoginFormData>();
+
+	const onSubmit = async (data: LoginFormData) => {
+		// TODO: Implement login logic here
+		console.log("Login attempt:", data);
+
+		// Demo timeout
+		await new Promise((resolve) => setTimeout(resolve, 1000));
+	};
+
 	return (
-		<div className={styles.page}>
-			<main className={styles.main}>
-				<Image
-					className={styles.logo}
-					src="/next.svg"
-					alt="Next.js logo"
-					width={100}
-					height={20}
-					priority
-				/>
-				<div className={styles.intro}>
-					<h1>To get started, edit the page.tsx file.</h1>
-					<p>
-						Looking for a starting point or more instructions? Head over to{" "}
-						<a
-							href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-							target="_blank"
-							rel="noopener noreferrer"
-						>
-							Templates
-						</a>{" "}
-						or the{" "}
-						<a
-							href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-							target="_blank"
-							rel="noopener noreferrer"
-						>
-							Learning
-						</a>{" "}
-						center.
-					</p>
-				</div>
-				<div className={styles.ctas}>
-					<a
-						className={styles.primary}
-						href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-						target="_blank"
-						rel="noopener noreferrer"
-					>
-						<Image
-							className={styles.logo}
-							src="/vercel.svg"
-							alt="Vercel logomark"
-							width={16}
-							height={16}
-						/>
-						Deploy Now
-					</a>
-					<a
-						className={styles.secondary}
-						href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-						target="_blank"
-						rel="noopener noreferrer"
-					>
-						Documentation
-					</a>
-				</div>
-			</main>
-		</div>
+		<Flex minH="100vh" align="center" justify="center" bg="gray.50">
+			<Container maxW="md">
+				<Box p={8} borderWidth={1} borderRadius="lg" boxShadow="lg" bg="white">
+					<Stack gap={6}>
+						<Heading size="xl" textAlign="center">
+							Sign In
+						</Heading>
+						<Text textAlign="center" color="gray.600">
+							Sign in to Calibre-Web
+						</Text>
+
+						<form onSubmit={handleSubmit(onSubmit)}>
+							<Stack gap={4}>
+								<Field
+									label="Email"
+									required
+									invalid={!!errors.email}
+									errorText={errors.email?.message}
+								>
+									<Input
+										type="email"
+										placeholder="example@email.com"
+										size="lg"
+										{...register("email", {
+											required: "Email is required",
+											pattern: {
+												value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+												message: "Invalid email address",
+											},
+										})}
+									/>
+								</Field>
+
+								<Field
+									label="Password"
+									required
+									invalid={!!errors.password}
+									errorText={errors.password?.message}
+								>
+									<Input
+										type="password"
+										placeholder="••••••••"
+										size="lg"
+										{...register("password", {
+											required: "Password is required",
+											minLength: {
+												value: 6,
+												message: "Password must be at least 6 characters",
+											},
+										})}
+									/>
+								</Field>
+
+								<Button
+									type="submit"
+									colorPalette="blue"
+									size="lg"
+									width="full"
+									loading={isSubmitting}
+									mt={4}
+								>
+									Sign In
+								</Button>
+							</Stack>
+						</form>
+					</Stack>
+				</Box>
+			</Container>
+		</Flex>
 	);
 }

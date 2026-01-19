@@ -1,5 +1,9 @@
-# Created by https://www.toptal.com/developers/gitignore/api/nextjs
-# Edit at https://www.toptal.com/developers/gitignore?templates=nextjs
+# Created by https://www.toptal.com/developers/gitignore/api/direnv,nextjs
+# Edit at https://www.toptal.com/developers/gitignore?templates=direnv,nextjs
+
+### direnv ###
+.direnv
+.envrc
 
 ### NextJS ###
 # dependencies
@@ -37,6 +41,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# End of https://www.toptal.com/developers/gitignore/api/nextjs
+# End of https://www.toptal.com/developers/gitignore/api/direnv,nextjs
 
 /.pre-commit-config.yaml

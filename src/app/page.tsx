@@ -10,8 +10,13 @@ import {
 	Stack,
 	Text,
 } from "@chakra-ui/react";
+import { FirebaseError } from "firebase/app";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
+import { Alert } from "@/components/ui/alert";
 import { Field } from "@/components/ui/field";
+import { auth } from "@/lib/firebase";
 
 interface LoginFormData {
 	email: string;
@@ -19,6 +24,7 @@ interface LoginFormData {
 }
 
 export default function Home() {
+	const [authError, setAuthError] = useState<string | null>(null);
 	const {
 		register,
 		handleSubmit,
@@ -26,11 +32,30 @@ export default function Home() {
 	} = useForm<LoginFormData>();
 
 	const onSubmit = async (data: LoginFormData) => {
-		// TODO: Implement login logic here
-		console.log("Login attempt:", data);
-
-		// Demo timeout
-		await new Promise((resolve) => setTimeout(resolve, 1000));
+		setAuthError(null);
+		try {
+			await signInWithEmailAndPassword(auth, data.email, data.password);
+		} catch (error) {
+			if (error instanceof FirebaseError) {
+				switch (error.code) {
+					case "auth/invalid-credential":
+					case "auth/user-not-found":
+					case "auth/wrong-password":
+						setAuthError("Invalid email or password");
+						break;
+					case "auth/too-many-requests":
+						setAuthError("Too many attempts. Please try again later");
+						break;
+					case "auth/user-disabled":
+						setAuthError("This account has been disabled");
+						break;
+					default:
+						setAuthError("Failed to sign in");
+				}
+			} else {
+				setAuthError("An unexpected error occurred");
+			}
+		}
 	};
 
 	return (
@@ -44,6 +69,8 @@ export default function Home() {
 						<Text textAlign="center" color="gray.600">
 							Sign in to Calibre-Web
 						</Text>
+
+						{authError && <Alert status="error" title={authError} />}
 
 						<form onSubmit={handleSubmit(onSubmit)}>
 							<Stack gap={4}>

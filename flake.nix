@@ -64,7 +64,10 @@
         };
 
         devShells.default = pkgs.mkShell {
-          packages = with pkgs; [ bun ];
+          packages = with pkgs; [
+            bun
+            firebase-tools
+          ];
           shellHook = ''
             ${pre-commit-check.shellHook}
           '';

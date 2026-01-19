@@ -1,9 +1,18 @@
-# Created by https://www.toptal.com/developers/gitignore/api/direnv,nextjs
-# Edit at https://www.toptal.com/developers/gitignore?templates=direnv,nextjs
+# Created by https://www.toptal.com/developers/gitignore/api/direnv,firebase,nextjs
+# Edit at https://www.toptal.com/developers/gitignore?templates=direnv,firebase,nextjs
 
 ### direnv ###
 .direnv
 .envrc
+
+### Firebase ###
+.idea
+**/node_modules/*
+**/.firebaserc
+
+### Firebase Patch ###
+.runtimeconfig.json
+.firebase/
 
 ### NextJS ###
 # dependencies
@@ -41,6 +50,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# End of https://www.toptal.com/developers/gitignore/api/direnv,nextjs
+# End of https://www.toptal.com/developers/gitignore/api/direnv,firebase,nextjs
 
 /.pre-commit-config.yaml

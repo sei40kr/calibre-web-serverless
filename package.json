@@ -3,7 +3,7 @@
 	"version": "0.1.0",
 	"private": true,
 	"scripts": {
-		"dev": "concurrently --kill-others \"next dev --webpack\" \"firebase emulators:start\"",
+		"dev": "concurrently --kill-others \"next dev --webpack\" \"firebase emulators:start --import=seed\"",
 		"build": "next build --webpack",
 		"start": "next start",
 		"lint": "biome check",

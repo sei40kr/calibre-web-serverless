@@ -3,7 +3,7 @@
 	"version": "0.1.0",
 	"private": true,
 	"scripts": {
-		"dev": "next dev --webpack",
+		"dev": "concurrently --kill-others \"next dev --webpack\" \"firebase emulators:start\"",
 		"build": "next build --webpack",
 		"start": "next start",
 		"lint": "biome check",
@@ -29,6 +29,7 @@
 		"@types/react-dom": "^19",
 		"@vitejs/plugin-react": "^5.1.2",
 		"babel-plugin-react-compiler": "1.0.0",
+		"concurrently": "^9.2.1",
 		"jsdom": "^27.4.0",
 		"typescript": "^5",
 		"vite-tsconfig-paths": "^6.0.4",

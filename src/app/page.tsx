@@ -25,11 +25,30 @@ interface LoginFormData {
 
 export default function Home() {
 	const [authError, setAuthError] = useState<string | null>(null);
+	const [isTestLoggingIn, setIsTestLoggingIn] = useState(false);
 	const {
 		register,
 		handleSubmit,
 		formState: { errors, isSubmitting },
 	} = useForm<LoginFormData>();
+
+	const isDev = process.env.NODE_ENV === "development";
+
+	const handleTestLogin = async () => {
+		setAuthError(null);
+		setIsTestLoggingIn(true);
+		try {
+			await signInWithEmailAndPassword(auth, "test@example.com", "password123");
+		} catch (error) {
+			if (error instanceof FirebaseError) {
+				setAuthError("Failed to sign in as test user");
+			} else {
+				setAuthError("An unexpected error occurred");
+			}
+		} finally {
+			setIsTestLoggingIn(false);
+		}
+	};
 
 	const onSubmit = async (data: LoginFormData) => {
 		setAuthError(null);
@@ -124,6 +143,20 @@ export default function Home() {
 								>
 									Sign In
 								</Button>
+
+								{isDev && (
+									<Button
+										type="button"
+										variant="outline"
+										colorPalette="gray"
+										size="lg"
+										width="full"
+										loading={isTestLoggingIn}
+										onClick={handleTestLogin}
+									>
+										Login as Test User
+									</Button>
+								)}
 							</Stack>
 						</form>
 					</Stack>

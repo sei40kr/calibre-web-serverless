@@ -104,7 +104,7 @@ export default function Home() {
 
 						{authError && <Alert status="error" title={authError} />}
 
-						<form onSubmit={handleSubmit(onSubmit)}>
+						<form noValidate onSubmit={handleSubmit(onSubmit)}>
 							<Fieldset.Root disabled={isSubmitting || isTestLoggingIn}>
 								<Fieldset.Content>
 									<Stack gap={4}>

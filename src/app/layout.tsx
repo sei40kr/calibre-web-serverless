@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { Provider } from "@/components/ui/provider";
+import { Provider as ChakraUIProvider } from "@/components/ui/provider";
+import { AuthProvider } from "@/contexts/AuthContext";
 
 export const metadata: Metadata = {
 	title: "Calibre-Web",
@@ -14,7 +15,9 @@ export default function RootLayout({
 	return (
 		<html lang="en" suppressHydrationWarning>
 			<body>
-				<Provider>{children}</Provider>
+				<ChakraUIProvider>
+					<AuthProvider>{children}</AuthProvider>
+				</ChakraUIProvider>
 			</body>
 		</html>
 	);

@@ -66,8 +66,8 @@
         devShells.default = pkgs.mkShell {
           packages = with pkgs; [
             bun
-            firebase-tools
             chromium
+            jdk25_headless
           ];
           shellHook = ''
             export PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1

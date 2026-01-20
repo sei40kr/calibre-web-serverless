@@ -13,10 +13,12 @@ import {
 } from "@chakra-ui/react";
 import { FirebaseError } from "firebase/app";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Alert } from "@/components/ui/alert";
 import { Field } from "@/components/ui/field";
+import { useAuth } from "@/contexts/AuthContext";
 import { auth } from "@/lib/firebase";
 
 interface LoginFormData {
@@ -25,6 +27,8 @@ interface LoginFormData {
 }
 
 export default function Home() {
+	const router = useRouter();
+	const { user, loading } = useAuth();
 	const [authError, setAuthError] = useState<string | null>(null);
 	const [isTestLoggingIn, setIsTestLoggingIn] = useState(false);
 	const {
@@ -35,11 +39,18 @@ export default function Home() {
 
 	const isDev = process.env.NODE_ENV === "development";
 
+	useEffect(() => {
+		if (!loading && user) {
+			router.replace("/dashboard");
+		}
+	}, [user, loading, router]);
+
 	const handleTestLogin = async () => {
 		setAuthError(null);
 		setIsTestLoggingIn(true);
 		try {
 			await signInWithEmailAndPassword(auth, "test@example.com", "password123");
+			router.replace("/dashboard");
 		} catch (error) {
 			if (error instanceof FirebaseError) {
 				setAuthError("Failed to sign in as test user");
@@ -55,6 +66,7 @@ export default function Home() {
 		setAuthError(null);
 		try {
 			await signInWithEmailAndPassword(auth, data.email, data.password);
+			router.replace("/dashboard");
 		} catch (error) {
 			if (error instanceof FirebaseError) {
 				switch (error.code) {

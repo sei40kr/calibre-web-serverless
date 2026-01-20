@@ -4,6 +4,7 @@ import {
 	Box,
 	Button,
 	Container,
+	Fieldset,
 	Flex,
 	Heading,
 	Input,
@@ -92,72 +93,76 @@ export default function Home() {
 						{authError && <Alert status="error" title={authError} />}
 
 						<form onSubmit={handleSubmit(onSubmit)}>
-							<Stack gap={4}>
-								<Field
-									label="Email"
-									required
-									invalid={!!errors.email}
-									errorText={errors.email?.message}
-								>
-									<Input
-										type="email"
-										placeholder="example@email.com"
-										size="lg"
-										{...register("email", {
-											required: "Email is required",
-											pattern: {
-												value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-												message: "Invalid email address",
-											},
-										})}
-									/>
-								</Field>
+							<Fieldset.Root disabled={isSubmitting || isTestLoggingIn}>
+								<Fieldset.Content>
+									<Stack gap={4}>
+										<Field
+											label="Email"
+											required
+											invalid={!!errors.email}
+											errorText={errors.email?.message}
+										>
+											<Input
+												type="email"
+												placeholder="example@email.com"
+												size="lg"
+												{...register("email", {
+													required: "Email is required",
+													pattern: {
+														value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+														message: "Invalid email address",
+													},
+												})}
+											/>
+										</Field>
 
-								<Field
-									label="Password"
-									required
-									invalid={!!errors.password}
-									errorText={errors.password?.message}
-								>
-									<Input
-										type="password"
-										placeholder="••••••••"
-										size="lg"
-										{...register("password", {
-											required: "Password is required",
-											minLength: {
-												value: 6,
-												message: "Password must be at least 6 characters",
-											},
-										})}
-									/>
-								</Field>
+										<Field
+											label="Password"
+											required
+											invalid={!!errors.password}
+											errorText={errors.password?.message}
+										>
+											<Input
+												type="password"
+												placeholder="••••••••"
+												size="lg"
+												{...register("password", {
+													required: "Password is required",
+													minLength: {
+														value: 6,
+														message: "Password must be at least 6 characters",
+													},
+												})}
+											/>
+										</Field>
 
-								<Button
-									type="submit"
-									colorPalette="blue"
-									size="lg"
-									width="full"
-									loading={isSubmitting}
-									mt={4}
-								>
-									Sign In
-								</Button>
+										<Button
+											type="submit"
+											colorPalette="blue"
+											size="lg"
+											width="full"
+											loading={isSubmitting}
+											mt={4}
+										>
+											Sign In
+										</Button>
 
-								{isDev && (
-									<Button
-										type="button"
-										variant="outline"
-										colorPalette="gray"
-										size="lg"
-										width="full"
-										loading={isTestLoggingIn}
-										onClick={handleTestLogin}
-									>
-										Login as Test User
-									</Button>
-								)}
-							</Stack>
+										{isDev && (
+											<Button
+												type="button"
+												variant="outline"
+												colorPalette="gray"
+												size="lg"
+												width="full"
+												loading={isTestLoggingIn}
+												onClick={handleTestLogin}
+											>
+												Login as Test User
+											</Button>
+										)}
+									</Stack>
+								</Fieldset.Content>
+							</Fieldset.Root>
 						</form>
 					</Stack>
 				</Box>

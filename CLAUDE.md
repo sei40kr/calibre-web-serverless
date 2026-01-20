@@ -20,6 +20,9 @@ bun run test
 
 # Run a single test file
 bun vitest path/to/test.ts
+
+# Run E2E tests
+bun run test:e2e
 ```
 
 # Architecture
@@ -30,7 +33,7 @@ bun vitest path/to/test.ts
 - **UI**: Chakra UI v3 with next-themes for color mode
 - **Forms**: react-hook-form
 - **Backend**: Firebase (Auth, Firestore, Storage)
-- **Testing**: Vitest with jsdom and React Testing Library
+- **Testing**: Vitest with jsdom and React Testing Library, Playwright for E2E
 
 ## Project Structure
 
@@ -44,6 +47,7 @@ src/
 │   └── AuthContext.tsx # Firebase auth state management
 └── lib/
     └── firebase.ts   # Firebase initialization
+e2e/                  # Playwright E2E tests
 ```
 
 ## Authentication
@@ -75,3 +79,7 @@ bun x @chakra-ui/cli snippet list
 # Add a snippet (generates to src/components/ui/)
 bun x @chakra-ui/cli snippet add <snippet-name>
 ```
+
+# E2E Testing Guidelines
+
+- Before reporting E2E test implementation as complete, always open the Playwright report in a browser (`bun x playwright show-report`)

@@ -67,8 +67,12 @@
           packages = with pkgs; [
             bun
             firebase-tools
+            chromium
           ];
           shellHook = ''
+            export PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+            export PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=${pkgs.chromium}/bin/chromium
+
             ${pre-commit-check.shellHook}
           '';
         };

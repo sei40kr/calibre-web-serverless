@@ -33,7 +33,7 @@ bun run test:e2e
 - **UI**: Chakra UI v3 with next-themes for color mode
 - **Forms**: react-hook-form
 - **Backend**: Firebase (Auth, Firestore, Storage)
-- **Testing**: Vitest with jsdom and React Testing Library, Playwright for E2E
+- **Testing**: Vitest, Storybook (interaction tests), Playwright (E2E)
 
 ## Project Structure
 
@@ -79,6 +79,12 @@ bun x @chakra-ui/cli snippet list
 # Add a snippet (generates to src/components/ui/)
 bun x @chakra-ui/cli snippet add <snippet-name>
 ```
+
+# Storybook
+
+- Stories: `src/components/Foo.stories.tsx`
+- Interaction tests use `storybook/test` (`expect`, `userEvent`, `within`, `fn`)
+- Visual verification is manual; run `bun vitest <file>` to verify interaction tests pass
 
 # E2E Testing Guidelines
 

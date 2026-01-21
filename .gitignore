@@ -53,3 +53,6 @@ next-env.d.ts
 # End of https://www.toptal.com/developers/gitignore/api/direnv,firebase,nextjs
 
 /.pre-commit-config.yaml
+
+*storybook.log
+storybook-static

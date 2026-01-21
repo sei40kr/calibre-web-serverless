@@ -1,5 +1,3 @@
-import type { Timestamp } from "firebase/firestore";
-
 export const IdentifierType = {
 	ISBN: "isbn",
 	ISBN13: "isbn13",
@@ -17,6 +15,7 @@ export interface Identifier {
 }
 
 export interface Book {
+	id: string;
 	title: string;
 	sortTitle?: string;
 	authorIds: string[];
@@ -24,7 +23,7 @@ export interface Book {
 	seriesIndex?: number;
 	tagIds: string[];
 	publisher?: string;
-	pubDate?: Timestamp;
+	pubDate?: Date;
 	identifiers: Identifier[];
 	language?: string;
 	description?: string;
@@ -32,8 +31,8 @@ export interface Book {
 	format: string;
 	fileSize: number;
 	coverFormat?: string;
-	createdAt: Timestamp;
-	updatedAt: Timestamp;
+	createdAt: Date;
+	updatedAt: Date;
 }
 
 export interface BookUploadFormData {

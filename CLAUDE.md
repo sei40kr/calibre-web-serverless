@@ -80,12 +80,12 @@ bun x @chakra-ui/cli snippet list
 bun x @chakra-ui/cli snippet add <snippet-name>
 ```
 
-# Storybook
+# Storybook / Interaction Tests
 
 - Stories: `src/components/Foo.stories.tsx`
 - Interaction tests use `storybook/test` (`expect`, `userEvent`, `within`, `fn`)
-- Visual verification is manual; run `bun vitest <file>` to verify interaction tests pass
+- Visual verification is manual; run `bun vitest --silent passed-only --reporter tap <file...>` to verify interaction tests pass
 
-# E2E Testing Guidelines
+# E2E Testing (Playwright)
 
-- Before reporting E2E test implementation as complete, always open the Playwright report in a browser (`bun x playwright show-report`)
+- Run `bun playwright test --reporter=json <test-filter...>` to verify E2E tests pass (JSON format is easier for AI to parse)

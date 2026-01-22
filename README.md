@@ -20,6 +20,16 @@ This project adopts a serverless architecture to:
 
 Achieve feature parity with Calibre-Web while embracing serverless principles and modern web technologies.
 
+## Tech Stack
+
+- **Framework**: Next.js (App Router), React
+- **UI**: Chakra UI, Emotion
+- **Forms**: react-hook-form
+- **Backend**: Firebase (Auth, Firestore, Storage)
+- **Language**: TypeScript
+- **Testing**: Vitest, Playwright, Storybook
+- **Linting/Formatting**: Biome
+
 ## Roadmap
 
 - [x] Authentication

@@ -39,15 +39,19 @@ bun run test:e2e
 
 ```
 src/
-├── app/              # Next.js App Router pages
+├── app/                # Next.js App Router pages (routing only)
 ├── components/
-│   ├── ui/           # Chakra UI wrapper components
-│   └── AuthGuard.tsx # Route protection component
+│   ├── pages/          # Pure page components
+│   ├── ui/             # Chakra UI wrapper components
+│   └── AuthGuard.tsx   # Route protection component
 ├── contexts/
 │   └── AuthContext.tsx # Firebase auth state management
-└── lib/
-    └── firebase.ts   # Firebase initialization
-e2e/                  # Playwright E2E tests
+├── hooks/              # Data subscription hooks
+├── lib/
+│   └── firebase.ts     # Firebase initialization
+├── models/             # Domain models
+└── services/           # Infrastructure services (Firebase, etc.)
+e2e/                    # Playwright E2E tests
 ```
 
 ## Authentication
@@ -63,9 +67,43 @@ e2e/                  # Playwright E2E tests
 - Seed data in `seed/` directory includes a test user: `test@example.com` / `password123`
 - `bun run dev` automatically starts emulators with `--import=seed`
 
+# Coding Conventions
+
 ## Path Aliases
 
 - `@/*` maps to `./src/*`
+
+## Services and Infrastructure
+
+- External infrastructure (Firebase, etc.) must be encapsulated as services in `src/services/`
+- Services handle all communication with external systems
+
+## Domain Models
+
+- Domain models are placed under `src/models/`
+- Express domain constraints through types as much as possible (branded types, union types, etc.)
+
+## Page Components
+
+- Extract pure page components and place them under `src/components/pages/`
+- Route files in `src/app/` should only handle routing concerns and delegate to page components
+
+## Component Purity
+
+- Components under `src/components/` should be pure (no direct infrastructure dependencies)
+- Use props and callbacks for data and side effects
+
+## Data Subscription Hooks
+
+- Create hooks under `src/hooks/` for subscribing to data store
+- Components must access data through hooks, never directly from services
+
+## DTOs and Persistence
+
+- Domain models may be converted to DTOs for persistence
+- Firestore DTOs use the suffix `Document` (e.g., `BookDocument`)
+- DTO definitions and conversion logic must stay within services
+- Never leak infrastructure knowledge (Firestore types, etc.) outside of services
 
 # Chakra UI
 

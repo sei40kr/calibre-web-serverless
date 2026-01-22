@@ -1,36 +1,47 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Calibre-Web Serverless
 
-## Getting Started
+> [!WARNING]
+> This project is under active development and many features are not yet implemented.
 
-First, run the development server:
+A modern, serverless reimplementation of [Calibre-Web](https://github.com/janeczku/calibre-web) built with Next.js and TypeScript.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Why This Project?
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The original Calibre-Web requires a persistent server instance, incurring continuous hosting costs. However, most users access their library through dedicated e-reader devices, meaning they only need the server for brief moments—uploading books, editing metadata, and downloading files.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+This project adopts a serverless architecture to:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **Reduce costs** — Pay only for actual usage, not idle time
+- **Ensure reliability** — Leverage managed services (Firebase) for affordable, redundant storage
+- **Improve maintainability** — Use static typing with TypeScript for safer code, and leverage a modern tech stack to minimize codebase size
+- **Provide a refined UI** — Deliver a modern, polished user experience
 
-## Learn More
+## Goals
 
-To learn more about Next.js, take a look at the following resources:
+Achieve feature parity with Calibre-Web while embracing serverless principles and modern web technologies.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Roadmap
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [x] Authentication
+- [x] Dashboard
+- [ ] Book metadata editor
+- [ ] Book detail page
+- [ ] Book cover management
+- [ ] Auto-extract metadata from uploaded books
+- [ ] Book search
+- [ ] Browse books by author
+- [ ] Browse books by series
+- [ ] Browse books by publisher
+- [ ] Browse books by tag
+- [ ] Bookshelves (user-created collections)
+- [ ] Fetch metadata from external sources by title or identifier
+- [ ] Send-to-Kindle
+- [ ] OPDS catalog
+- [ ] Built-in reader
+- [ ] Reading progress tracking
+- [ ] NotebookLM integration
+- [ ] ML-based metadata extraction from cover images (fallback)
+- [ ] Social login
+- [ ] Password reset
+- [ ] Two-factor authentication
+- [ ] Passkey support

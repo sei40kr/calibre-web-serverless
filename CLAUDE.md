@@ -70,7 +70,8 @@ e2e/                  # Playwright E2E tests
 # Chakra UI
 
 - Use the Chakra UI MCP tools when available (`mcp__chakra-ui__*`)
-- Before using a component, check if a snippet exists in `src/components/ui/` - these are pre-configured wrappers that should be used instead of importing directly from `@chakra-ui/react`
+- Always prefer Chakra UI components over custom implementations
+- **Always prioritize snippets**: Before using a Chakra UI component, check if a snippet exists in `src/components/ui/` - these are pre-configured wrappers that should be used instead of importing directly from `@chakra-ui/react`
 
 ```bash
 # List available snippets
@@ -79,6 +80,8 @@ bun x @chakra-ui/cli snippet list
 # Add a snippet (generates to src/components/ui/)
 bun x @chakra-ui/cli snippet add <snippet-name>
 ```
+
+**Note**: The snippet CLI commands do not work in sandbox mode. Run them with sandbox disabled.
 
 # Storybook / Interaction Tests
 

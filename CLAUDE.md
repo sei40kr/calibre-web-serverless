@@ -93,17 +93,20 @@ e2e/                    # Playwright E2E tests
 - Components under `src/components/` should be pure (no direct infrastructure dependencies)
 - Use props and callbacks for data and side effects
 
-## Data Subscription Hooks
+## Data Hooks
 
-- Create hooks under `src/hooks/` for subscribing to data store
-- Components must access data through hooks, never directly from services
+- Hooks in `src/hooks/` bridge components and services for data reading/subscription
+- Components read data through hooks, never directly from services
+- Mutations (one-off writes) can call services directly without a hook
+- Error translation (e.g., FirebaseError → domain errors) belongs in hooks
 
-## DTOs and Persistence
+## Model ↔ Document Conversion
 
-- Domain models may be converted to DTOs for persistence
-- Firestore DTOs use the suffix `Document` (e.g., `BookDocument`)
-- DTO definitions and conversion logic must stay within services
-- Never leak infrastructure knowledge (Firestore types, etc.) outside of services
+- Never expose infrastructure types (`Timestamp`, `FieldValue`, `DocumentReference`, etc.) outside of services
+- `Document` interfaces and conversion logic must stay within services
+- Define a `Document` interface for complex entities with type differences (e.g., `BookDocument` uses `Timestamp`, singleton string codes)
+- For complex entities, create `toModel` / `toDocument` functions (e.g., `toBook` / `toBookDocument`) in the service; simple cases can inline
+- Create payload type: `Omit<Document, "id" | "createdAt" | "updatedAt"> & { createdAt: FieldValue; updatedAt: FieldValue }`
 
 # Chakra UI
 

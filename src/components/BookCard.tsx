@@ -2,7 +2,7 @@
 
 import { Badge, Box, Card, Text, VStack } from "@chakra-ui/react";
 import { LuBook } from "react-icons/lu";
-import type { Book } from "@/types/book";
+import type { Book } from "@/models/book";
 
 interface BookCardProps {
 	book: Book;

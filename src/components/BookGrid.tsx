@@ -2,7 +2,7 @@
 
 import { Box, SimpleGrid, Skeleton, VStack } from "@chakra-ui/react";
 import { LuBookOpen } from "react-icons/lu";
-import type { Book } from "@/types/book";
+import type { Book } from "@/models/book";
 import { BookCard } from "./BookCard";
 import { EmptyState } from "./ui/empty-state";
 

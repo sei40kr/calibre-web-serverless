@@ -12,7 +12,7 @@ import {
 } from "firebase/firestore";
 import { ref, uploadBytes } from "firebase/storage";
 import { db, storage } from "@/lib/firebase";
-import type { Book } from "@/types/book";
+import type { Book } from "@/models/book";
 
 type BookDocument = Omit<Book, "id" | "pubDate" | "createdAt" | "updatedAt"> & {
 	pubDate?: Timestamp;

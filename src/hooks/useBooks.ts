@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
+import type { Book } from "@/models/book";
 import { subscribeToBooks } from "@/services/bookService";
-import type { Book } from "@/types/book";
 
 export function useBooks(userId: string | undefined) {
 	const [books, setBooks] = useState<Book[]>([]);

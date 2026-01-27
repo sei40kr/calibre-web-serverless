@@ -23,7 +23,11 @@ import {
 } from "@/components/ui/file-upload";
 import { toaster } from "@/components/ui/toaster";
 import { uploadBook } from "@/services/bookService";
-import type { BookUploadFormData } from "@/types/book";
+
+interface BookUploadFormData {
+	title: string;
+	file: File[];
+}
 
 interface UploadBookDialogProps {
 	user: User;

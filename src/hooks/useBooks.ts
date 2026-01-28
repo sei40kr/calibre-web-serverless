@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { Book } from "@/models/book";
 import { subscribeToBooks } from "@/services/bookService";
 
-export function useBooks(userId: string | undefined) {
+export const useBooks = (userId: string) => {
 	const [books, setBooks] = useState<Book[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<Error | null>(null);
@@ -31,4 +31,4 @@ export function useBooks(userId: string | undefined) {
 	}, [userId]);
 
 	return { books, loading, error };
-}
+};

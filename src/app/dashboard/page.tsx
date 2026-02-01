@@ -7,7 +7,6 @@ import { LuPlus } from "react-icons/lu";
 import { AuthGuard } from "@/components/AuthGuard";
 import { BookGrid } from "@/components/BookGrid";
 import { UploadBookDialog } from "@/components/UploadBookDialog";
-import { Toaster } from "@/components/ui/toaster";
 import { useBooks } from "@/hooks/useBooks";
 
 interface DashboardContentProps {
@@ -54,7 +53,6 @@ function DashboardContent({
 				open={isUploadDialogOpen}
 				onOpenChange={setIsUploadDialogOpen}
 			/>
-			<Toaster />
 		</>
 	);
 }

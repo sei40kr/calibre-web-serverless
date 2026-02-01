@@ -400,3 +400,25 @@ export const CancelButtonWithChanges: Story = {
 		await expect(args.onCancel).toHaveBeenCalledWith(true);
 	},
 };
+
+export const UpdateError: Story = {
+	args: {
+		onUpdateBook: fn(async () => {
+			throw new Error("Network error");
+		}),
+	},
+	play: async ({ canvasElement, args }) => {
+		const canvas = within(canvasElement);
+
+		const saveButton = canvas.getByRole("button", { name: /save/i });
+		await userEvent.click(saveButton);
+
+		await expect(
+			canvas.findByText(/failed to update book/i),
+		).resolves.toBeInTheDocument();
+
+		await expect(args.onSuccess).not.toHaveBeenCalled();
+
+		await expect(saveButton).toBeEnabled();
+	},
+};

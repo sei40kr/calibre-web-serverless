@@ -33,6 +33,7 @@ import {
 	IdentifierFieldArray,
 	type IdentifierFormData,
 } from "@/components/IdentifierFieldArray";
+import { Alert } from "@/components/ui/alert";
 import {
 	ComboboxContent,
 	ComboboxControl,
@@ -154,6 +155,7 @@ export function EditBookPage({
 		control,
 		watch,
 		setValue,
+		setError,
 		formState: { errors, isSubmitting, isDirty },
 	} = methods;
 
@@ -246,7 +248,7 @@ export function EditBookPage({
 		[],
 	);
 	const { collection: languageCollection, filter: filterLanguages } =
-		useListCollection({
+		useListCollection<{ label: string; value: string }>({
 			initialItems: languageItems,
 			filter: contains,
 			itemToString: (item) => item.label,
@@ -313,22 +315,28 @@ export function EditBookPage({
 				return type ? [{ type, value: id.value }] : [];
 			});
 
-		await onUpdateBook({
-			title: data.title,
-			sortTitle: data.sortTitle || null,
-			authorNames: data.authorNames,
-			seriesName: seriesCombobox.inputValue || null,
-			seriesIndex: data.seriesIndex,
-			tagNames: data.tagNames,
-			description: data.description || null,
-			publisherName: publisherCombobox.inputValue || null,
-			pubDate: data.pubDate ? new Date(data.pubDate) : null,
-			languages,
-			rating: data.rating || null,
-			identifiers,
-		});
+		try {
+			await onUpdateBook({
+				title: data.title,
+				sortTitle: data.sortTitle || null,
+				authorNames: data.authorNames,
+				seriesName: seriesCombobox.inputValue || null,
+				seriesIndex: data.seriesIndex,
+				tagNames: data.tagNames,
+				description: data.description || null,
+				publisherName: publisherCombobox.inputValue || null,
+				pubDate: data.pubDate ? new Date(data.pubDate) : null,
+				languages,
+				rating: data.rating || null,
+				identifiers,
+			});
 
-		onSuccess(data.title);
+			onSuccess(data.title);
+		} catch {
+			setError("root", {
+				message: "Failed to update book. Please try again.",
+			});
+		}
 	};
 
 	return (
@@ -342,6 +350,8 @@ export function EditBookPage({
 				</HStack>
 
 				<Heading size="xl">Edit Book</Heading>
+
+				{errors.root && <Alert status="error" title={errors.root.message} />}
 
 				<FormProvider {...methods}>
 					<form noValidate onSubmit={handleSubmit(onSubmit)}>

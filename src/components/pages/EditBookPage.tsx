@@ -115,9 +115,7 @@ export interface EditBookPageProps {
 	tagSuggestions: string[];
 	publisherNames: string[];
 	onUpdateBook: (params: UpdateBookParams) => Promise<void>;
-	onCancel: (hasUnsavedChanges: boolean) => void;
-	onSuccess: (title: string) => void;
-	onHasUnsavedChangesChange: (hasUnsavedChanges: boolean) => void;
+	onCancel: () => void;
 }
 
 export function EditBookPage({
@@ -128,8 +126,6 @@ export function EditBookPage({
 	publisherNames,
 	onUpdateBook,
 	onCancel: onBack,
-	onSuccess,
-	onHasUnsavedChangesChange,
 }: EditBookPageProps) {
 	const methods = useForm<BookEditFormData>({
 		defaultValues: {
@@ -294,12 +290,27 @@ export function EditBookPage({
 	}, [book, reset]);
 
 	const handleBack = useCallback(() => {
-		onBack(isDirty);
+		if (isDirty) {
+			const confirmed = window.confirm(
+				"You have unsaved changes. Are you sure you want to leave without saving?",
+			);
+			if (!confirmed) {
+				return;
+			}
+		}
+		onBack();
 	}, [isDirty, onBack]);
 
 	useEffect(() => {
-		onHasUnsavedChangesChange(isDirty);
-	}, [isDirty, onHasUnsavedChangesChange]);
+		const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+			if (isDirty) {
+				e.preventDefault();
+			}
+		};
+
+		window.addEventListener("beforeunload", handleBeforeUnload);
+		return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+	}, [isDirty]);
 
 	const onSubmit = async (data: BookEditFormData) => {
 		const allLangs = Language.all();
@@ -330,8 +341,6 @@ export function EditBookPage({
 				rating: data.rating || null,
 				identifiers,
 			});
-
-			onSuccess(data.title);
 		} catch {
 			setError("root", {
 				message: "Failed to update book. Please try again.",

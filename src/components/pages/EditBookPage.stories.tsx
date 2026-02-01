@@ -41,8 +41,6 @@ const meta = {
 		publisherNames: mockPublisherNames,
 		onUpdateBook: fn(async () => {}),
 		onCancel: fn(),
-		onSuccess: fn(),
-		onHasUnsavedChangesChange: fn(),
 	},
 } satisfies Meta<typeof EditBookPage>;
 
@@ -371,36 +369,6 @@ export const SubmitFormVerifyArguments: Story = {
 	},
 };
 
-export const BackButtonWithChanges: Story = {
-	play: async ({ canvasElement, args }) => {
-		const canvas = within(canvasElement);
-
-		const titleInput = canvas.getByPlaceholderText(/enter book title/i);
-		await userEvent.clear(titleInput);
-		await userEvent.type(titleInput, "Modified Title", { delay: 50 });
-
-		const backButton = canvas.getByRole("button", { name: /back/i });
-		await userEvent.click(backButton);
-
-		await expect(args.onCancel).toHaveBeenCalledWith(true);
-	},
-};
-
-export const CancelButtonWithChanges: Story = {
-	play: async ({ canvasElement, args }) => {
-		const canvas = within(canvasElement);
-
-		const titleInput = canvas.getByPlaceholderText(/enter book title/i);
-		await userEvent.clear(titleInput);
-		await userEvent.type(titleInput, "Modified Title", { delay: 50 });
-
-		const cancelButton = canvas.getByRole("button", { name: /cancel/i });
-		await userEvent.click(cancelButton);
-
-		await expect(args.onCancel).toHaveBeenCalledWith(true);
-	},
-};
-
 export const UpdateError: Story = {
 	args: {
 		onUpdateBook: fn(async () => {
@@ -417,8 +385,143 @@ export const UpdateError: Story = {
 			canvas.findByText(/failed to update book/i),
 		).resolves.toBeInTheDocument();
 
-		await expect(args.onSuccess).not.toHaveBeenCalled();
-
 		await expect(saveButton).toBeEnabled();
+	},
+};
+
+export const BackButtonWithoutChanges: Story = {
+	play: async ({ canvasElement, args }) => {
+		const canvas = within(canvasElement);
+
+		const backButton = canvas.getByRole("button", { name: /back/i });
+		await userEvent.click(backButton);
+
+		await expect(args.onCancel).toHaveBeenCalled();
+	},
+};
+
+export const BackButtonWithChangesConfirmed: Story = {
+	play: async ({ canvasElement, args }) => {
+		const canvas = within(canvasElement);
+		const win = canvasElement.ownerDocument.defaultView!;
+		const originalConfirm = win.confirm;
+		win.confirm = () => true;
+
+		try {
+			const titleInput = canvas.getByPlaceholderText(/enter book title/i);
+			await userEvent.clear(titleInput);
+			await userEvent.type(titleInput, "Modified Title", { delay: 50 });
+
+			const backButton = canvas.getByRole("button", { name: /back/i });
+			await userEvent.click(backButton);
+
+			await expect(args.onCancel).toHaveBeenCalled();
+		} finally {
+			win.confirm = originalConfirm;
+		}
+	},
+};
+
+export const BackButtonWithChangesDeclined: Story = {
+	play: async ({ canvasElement, args }) => {
+		const canvas = within(canvasElement);
+		const win = canvasElement.ownerDocument.defaultView!;
+		const originalConfirm = win.confirm;
+		win.confirm = () => false;
+
+		try {
+			const titleInput = canvas.getByPlaceholderText(/enter book title/i);
+			await userEvent.clear(titleInput);
+			await userEvent.type(titleInput, "Modified Title", { delay: 50 });
+
+			const backButton = canvas.getByRole("button", { name: /back/i });
+			await userEvent.click(backButton);
+
+			await expect(args.onCancel).not.toHaveBeenCalled();
+		} finally {
+			win.confirm = originalConfirm;
+		}
+	},
+};
+
+export const CancelButtonWithoutChanges: Story = {
+	play: async ({ canvasElement, args }) => {
+		const canvas = within(canvasElement);
+
+		const cancelButton = canvas.getByRole("button", { name: /cancel/i });
+		await userEvent.click(cancelButton);
+
+		await expect(args.onCancel).toHaveBeenCalled();
+	},
+};
+
+export const CancelButtonWithChangesConfirmed: Story = {
+	play: async ({ canvasElement, args }) => {
+		const canvas = within(canvasElement);
+		const win = canvasElement.ownerDocument.defaultView!;
+		const originalConfirm = win.confirm;
+		win.confirm = () => true;
+
+		try {
+			const titleInput = canvas.getByPlaceholderText(/enter book title/i);
+			await userEvent.clear(titleInput);
+			await userEvent.type(titleInput, "Modified Title", { delay: 50 });
+
+			const cancelButton = canvas.getByRole("button", { name: /cancel/i });
+			await userEvent.click(cancelButton);
+
+			await expect(args.onCancel).toHaveBeenCalled();
+		} finally {
+			win.confirm = originalConfirm;
+		}
+	},
+};
+
+export const CancelButtonWithChangesDeclined: Story = {
+	play: async ({ canvasElement, args }) => {
+		const canvas = within(canvasElement);
+		const win = canvasElement.ownerDocument.defaultView!;
+		const originalConfirm = win.confirm;
+		win.confirm = () => false;
+
+		try {
+			const titleInput = canvas.getByPlaceholderText(/enter book title/i);
+			await userEvent.clear(titleInput);
+			await userEvent.type(titleInput, "Modified Title", { delay: 50 });
+
+			const cancelButton = canvas.getByRole("button", { name: /cancel/i });
+			await userEvent.click(cancelButton);
+
+			await expect(args.onCancel).not.toHaveBeenCalled();
+		} finally {
+			win.confirm = originalConfirm;
+		}
+	},
+};
+
+export const BeforeUnloadWithoutChanges: Story = {
+	play: async ({ canvasElement }) => {
+		const win = canvasElement.ownerDocument.defaultView!;
+
+		const event = new Event("beforeunload", { cancelable: true });
+		win.dispatchEvent(event);
+
+		await expect(event.defaultPrevented).toBe(false);
+	},
+};
+
+export const BeforeUnloadWithChanges: Story = {
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		const win = canvasElement.ownerDocument.defaultView!;
+
+		const titleInput = canvas.getByPlaceholderText(/enter book title/i);
+		await userEvent.clear(titleInput);
+		await userEvent.type(titleInput, "Modified Title", { delay: 50 });
+
+		const event = new Event("beforeunload", { cancelable: true });
+		win.dispatchEvent(event);
+
+		await expect(event.defaultPrevented).toBe(true);
 	},
 };

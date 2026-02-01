@@ -3,7 +3,8 @@
 	"version": "0.1.0",
 	"private": true,
 	"scripts": {
-		"dev": "concurrently --kill-others \"next dev --webpack\" \"firebase emulators:start --import=seed\"",
+		"dev": "concurrently --kill-others \"firebase emulators:start --project=demo-project\" \"wait-on http-get://127.0.0.1:8080 http-get://127.0.0.1:9099 tcp:9199 && bun run seed && next dev --webpack\"",
+		"seed": "FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099 bun run scripts/seed.ts",
 		"build": "next build --webpack",
 		"start": "next start",
 		"lint": "biome check",
@@ -43,6 +44,7 @@
 		"@vitest/coverage-v8": "4.0.17",
 		"babel-plugin-react-compiler": "1.0.0",
 		"concurrently": "^9.2.1",
+		"firebase-admin": "^13.6.0",
 		"firebase-tools": "^15.3.1",
 		"jsdom": "^27.4.0",
 		"playwright": "^1.57.0",
@@ -50,7 +52,8 @@
 		"typescript": "^5",
 		"vite": "^7.3.1",
 		"vite-tsconfig-paths": "^6.0.4",
-		"vitest": "^4.0.17"
+		"vitest": "^4.0.17",
+		"wait-on": "^9.0.3"
 	},
 	"ignoreScripts": [
 		"sharp",

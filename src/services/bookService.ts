@@ -6,6 +6,7 @@ import {
 	type FieldValue,
 	type FirestoreDataConverter,
 	getDoc,
+	getDocs,
 	increment,
 	onSnapshot,
 	orderBy,
@@ -113,6 +114,12 @@ const bookConverter: FirestoreDataConverter<Book> = {
 			updatedAt: d.updatedAt.toDate(),
 		};
 	},
+};
+
+export const hasBooks = async (userId: string): Promise<boolean> => {
+	const booksRef = collection(db, "users", userId, "books");
+	const booksSnapshot = await getDocs(booksRef);
+	return !booksSnapshot.empty;
 };
 
 export const getBook = async (

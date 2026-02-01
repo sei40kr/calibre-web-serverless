@@ -3,7 +3,7 @@
 
 ### direnv ###
 .direnv
-.envrc
+#.envrc
 
 ### Firebase ###
 .idea

@@ -1,7 +1,8 @@
 "use client";
 
-import { Badge, Box, Card, Text, VStack } from "@chakra-ui/react";
-import { LuBook } from "react-icons/lu";
+import { Badge, Box, Card, IconButton, Text, VStack } from "@chakra-ui/react";
+import Link from "next/link";
+import { LuBook, LuPencil } from "react-icons/lu";
 import type { Book } from "@/models/book";
 
 interface BookCardProps {
@@ -12,9 +13,9 @@ export function BookCard({ book }: BookCardProps) {
 	return (
 		<Card.Root
 			overflow="hidden"
-			cursor="pointer"
 			_hover={{ shadow: "md", transform: "translateY(-2px)" }}
 			transition="all 0.2s"
+			position="relative"
 		>
 			<Box
 				bg="bg.muted"
@@ -35,6 +36,20 @@ export function BookCard({ book }: BookCardProps) {
 					</Badge>
 				</VStack>
 			</Card.Body>
+
+			<Box position="absolute" top={2} right={2}>
+				<IconButton
+					asChild
+					aria-label="Edit book"
+					variant="solid"
+					size="sm"
+					rounded="full"
+				>
+					<Link href={`/dashboard/books/${book.id}/edit`}>
+						<LuPencil />
+					</Link>
+				</IconButton>
+			</Box>
 		</Card.Root>
 	);
 }

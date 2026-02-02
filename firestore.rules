@@ -30,6 +30,10 @@ service cloud.firestore {
         allow read, write: if isOwner(userId);
       }
 
+      match /publishers/{publisherId} {
+        allow read, write: if isOwner(userId);
+      }
+
       match /shelves/{shelfId} {
         allow read, write: if isOwner(userId);
       }

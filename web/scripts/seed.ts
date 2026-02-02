@@ -183,7 +183,14 @@ async function main() {
 
 	// Upload books and update with metadata
 	for (const book of books) {
-		const filePath = path.join(process.cwd(), "e2e", "fixtures", book.filename);
+		const filePath = path.join(
+			import.meta.dirname,
+			"..",
+			"..",
+			"fixtures",
+			"books",
+			book.filename,
+		);
 		const fileBuffer = fs.readFileSync(filePath);
 		const file = new File([fileBuffer], book.filename, {
 			type: "application/epub+zip",

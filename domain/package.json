@@ -1,0 +1,15 @@
+{
+	"name": "@calibre-web-serverless/domain",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"exports": {
+		"./models/book": "./models/book.ts",
+		"./models/author": "./models/author.ts",
+		"./models/series": "./models/series.ts",
+		"./models/tag": "./models/tag.ts",
+		"./models/publisher": "./models/publisher.ts",
+		"./models/language": "./models/language.ts",
+		"./models/identifier": "./models/identifier.ts"
+	}
+}

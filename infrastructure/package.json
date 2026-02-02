@@ -1,0 +1,22 @@
+{
+	"name": "@calibre-web-serverless/infrastructure",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"exports": {
+		"./lib/firebase": "./lib/firebase.ts",
+		"./lib/auth": "./lib/auth.ts",
+		"./services/bookService": "./services/bookService.ts",
+		"./services/authorService": "./services/authorService.ts",
+		"./services/seriesService": "./services/seriesService.ts",
+		"./services/tagService": "./services/tagService.ts",
+		"./services/publisherService": "./services/publisherService.ts"
+	},
+	"dependencies": {
+		"@calibre-web-serverless/domain": "workspace:*",
+		"firebase": "^12.8.0"
+	},
+	"devDependencies": {
+		"@types/node": "^20"
+	}
+}

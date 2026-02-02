@@ -61,7 +61,7 @@ module "environment" {
 resource "local_file" "dotenv" {
   for_each = local.environments
 
-  filename        = "${path.root}/../.env.${each.key}"
+  filename        = "${path.root}/../web/.env.${each.key}"
   file_permission = "0644"
   content         = <<-EOT
     NODE_ENV=production

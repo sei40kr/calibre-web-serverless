@@ -4,7 +4,7 @@ import { StorageError } from "@calibre-web-serverless/domain/errors/storageError
 import type { User } from "@calibre-web-serverless/domain/models/user";
 import { bookRepository } from "@calibre-web-serverless/infrastructure/repositories/bookRepository";
 import { Button, Fieldset, Input, Stack } from "@chakra-ui/react";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { Alert } from "@/components/ui/alert";
 import {
@@ -44,6 +44,7 @@ export function UploadBookDialog({
 	onOpenChange,
 	onSuccess,
 }: UploadBookDialogProps) {
+	const formId = useId();
 	const [uploadError, setUploadError] = useState<string | null>(null);
 	const {
 		register,
@@ -124,11 +125,7 @@ export function UploadBookDialog({
 				<DialogBody>
 					{uploadError && <Alert status="error" title={uploadError} mb={4} />}
 
-					<form
-						id="upload-book-form"
-						noValidate
-						onSubmit={handleSubmit(onSubmit)}
-					>
+					<form id={formId} noValidate onSubmit={handleSubmit(onSubmit)}>
 						<Fieldset.Root disabled={isSubmitting}>
 							<Fieldset.Content>
 								<Stack gap={4}>
@@ -194,7 +191,7 @@ export function UploadBookDialog({
 					</Button>
 					<Button
 						type="submit"
-						form="upload-book-form"
+						form={formId}
 						colorPalette="blue"
 						loading={isSubmitting}
 					>

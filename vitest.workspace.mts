@@ -1,1 +1,1 @@
-export default ["domain", "web"];
+export default ["domain", "infrastructure", "web"];

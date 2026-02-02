@@ -1,4 +1,5 @@
 import type { Publisher } from "@calibre-web-serverless/domain/models/publisher";
+import type { PublisherRepository } from "@calibre-web-serverless/domain/repositories/publisherRepository";
 import {
 	addDoc,
 	collection,
@@ -26,7 +27,7 @@ const toPublisher = (doc: PublisherDocument): Publisher => ({
 	updatedAt: doc.updatedAt.toDate(),
 });
 
-export const getPublishers = async (userId: string): Promise<Publisher[]> => {
+const getAll = async (userId: string): Promise<Publisher[]> => {
 	const publishersRef = collection(db, "users", userId, "publishers");
 	const q = query(publishersRef, orderBy("name", "asc"));
 	const snapshot = await getDocs(q);
@@ -36,10 +37,7 @@ export const getPublishers = async (userId: string): Promise<Publisher[]> => {
 	);
 };
 
-export const createPublisher = async (
-	userId: string,
-	name: string,
-): Promise<Publisher> => {
+const create = async (userId: string, name: string): Promise<Publisher> => {
 	const publishersRef = collection(db, "users", userId, "publishers");
 
 	const publisherData: Omit<
@@ -50,7 +48,7 @@ export const createPublisher = async (
 		updatedAt: FieldValue;
 	} = {
 		name,
-		// bookCount is incremented by syncBookCounts in bookService when a book references this publisher
+		// bookCount is incremented by syncBookCounts in bookRepository when a book references this publisher
 		bookCount: 0,
 		createdAt: serverTimestamp(),
 		updatedAt: serverTimestamp(),
@@ -64,4 +62,9 @@ export const createPublisher = async (
 		createdAt: new Date(),
 		updatedAt: new Date(),
 	};
+};
+
+export const publisherRepository: PublisherRepository = {
+	getAll,
+	create,
 };

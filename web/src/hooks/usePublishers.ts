@@ -1,5 +1,5 @@
 import type { Publisher } from "@calibre-web-serverless/domain/models/publisher";
-import { getPublishers } from "@calibre-web-serverless/infrastructure/services/publisherService";
+import { publisherRepository } from "@calibre-web-serverless/infrastructure/repositories/publisherRepository";
 import { useEffect, useState } from "react";
 
 export const usePublishers = (userId: string) => {
@@ -10,7 +10,8 @@ export const usePublishers = (userId: string) => {
 	useEffect(() => {
 		setLoading(true);
 
-		getPublishers(userId)
+		publisherRepository
+			.getAll(userId)
 			.then((data) => {
 				setPublishers(data);
 				setLoading(false);

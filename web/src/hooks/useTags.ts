@@ -1,5 +1,5 @@
 import type { Tag } from "@calibre-web-serverless/domain/models/tag";
-import { getTags } from "@calibre-web-serverless/infrastructure/services/tagService";
+import { tagRepository } from "@calibre-web-serverless/infrastructure/repositories/tagRepository";
 import { useEffect, useState } from "react";
 
 export const useTags = (userId: string) => {
@@ -10,7 +10,8 @@ export const useTags = (userId: string) => {
 	useEffect(() => {
 		setLoading(true);
 
-		getTags(userId)
+		tagRepository
+			.getAll(userId)
 			.then((data) => {
 				setTags(data);
 				setLoading(false);

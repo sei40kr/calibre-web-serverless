@@ -17,18 +17,11 @@ import {
 	ISBN13,
 } from "@calibre-web-serverless/domain/models/identifier";
 import { Language } from "@calibre-web-serverless/domain/models/language";
-import {
-	auth,
-	signInWithEmailAndPassword,
-} from "@calibre-web-serverless/infrastructure/lib/auth";
-import { createAuthor } from "@calibre-web-serverless/infrastructure/services/authorService";
-import {
-	hasBooks,
-	updateBook,
-	uploadBook,
-} from "@calibre-web-serverless/infrastructure/services/bookService";
-import { createSeries } from "@calibre-web-serverless/infrastructure/services/seriesService";
-import { createTag } from "@calibre-web-serverless/infrastructure/services/tagService";
+import { authorRepository } from "@calibre-web-serverless/infrastructure/repositories/authorRepository";
+import { bookRepository } from "@calibre-web-serverless/infrastructure/repositories/bookRepository";
+import { seriesRepository } from "@calibre-web-serverless/infrastructure/repositories/seriesRepository";
+import { tagRepository } from "@calibre-web-serverless/infrastructure/repositories/tagRepository";
+import { authService } from "@calibre-web-serverless/infrastructure/services/authService";
 import { initializeApp as initializeAdminApp } from "firebase-admin/app";
 import { getAuth as getAdminAuth } from "firebase-admin/auth";
 
@@ -150,10 +143,10 @@ async function main() {
 	}
 
 	// Sign in with Client SDK
-	await signInWithEmailAndPassword(auth, TEST_USER.email, TEST_USER.password);
+	await authService.signIn(TEST_USER.email, TEST_USER.password);
 
 	// Check if books already exist
-	if (await hasBooks(userId)) {
+	if (await bookRepository.hasBooks(userId)) {
 		return;
 	}
 
@@ -167,7 +160,7 @@ async function main() {
 	// Create authors and build name->id map
 	const authorMap = new Map<string, string>();
 	for (const name of allAuthorNames) {
-		const author = await createAuthor(userId, name);
+		const author = await authorRepository.create(userId, name);
 		authorMap.set(name, author.id);
 		console.log(`[seed] Created author: ${name}`);
 	}
@@ -175,7 +168,7 @@ async function main() {
 	// Create series and build name->id map
 	const seriesMap = new Map<string, string>();
 	for (const name of allSeriesNames) {
-		const series = await createSeries(userId, name);
+		const series = await seriesRepository.create(userId, name);
 		seriesMap.set(name, series.id);
 		console.log(`[seed] Created series: ${name}`);
 	}
@@ -183,7 +176,7 @@ async function main() {
 	// Create tags and build name->id map
 	const tagMap = new Map<string, string>();
 	for (const name of allTagNames) {
-		const tag = await createTag(userId, name);
+		const tag = await tagRepository.create(userId, name);
 		tagMap.set(name, tag.id);
 		console.log(`[seed] Created tag: ${name}`);
 	}
@@ -196,7 +189,7 @@ async function main() {
 			type: "application/epub+zip",
 		});
 
-		const { bookId, format } = await uploadBook({
+		const { bookId, format } = await bookRepository.uploadBook({
 			userId,
 			title: book.title,
 			file,
@@ -231,7 +224,7 @@ async function main() {
 			createdAt: now,
 			updatedAt: now,
 		};
-		await updateBook(userId, updatedBook);
+		await bookRepository.updateBook(userId, updatedBook);
 
 		console.log(`[seed] Created book: ${book.title}`);
 	}

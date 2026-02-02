@@ -1,11 +1,7 @@
 "use client";
 
-import {
-	auth,
-	signOut as firebaseSignOut,
-	onAuthStateChanged,
-	type User,
-} from "@calibre-web-serverless/infrastructure/lib/auth";
+import type { User } from "@calibre-web-serverless/domain/models/user";
+import { authService } from "@calibre-web-serverless/infrastructure/services/authService";
 import {
 	createContext,
 	type ReactNode,
@@ -27,7 +23,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 	const [loading, setLoading] = useState(true);
 
 	useEffect(() => {
-		const unsubscribe = onAuthStateChanged(auth, (user) => {
+		const unsubscribe = authService.onAuthStateChanged((user) => {
 			setUser(user);
 			setLoading(false);
 		});
@@ -35,7 +31,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 	}, []);
 
 	const signOut = async () => {
-		await firebaseSignOut(auth);
+		await authService.signOut();
 	};
 
 	return (

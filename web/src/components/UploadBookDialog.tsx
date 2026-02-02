@@ -1,10 +1,8 @@
 "use client";
 
-import {
-	FirebaseError,
-	type User,
-} from "@calibre-web-serverless/infrastructure/lib/auth";
-import { uploadBook } from "@calibre-web-serverless/infrastructure/services/bookService";
+import { StorageError } from "@calibre-web-serverless/domain/errors/storageError";
+import type { User } from "@calibre-web-serverless/domain/models/user";
+import { bookRepository } from "@calibre-web-serverless/infrastructure/repositories/bookRepository";
 import { Button, Fieldset, Input, Stack } from "@chakra-ui/react";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
@@ -69,7 +67,7 @@ export function UploadBookDialog({
 		}
 
 		try {
-			await uploadBook({
+			await bookRepository.uploadBook({
 				userId: user.uid,
 				title: data.title,
 				file: data.file[0],
@@ -84,15 +82,15 @@ export function UploadBookDialog({
 			onOpenChange(false);
 			onSuccess?.();
 		} catch (error) {
-			if (error instanceof FirebaseError) {
+			if (error instanceof StorageError) {
 				switch (error.code) {
-					case "storage/unauthorized":
+					case "unauthorized":
 						setUploadError("You don't have permission to upload files");
 						break;
-					case "storage/canceled":
+					case "canceled":
 						setUploadError("Upload was cancelled");
 						break;
-					case "storage/quota-exceeded":
+					case "quota-exceeded":
 						setUploadError("Storage quota exceeded");
 						break;
 					default:

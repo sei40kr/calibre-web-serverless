@@ -1,4 +1,5 @@
 import type { Author } from "@calibre-web-serverless/domain/models/author";
+import type { AuthorRepository } from "@calibre-web-serverless/domain/repositories/authorRepository";
 import {
 	addDoc,
 	collection,
@@ -28,7 +29,7 @@ const toAuthor = (doc: AuthorDocument): Author => ({
 	updatedAt: doc.updatedAt.toDate(),
 });
 
-export const getAuthors = async (userId: string): Promise<Author[]> => {
+const getAll = async (userId: string): Promise<Author[]> => {
 	const authorsRef = collection(db, "users", userId, "authors");
 	const q = query(authorsRef, orderBy("name", "asc"));
 	const snapshot = await getDocs(q);
@@ -38,10 +39,7 @@ export const getAuthors = async (userId: string): Promise<Author[]> => {
 	);
 };
 
-export const createAuthor = async (
-	userId: string,
-	name: string,
-): Promise<Author> => {
+const create = async (userId: string, name: string): Promise<Author> => {
 	const authorsRef = collection(db, "users", userId, "authors");
 
 	const authorData: Omit<AuthorDocument, "id" | "createdAt" | "updatedAt"> & {
@@ -50,7 +48,7 @@ export const createAuthor = async (
 	} = {
 		name,
 		sortName: null,
-		// bookCount is incremented by syncBookCounts in bookService when a book references this author
+		// bookCount is incremented by syncBookCounts in bookRepository when a book references this author
 		bookCount: 0,
 		createdAt: serverTimestamp(),
 		updatedAt: serverTimestamp(),
@@ -65,4 +63,9 @@ export const createAuthor = async (
 		createdAt: new Date(),
 		updatedAt: new Date(),
 	};
+};
+
+export const authorRepository: AuthorRepository = {
+	getAll,
+	create,
 };

@@ -1,6 +1,6 @@
 "use client";
 
-import type { User } from "@calibre-web-serverless/infrastructure/lib/auth";
+import type { User } from "@calibre-web-serverless/domain/models/user";
 import { Center, Spinner } from "@chakra-ui/react";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";

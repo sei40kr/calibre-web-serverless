@@ -1,11 +1,11 @@
 "use client";
 
 import type { Book } from "@calibre-web-serverless/domain/models/book";
-import { createAuthor } from "@calibre-web-serverless/infrastructure/services/authorService";
-import { updateBook } from "@calibre-web-serverless/infrastructure/services/bookService";
-import { createPublisher } from "@calibre-web-serverless/infrastructure/services/publisherService";
-import { createSeries } from "@calibre-web-serverless/infrastructure/services/seriesService";
-import { createTag } from "@calibre-web-serverless/infrastructure/services/tagService";
+import { authorRepository } from "@calibre-web-serverless/infrastructure/repositories/authorRepository";
+import { bookRepository } from "@calibre-web-serverless/infrastructure/repositories/bookRepository";
+import { publisherRepository } from "@calibre-web-serverless/infrastructure/repositories/publisherRepository";
+import { seriesRepository } from "@calibre-web-serverless/infrastructure/repositories/seriesRepository";
+import { tagRepository } from "@calibre-web-serverless/infrastructure/repositories/tagRepository";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useMemo } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
@@ -103,21 +103,21 @@ function EditBookRouteContent({ userId, bookId }: EditBookRouteContentProps) {
 				params.authorNames.map(
 					async (name) =>
 						authors.find((a) => a.name.toLowerCase() === name.toLowerCase())
-							?.id ?? (await createAuthor(userId, name)).id,
+							?.id ?? (await authorRepository.create(userId, name)).id,
 				),
 			);
 
 			const seriesName = params.seriesName;
 			const seriesId = seriesName
 				? (series.find((s) => s.name.toLowerCase() === seriesName.toLowerCase())
-						?.id ?? (await createSeries(userId, seriesName)).id)
+						?.id ?? (await seriesRepository.create(userId, seriesName)).id)
 				: null;
 
 			const tagIds = await Promise.all(
 				params.tagNames.map(
 					async (name) =>
 						tags.find((t) => t.name.toLowerCase() === name.toLowerCase())?.id ??
-						(await createTag(userId, name)).id,
+						(await tagRepository.create(userId, name)).id,
 				),
 			);
 
@@ -125,7 +125,7 @@ function EditBookRouteContent({ userId, bookId }: EditBookRouteContentProps) {
 			const publisherId = publisherName
 				? (publishers.find(
 						(p) => p.name.toLowerCase() === publisherName.toLowerCase(),
-					)?.id ?? (await createPublisher(userId, publisherName)).id)
+					)?.id ?? (await publisherRepository.create(userId, publisherName)).id)
 				: null;
 
 			const updatedBook: Book = {
@@ -144,7 +144,7 @@ function EditBookRouteContent({ userId, bookId }: EditBookRouteContentProps) {
 				identifiers: params.identifiers,
 			};
 
-			await updateBook(userId, updatedBook);
+			await bookRepository.updateBook(userId, updatedBook);
 
 			toaster.success({
 				title: "Book updated",

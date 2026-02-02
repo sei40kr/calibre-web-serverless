@@ -1,5 +1,5 @@
 import type { Series } from "@calibre-web-serverless/domain/models/series";
-import { getAllSeries } from "@calibre-web-serverless/infrastructure/services/seriesService";
+import { seriesRepository } from "@calibre-web-serverless/infrastructure/repositories/seriesRepository";
 import { useEffect, useState } from "react";
 
 export const useSeries = (userId: string) => {
@@ -10,7 +10,8 @@ export const useSeries = (userId: string) => {
 	useEffect(() => {
 		setLoading(true);
 
-		getAllSeries(userId)
+		seriesRepository
+			.getAll(userId)
 			.then((data) => {
 				setSeries(data);
 				setLoading(false);

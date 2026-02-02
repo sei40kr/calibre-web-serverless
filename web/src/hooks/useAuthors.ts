@@ -1,5 +1,5 @@
 import type { Author } from "@calibre-web-serverless/domain/models/author";
-import { getAuthors } from "@calibre-web-serverless/infrastructure/services/authorService";
+import { authorRepository } from "@calibre-web-serverless/infrastructure/repositories/authorRepository";
 import { useEffect, useState } from "react";
 
 export const useAuthors = (userId: string) => {
@@ -10,7 +10,8 @@ export const useAuthors = (userId: string) => {
 	useEffect(() => {
 		setLoading(true);
 
-		getAuthors(userId)
+		authorRepository
+			.getAll(userId)
 			.then((data) => {
 				setAuthors(data);
 				setLoading(false);

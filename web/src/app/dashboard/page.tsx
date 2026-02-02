@@ -1,6 +1,6 @@
 "use client";
 
-import type { User } from "@calibre-web-serverless/infrastructure/lib/auth";
+import type { User } from "@calibre-web-serverless/domain/models/user";
 import { Button, Container, Heading, HStack, VStack } from "@chakra-ui/react";
 import { useState } from "react";
 import { LuPlus } from "react-icons/lu";

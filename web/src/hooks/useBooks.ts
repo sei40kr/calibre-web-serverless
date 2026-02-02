@@ -1,5 +1,5 @@
 import type { Book } from "@calibre-web-serverless/domain/models/book";
-import { subscribeToBooks } from "@calibre-web-serverless/infrastructure/services/bookService";
+import { bookRepository } from "@calibre-web-serverless/infrastructure/repositories/bookRepository";
 import { useEffect, useState } from "react";
 
 export const useBooks = (userId: string) => {
@@ -16,7 +16,7 @@ export const useBooks = (userId: string) => {
 
 		setLoading(true);
 
-		const unsubscribe = subscribeToBooks(userId, {
+		const unsubscribe = bookRepository.subscribeToBooks(userId, {
 			onData: (booksData) => {
 				setBooks(booksData);
 				setLoading(false);

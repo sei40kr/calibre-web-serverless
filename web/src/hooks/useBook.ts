@@ -1,5 +1,5 @@
 import type { Book } from "@calibre-web-serverless/domain/models/book";
-import { getBook } from "@calibre-web-serverless/infrastructure/services/bookService";
+import { bookRepository } from "@calibre-web-serverless/infrastructure/repositories/bookRepository";
 import { useEffect, useState } from "react";
 
 export const useBook = (userId: string, bookId: string) => {
@@ -10,7 +10,8 @@ export const useBook = (userId: string, bookId: string) => {
 	useEffect(() => {
 		setLoading(true);
 
-		getBook(userId, bookId)
+		bookRepository
+			.getBook(userId, bookId)
 			.then((bookData) => {
 				setBook(bookData);
 				setLoading(false);

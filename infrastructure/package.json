@@ -5,12 +5,12 @@
 	"type": "module",
 	"exports": {
 		"./lib/firebase": "./lib/firebase.ts",
-		"./lib/auth": "./lib/auth.ts",
-		"./services/bookService": "./services/bookService.ts",
-		"./services/authorService": "./services/authorService.ts",
-		"./services/seriesService": "./services/seriesService.ts",
-		"./services/tagService": "./services/tagService.ts",
-		"./services/publisherService": "./services/publisherService.ts"
+		"./services/authService": "./services/authService.ts",
+		"./repositories/bookRepository": "./repositories/bookRepository.ts",
+		"./repositories/authorRepository": "./repositories/authorRepository.ts",
+		"./repositories/seriesRepository": "./repositories/seriesRepository.ts",
+		"./repositories/tagRepository": "./repositories/tagRepository.ts",
+		"./repositories/publisherRepository": "./repositories/publisherRepository.ts"
 	},
 	"dependencies": {
 		"@calibre-web-serverless/domain": "workspace:*",

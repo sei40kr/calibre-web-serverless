@@ -1,9 +1,13 @@
+import type { StorageErrorCode } from "@calibre-web-serverless/domain/errors/storageError";
+import { StorageError } from "@calibre-web-serverless/domain/errors/storageError";
 import type { Book } from "@calibre-web-serverless/domain/models/book";
 import {
 	type Identifier,
 	IdentifierType,
 } from "@calibre-web-serverless/domain/models/identifier";
 import { Language } from "@calibre-web-serverless/domain/models/language";
+import type { BookRepository } from "@calibre-web-serverless/domain/repositories/bookRepository";
+import { FirebaseError } from "firebase/app";
 import {
 	collection,
 	type DocumentData,
@@ -119,13 +123,13 @@ const bookConverter: FirestoreDataConverter<Book> = {
 	},
 };
 
-export const hasBooks = async (userId: string): Promise<boolean> => {
+const hasBooks = async (userId: string): Promise<boolean> => {
 	const booksRef = collection(db, "users", userId, "books");
 	const booksSnapshot = await getDocs(booksRef);
 	return !booksSnapshot.empty;
 };
 
-export const getBook = async (
+const getBook = async (
 	userId: string,
 	bookId: string,
 ): Promise<Book | null> => {
@@ -136,7 +140,7 @@ export const getBook = async (
 	return bookDoc.data() ?? null;
 };
 
-export const subscribeToBooks = (
+const subscribeToBooks = (
 	userId: string,
 	{
 		onData,
@@ -160,7 +164,7 @@ export const subscribeToBooks = (
 	);
 };
 
-export const getBookDownloadUrl = async (
+const getBookDownloadUrl = async (
 	userId: string,
 	bookId: string,
 	format: string,
@@ -178,7 +182,7 @@ interface UploadBookParams {
 	file: File;
 }
 
-export const uploadBook = async ({ userId, title, file }: UploadBookParams) => {
+const uploadBook = async ({ userId, title, file }: UploadBookParams) => {
 	const format = file.name.split(".").pop()?.toLowerCase() || "unknown";
 	const bookId = crypto.randomUUID();
 	const bookRef = doc(db, "users", userId, "books", bookId);
@@ -216,6 +220,14 @@ export const uploadBook = async ({ userId, title, file }: UploadBookParams) => {
 		await uploadBytes(storageRef, file);
 	} catch (error) {
 		await deleteDoc(doc(db, "users", userId, "books", bookId));
+		if (error instanceof FirebaseError) {
+			const codeMap: Record<string, StorageErrorCode> = {
+				"storage/unauthorized": "unauthorized",
+				"storage/canceled": "canceled",
+				"storage/quota-exceeded": "quota-exceeded",
+			};
+			throw new StorageError(codeMap[error.code] ?? "unknown", error.message);
+		}
 		throw error;
 	}
 
@@ -279,7 +291,7 @@ const syncBookCounts = async (
 	}
 };
 
-export const updateBook = async (userId: string, book: Book) => {
+const updateBook = async (userId: string, book: Book) => {
 	const bookRef = doc(db, "users", userId, "books", book.id).withConverter(
 		bookConverter,
 	);
@@ -307,4 +319,13 @@ export const updateBook = async (userId: string, book: Book) => {
 
 		transaction.set(bookRef, book, { merge: true });
 	});
+};
+
+export const bookRepository: BookRepository = {
+	hasBooks,
+	getBook,
+	subscribeToBooks,
+	getBookDownloadUrl,
+	uploadBook,
+	updateBook,
 };

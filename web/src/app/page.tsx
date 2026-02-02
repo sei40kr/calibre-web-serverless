@@ -1,10 +1,7 @@
 "use client";
 
-import {
-	auth,
-	FirebaseError,
-	signInWithEmailAndPassword,
-} from "@calibre-web-serverless/infrastructure/lib/auth";
+import { AuthError } from "@calibre-web-serverless/domain/errors/authError";
+import { authService } from "@calibre-web-serverless/infrastructure/services/authService";
 import {
 	Box,
 	Button,
@@ -51,10 +48,10 @@ export default function Home() {
 		setAuthError(null);
 		setIsTestLoggingIn(true);
 		try {
-			await signInWithEmailAndPassword(auth, "test@example.com", "password123");
+			await authService.signIn("test@example.com", "password123");
 			router.replace("/dashboard");
 		} catch (error) {
-			if (error instanceof FirebaseError) {
+			if (error instanceof AuthError) {
 				setAuthError("Failed to sign in as test user");
 			} else {
 				setAuthError("An unexpected error occurred");
@@ -67,20 +64,18 @@ export default function Home() {
 	const onSubmit = async (data: LoginFormData) => {
 		setAuthError(null);
 		try {
-			await signInWithEmailAndPassword(auth, data.email, data.password);
+			await authService.signIn(data.email, data.password);
 			router.replace("/dashboard");
 		} catch (error) {
-			if (error instanceof FirebaseError) {
+			if (error instanceof AuthError) {
 				switch (error.code) {
-					case "auth/invalid-credential":
-					case "auth/user-not-found":
-					case "auth/wrong-password":
+					case "invalid-credential":
 						setAuthError("Invalid email or password");
 						break;
-					case "auth/too-many-requests":
+					case "too-many-requests":
 						setAuthError("Too many attempts. Please try again later");
 						break;
-					case "auth/user-disabled":
+					case "user-disabled":
 						setAuthError("This account has been disabled");
 						break;
 					default:

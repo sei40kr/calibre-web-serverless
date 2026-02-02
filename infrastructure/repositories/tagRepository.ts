@@ -1,4 +1,5 @@
 import type { Tag } from "@calibre-web-serverless/domain/models/tag";
+import type { TagRepository } from "@calibre-web-serverless/domain/repositories/tagRepository";
 import {
 	addDoc,
 	collection,
@@ -26,7 +27,7 @@ const toTag = (doc: TagDocument): Tag => ({
 	updatedAt: doc.updatedAt.toDate(),
 });
 
-export const getTags = async (userId: string): Promise<Tag[]> => {
+const getAll = async (userId: string): Promise<Tag[]> => {
 	const tagsRef = collection(db, "users", userId, "tags");
 	const q = query(tagsRef, orderBy("name", "asc"));
 	const snapshot = await getDocs(q);
@@ -36,7 +37,7 @@ export const getTags = async (userId: string): Promise<Tag[]> => {
 	);
 };
 
-export const createTag = async (userId: string, name: string): Promise<Tag> => {
+const create = async (userId: string, name: string): Promise<Tag> => {
 	const tagsRef = collection(db, "users", userId, "tags");
 
 	const tagData: Omit<TagDocument, "id" | "createdAt" | "updatedAt"> & {
@@ -44,7 +45,7 @@ export const createTag = async (userId: string, name: string): Promise<Tag> => {
 		updatedAt: FieldValue;
 	} = {
 		name,
-		// bookCount is incremented by syncBookCounts in bookService when a book references this tag
+		// bookCount is incremented by syncBookCounts in bookRepository when a book references this tag
 		bookCount: 0,
 		createdAt: serverTimestamp(),
 		updatedAt: serverTimestamp(),
@@ -58,4 +59,9 @@ export const createTag = async (userId: string, name: string): Promise<Tag> => {
 		createdAt: new Date(),
 		updatedAt: new Date(),
 	};
+};
+
+export const tagRepository: TagRepository = {
+	getAll,
+	create,
 };

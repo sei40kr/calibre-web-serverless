@@ -1,4 +1,5 @@
 import type { Series } from "@calibre-web-serverless/domain/models/series";
+import type { SeriesRepository } from "@calibre-web-serverless/domain/repositories/seriesRepository";
 import {
 	addDoc,
 	collection,
@@ -26,7 +27,7 @@ const toSeries = (doc: SeriesDocument): Series => ({
 	updatedAt: doc.updatedAt.toDate(),
 });
 
-export const getAllSeries = async (userId: string): Promise<Series[]> => {
+const getAll = async (userId: string): Promise<Series[]> => {
 	const seriesRef = collection(db, "users", userId, "series");
 	const q = query(seriesRef, orderBy("name", "asc"));
 	const snapshot = await getDocs(q);
@@ -36,10 +37,7 @@ export const getAllSeries = async (userId: string): Promise<Series[]> => {
 	);
 };
 
-export const createSeries = async (
-	userId: string,
-	name: string,
-): Promise<Series> => {
+const create = async (userId: string, name: string): Promise<Series> => {
 	const seriesRef = collection(db, "users", userId, "series");
 
 	const seriesData: Omit<SeriesDocument, "id" | "createdAt" | "updatedAt"> & {
@@ -47,7 +45,7 @@ export const createSeries = async (
 		updatedAt: FieldValue;
 	} = {
 		name,
-		// bookCount is incremented by syncBookCounts in bookService when a book references this series
+		// bookCount is incremented by syncBookCounts in bookRepository when a book references this series
 		bookCount: 0,
 		createdAt: serverTimestamp(),
 		updatedAt: serverTimestamp(),
@@ -61,4 +59,9 @@ export const createSeries = async (
 		createdAt: new Date(),
 		updatedAt: new Date(),
 	};
+};
+
+export const seriesRepository: SeriesRepository = {
+	getAll,
+	create,
 };

@@ -18,6 +18,7 @@ import {
 } from "@calibre-web-serverless/domain/models/identifier";
 import { Language } from "@calibre-web-serverless/domain/models/language";
 import { authorRepository } from "@calibre-web-serverless/infrastructure/repositories/authorRepository";
+import { bookCoverRepository } from "@calibre-web-serverless/infrastructure/repositories/bookCoverRepository";
 import { bookRepository } from "@calibre-web-serverless/infrastructure/repositories/bookRepository";
 import { seriesRepository } from "@calibre-web-serverless/infrastructure/repositories/seriesRepository";
 import { tagRepository } from "@calibre-web-serverless/infrastructure/repositories/tagRepository";
@@ -34,7 +35,7 @@ const TEST_USER = {
 interface BookSeed {
 	title: string;
 	sortTitle?: string;
-	filename: string;
+	fixtureName: string;
 	authorNames: string[];
 	seriesName?: string;
 	seriesIndex?: number;
@@ -53,7 +54,7 @@ interface BookSeed {
 const books: BookSeed[] = [
 	{
 		title: "Alice's Adventures in Wonderland",
-		filename: "alice-in-wonderland.epub",
+		fixtureName: "alice-in-wonderland",
 		authorNames: ["Lewis Carroll"],
 		tagNames: ["Fantasy", "Classic", "Children"],
 		publisher: "Macmillan",
@@ -70,7 +71,7 @@ const books: BookSeed[] = [
 	{
 		title: "The Metamorphosis",
 		sortTitle: "Metamorphosis, The",
-		filename: "the-metamorphosis.epub",
+		fixtureName: "the-metamorphosis",
 		authorNames: ["Franz Kafka"],
 		tagNames: ["Fiction", "Classic", "Absurdist"],
 		publisher: "Kurt Wolff Verlag",
@@ -83,7 +84,7 @@ const books: BookSeed[] = [
 	},
 	{
 		title: "Rashomon",
-		filename: "rashomon.epub",
+		fixtureName: "rashomon",
 		authorNames: ["Ryunosuke Akutagawa"],
 		tagNames: ["Fiction", "Japanese Literature", "Short Stories"],
 		publisher: "Tuttle Publishing",
@@ -96,7 +97,7 @@ const books: BookSeed[] = [
 	{
 		title: "I Am a Cat",
 		sortTitle: "I Am a Cat",
-		filename: "wagahai-wa-neko-de-aru.epub",
+		fixtureName: "wagahai-wa-neko-de-aru",
 		authorNames: ["Natsume Soseki"],
 		seriesName: "Japanese Literature Classics",
 		seriesIndex: 1,
@@ -189,10 +190,11 @@ async function main() {
 			"..",
 			"fixtures",
 			"books",
-			book.filename,
+			book.fixtureName,
+			"book.epub",
 		);
 		const fileBuffer = fs.readFileSync(filePath);
-		const file = new File([fileBuffer], book.filename, {
+		const file = new File([fileBuffer], "book.epub", {
 			type: "application/epub+zip",
 		});
 
@@ -201,6 +203,31 @@ async function main() {
 			title: book.title,
 			file,
 		});
+
+		// Upload cover image
+		const coverPath = path.join(
+			import.meta.dirname,
+			"..",
+			"..",
+			"fixtures",
+			"books",
+			book.fixtureName,
+			"cover.jpg",
+		);
+		let coverFormat: string | null = null;
+		if (fs.existsSync(coverPath)) {
+			const coverBuffer = fs.readFileSync(coverPath);
+			const coverFile = new File([coverBuffer], "cover.jpg", {
+				type: "image/jpeg",
+			});
+			await bookCoverRepository.uploadCover({
+				userId,
+				bookId,
+				file: coverFile,
+			});
+			coverFormat = "jpg";
+			console.log(`[seed] Uploaded cover for: ${book.fixtureName}`);
+		}
 
 		// Convert names to IDs
 		const authorIds = book.authorNames.map((name) => authorMap.get(name)!);
@@ -228,7 +255,7 @@ async function main() {
 			rating: book.rating ?? null,
 			format,
 			fileSize: fileBuffer.byteLength,
-			coverFormat: null,
+			coverFormat,
 			createdAt: now,
 			updatedAt: now,
 		};

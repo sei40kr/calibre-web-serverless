@@ -3,6 +3,7 @@ import type { Language } from "./language";
 
 export interface Book {
 	id: string;
+	userId: string;
 	title: string;
 	sortTitle: string | null;
 	authorIds: string[];

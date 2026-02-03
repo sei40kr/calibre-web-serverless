@@ -99,6 +99,7 @@ const bookConverter: FirestoreDataConverter<Book> = {
 		const d = snapshot.data(options) as Omit<BookDocument, "id">;
 		return {
 			id: snapshot.id,
+			userId: snapshot.ref.parent.parent!.id,
 			title: d.title,
 			sortTitle: d.sortTitle,
 			authorIds: d.authorIds,

@@ -5,6 +5,7 @@ import { BookCard } from "./BookCard";
 
 const mockBook: Book = {
 	id: "book-001",
+	userId: "user-001",
 	title: "Alice's Adventures in Wonderland",
 	sortTitle: null,
 	authorIds: ["author-001"],

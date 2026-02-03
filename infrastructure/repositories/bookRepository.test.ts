@@ -77,6 +77,7 @@ describe("bookRepository", () => {
 			if (!book) return;
 
 			expect(book.id).toBe(bookId);
+			expect(book.userId).toBe(userId);
 			expect(book.title).toBe("Test Book");
 			expect(book.format).toBe("epub");
 			expect(book.createdAt).toBeInstanceOf(Date);

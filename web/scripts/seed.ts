@@ -213,6 +213,7 @@ async function main() {
 		const now = new Date();
 		const updatedBook: Book = {
 			id: bookId,
+			userId,
 			title: book.title,
 			sortTitle: book.sortTitle ?? null,
 			authorIds,

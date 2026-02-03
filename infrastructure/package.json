@@ -7,6 +7,7 @@
 		"./lib/firebase": "./lib/firebase.ts",
 		"./services/authService": "./services/authService.ts",
 		"./repositories/bookRepository": "./repositories/bookRepository.ts",
+		"./repositories/bookCoverRepository": "./repositories/bookCoverRepository.ts",
 		"./repositories/authorRepository": "./repositories/authorRepository.ts",
 		"./repositories/seriesRepository": "./repositories/seriesRepository.ts",
 		"./repositories/tagRepository": "./repositories/tagRepository.ts",

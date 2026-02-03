@@ -100,32 +100,29 @@ function EditBookRouteContent({ userId, bookId }: EditBookRouteContentProps) {
 			if (!book) return;
 
 			const authorIds = await Promise.all(
-				params.authorNames.map(
-					async (name) =>
-						authors.find((a) => a.name.toLowerCase() === name.toLowerCase())
-							?.id ?? (await authorRepository.create(userId, name)).id,
+				params.authorNames.map((name) =>
+					authorRepository.findByNameOrCreate(userId, name).then((a) => a.id),
 				),
 			);
 
 			const seriesName = params.seriesName;
 			const seriesId = seriesName
-				? (series.find((s) => s.name.toLowerCase() === seriesName.toLowerCase())
-						?.id ?? (await seriesRepository.create(userId, seriesName)).id)
+				? await seriesRepository
+						.findByNameOrCreate(userId, seriesName)
+						.then((s) => s.id)
 				: null;
 
 			const tagIds = await Promise.all(
-				params.tagNames.map(
-					async (name) =>
-						tags.find((t) => t.name.toLowerCase() === name.toLowerCase())?.id ??
-						(await tagRepository.create(userId, name)).id,
+				params.tagNames.map((name) =>
+					tagRepository.findByNameOrCreate(userId, name).then((t) => t.id),
 				),
 			);
 
 			const publisherName = params.publisherName;
 			const publisherId = publisherName
-				? (publishers.find(
-						(p) => p.name.toLowerCase() === publisherName.toLowerCase(),
-					)?.id ?? (await publisherRepository.create(userId, publisherName)).id)
+				? await publisherRepository
+						.findByNameOrCreate(userId, publisherName)
+						.then((p) => p.id)
 				: null;
 
 			const updatedBook: Book = {
@@ -152,7 +149,7 @@ function EditBookRouteContent({ userId, bookId }: EditBookRouteContentProps) {
 			});
 			router.push("/dashboard");
 		},
-		[book, userId, authors, series, tags, publishers, router],
+		[book, userId, router],
 	);
 
 	const handleCancel = useCallback(() => {

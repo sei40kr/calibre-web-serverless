@@ -5,10 +5,12 @@ import {
 	collection,
 	type FieldValue,
 	getDocs,
+	limit,
 	orderBy,
 	query,
 	serverTimestamp,
 	type Timestamp,
+	where,
 } from "firebase/firestore";
 import { db } from "../lib/firebase";
 
@@ -61,7 +63,24 @@ const create = async (userId: string, name: string): Promise<Tag> => {
 	};
 };
 
+const findByNameOrCreate = async (
+	userId: string,
+	name: string,
+): Promise<Tag> => {
+	const tagsRef = collection(db, "users", userId, "tags");
+	const q = query(tagsRef, where("name", "==", name), limit(1));
+	const snapshot = await getDocs(q);
+
+	if (!snapshot.empty) {
+		const d = snapshot.docs[0];
+		return toTag({ id: d.id, ...d.data() } as TagDocument);
+	}
+
+	return create(userId, name);
+};
+
 export const tagRepository: TagRepository = {
 	getAll,
 	create,
+	findByNameOrCreate,
 };

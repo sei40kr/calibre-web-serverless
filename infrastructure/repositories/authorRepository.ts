@@ -5,10 +5,12 @@ import {
 	collection,
 	type FieldValue,
 	getDocs,
+	limit,
 	orderBy,
 	query,
 	serverTimestamp,
 	type Timestamp,
+	where,
 } from "firebase/firestore";
 import { db } from "../lib/firebase";
 
@@ -65,7 +67,24 @@ const create = async (userId: string, name: string): Promise<Author> => {
 	};
 };
 
+const findByNameOrCreate = async (
+	userId: string,
+	name: string,
+): Promise<Author> => {
+	const authorsRef = collection(db, "users", userId, "authors");
+	const q = query(authorsRef, where("name", "==", name), limit(1));
+	const snapshot = await getDocs(q);
+
+	if (!snapshot.empty) {
+		const d = snapshot.docs[0];
+		return toAuthor({ id: d.id, ...d.data() } as AuthorDocument);
+	}
+
+	return create(userId, name);
+};
+
 export const authorRepository: AuthorRepository = {
 	getAll,
 	create,
+	findByNameOrCreate,
 };

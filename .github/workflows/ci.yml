@@ -57,3 +57,13 @@ jobs:
           distribution: temurin
           java-version: 21
       - run: bun vitest run
+
+  deploy-staging:
+    needs: [typecheck, lint, test]
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: staging
+    permissions:
+      contents: read
+      id-token: write
+    secrets: inherit

@@ -10,6 +10,14 @@ export interface BookRepository {
 			onError: (error: Error) => void;
 		},
 	): () => void;
+	subscribeToBook(
+		userId: string,
+		bookId: string,
+		callbacks: {
+			onData: (book: Book) => void;
+			onError: (error: Error) => void;
+		},
+	): () => void;
 	getBookDownloadUrl(
 		userId: string,
 		bookId: string,
@@ -17,7 +25,6 @@ export interface BookRepository {
 	): Promise<string>;
 	uploadBook(params: {
 		userId: string;
-		title: string;
 		file: File;
 	}): Promise<{ bookId: string; format: string }>;
 	updateBook(userId: string, book: Book): Promise<void>;

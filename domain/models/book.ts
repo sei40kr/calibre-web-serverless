@@ -1,6 +1,8 @@
 import type { Identifier } from "./identifier";
 import type { Language } from "./language";
 
+export type BookStatus = "processing" | "ready" | "error";
+
 export interface Book {
 	id: string;
 	userId: string;
@@ -19,6 +21,8 @@ export interface Book {
 	format: string;
 	fileSize: number;
 	coverFormat: string | null;
+	status: BookStatus;
+	errorMessage: string | null;
 	createdAt: Date;
 	updatedAt: Date;
 }

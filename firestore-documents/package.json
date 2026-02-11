@@ -1,0 +1,12 @@
+{
+	"name": "@calibre-web-serverless/firestore-documents",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"exports": {
+		"./book": "./book.ts"
+	},
+	"dependencies": {
+		"@calibre-web-serverless/domain": "workspace:*"
+	}
+}

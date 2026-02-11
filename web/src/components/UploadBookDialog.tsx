@@ -3,8 +3,8 @@
 import { StorageError } from "@calibre-web-serverless/domain/errors/storageError";
 import type { User } from "@calibre-web-serverless/domain/models/user";
 import { bookRepository } from "@calibre-web-serverless/infrastructure/repositories/bookRepository";
-import { Button, Fieldset, Input, Stack } from "@chakra-ui/react";
-import { useId, useState } from "react";
+import { Button, Fieldset, Spinner, Stack, Text } from "@chakra-ui/react";
+import { useId, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { Alert } from "@/components/ui/alert";
 import {
@@ -25,7 +25,6 @@ import {
 import { toaster } from "@/components/ui/toaster";
 
 interface BookUploadFormData {
-	title: string;
 	file: File[];
 }
 
@@ -37,6 +36,7 @@ interface UploadBookDialogProps {
 }
 
 const ACCEPTED_FORMATS = ".epub,.pdf,.mobi,.azw,.azw3,.fb2,.txt";
+const PROCESSING_TIMEOUT_MS = 120_000;
 
 export function UploadBookDialog({
 	user,
@@ -46,18 +46,30 @@ export function UploadBookDialog({
 }: UploadBookDialogProps) {
 	const formId = useId();
 	const [uploadError, setUploadError] = useState<string | null>(null);
+	const [processing, setProcessing] = useState(false);
+	const unsubscribeRef = useRef<(() => void) | null>(null);
+	const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const {
-		register,
 		control,
 		handleSubmit,
 		reset,
 		formState: { errors, isSubmitting },
 	} = useForm<BookUploadFormData>({
 		defaultValues: {
-			title: "",
 			file: [],
 		},
 	});
+
+	const cleanup = () => {
+		if (unsubscribeRef.current) {
+			unsubscribeRef.current();
+			unsubscribeRef.current = null;
+		}
+		if (timeoutRef.current) {
+			clearTimeout(timeoutRef.current);
+			timeoutRef.current = null;
+		}
+	};
 
 	const onSubmit = async (data: BookUploadFormData) => {
 		setUploadError(null);
@@ -68,21 +80,57 @@ export function UploadBookDialog({
 		}
 
 		try {
-			await bookRepository.uploadBook({
+			const { bookId } = await bookRepository.uploadBook({
 				userId: user.uid,
-				title: data.title,
 				file: data.file[0],
 			});
 
-			toaster.success({
-				title: "Book uploaded",
-				description: `"${data.title}" has been added to your library.`,
+			// Subscribe to book doc and wait for processing to complete
+			setProcessing(true);
+
+			await new Promise<void>((resolve, reject) => {
+				timeoutRef.current = setTimeout(() => {
+					cleanup();
+					reject(
+						new Error(
+							"Processing timed out. The book may still be processing in the background.",
+						),
+					);
+				}, PROCESSING_TIMEOUT_MS);
+
+				unsubscribeRef.current = bookRepository.subscribeToBook(
+					user.uid,
+					bookId,
+					{
+						onData: (book) => {
+							if (book.status === "ready") {
+								cleanup();
+								toaster.success({
+									title: "Book uploaded",
+									description: `"${book.title}" has been added to your library.`,
+								});
+								resolve();
+							} else if (book.status === "error") {
+								cleanup();
+								reject(
+									new Error(book.errorMessage || "Failed to process book"),
+								);
+							}
+						},
+						onError: (err) => {
+							cleanup();
+							reject(err);
+						},
+					},
+				);
 			});
 
+			setProcessing(false);
 			reset();
 			onOpenChange(false);
 			onSuccess?.();
 		} catch (error) {
+			setProcessing(false);
 			if (error instanceof StorageError) {
 				switch (error.code) {
 					case "unauthorized":
@@ -106,17 +154,21 @@ export function UploadBookDialog({
 	};
 
 	const handleClose = () => {
-		if (!isSubmitting) {
+		if (!isSubmitting && !processing) {
+			cleanup();
 			reset();
 			setUploadError(null);
+			setProcessing(false);
 			onOpenChange(false);
 		}
 	};
 
+	const isBusy = isSubmitting || processing;
+
 	return (
 		<DialogRoot
 			open={open}
-			onOpenChange={(e) => !isSubmitting && onOpenChange(e.open)}
+			onOpenChange={(e) => !isBusy && onOpenChange(e.open)}
 		>
 			<DialogContent>
 				<DialogHeader>
@@ -125,78 +177,69 @@ export function UploadBookDialog({
 				<DialogBody>
 					{uploadError && <Alert status="error" title={uploadError} mb={4} />}
 
-					<form id={formId} noValidate onSubmit={handleSubmit(onSubmit)}>
-						<Fieldset.Root disabled={isSubmitting}>
-							<Fieldset.Content>
-								<Stack gap={4}>
-									<Field
-										label="Title"
-										required
-										invalid={!!errors.title}
-										errorText={errors.title?.message}
-									>
-										<Input
-											placeholder="Enter book title"
-											{...register("title", {
-												required: "Title is required",
-											})}
-										/>
-									</Field>
-
-									<Controller
-										control={control}
-										name="file"
-										rules={{
-											validate: (files) =>
-												files.length > 0 || "Please select a file",
-										}}
-										render={({ field }) => (
-											<Field
-												label="Book File"
-												required
-												invalid={!!errors.file}
-												errorText={errors.file?.message}
-											>
-												<FileUploadRoot
-													maxFiles={1}
-													maxFileSize={100 * 1024 * 1024}
-													accept={ACCEPTED_FORMATS}
-													width="100%"
-													onFileChange={(e) => {
-														field.onChange(e.acceptedFiles);
-													}}
+					{processing ? (
+						<Stack align="center" gap={4} py={8}>
+							<Spinner size="lg" />
+							<Text color="fg.muted">Processing book metadata...</Text>
+						</Stack>
+					) : (
+						<form id={formId} noValidate onSubmit={handleSubmit(onSubmit)}>
+							<Fieldset.Root disabled={isSubmitting}>
+								<Fieldset.Content>
+									<Stack gap={4}>
+										<Controller
+											control={control}
+											name="file"
+											rules={{
+												validate: (files) =>
+													files.length > 0 || "Please select a file",
+											}}
+											render={({ field }) => (
+												<Field
+													label="Book File"
+													required
+													invalid={!!errors.file}
+													errorText={errors.file?.message}
 												>
-													<FileUploadDropzone
-														label="Drag and drop your book here"
-														description="EPUB, PDF, MOBI up to 100MB"
-														minW="full"
-													/>
-													<FileUploadList showSize clearable />
-												</FileUploadRoot>
-											</Field>
-										)}
-									/>
-								</Stack>
-							</Fieldset.Content>
-						</Fieldset.Root>
-					</form>
+													<FileUploadRoot
+														maxFiles={1}
+														maxFileSize={100 * 1024 * 1024}
+														accept={ACCEPTED_FORMATS}
+														width="100%"
+														onFileChange={(e) => {
+															field.onChange(e.acceptedFiles);
+														}}
+													>
+														<FileUploadDropzone
+															label="Drag and drop your book here"
+															description="EPUB, PDF, MOBI up to 100MB"
+															minW="full"
+														/>
+														<FileUploadList showSize clearable />
+													</FileUploadRoot>
+												</Field>
+											)}
+										/>
+									</Stack>
+								</Fieldset.Content>
+							</Fieldset.Root>
+						</form>
+					)}
 				</DialogBody>
 				<DialogFooter>
-					<Button
-						variant="outline"
-						onClick={handleClose}
-						disabled={isSubmitting}
-					>
+					<Button variant="outline" onClick={handleClose} disabled={isBusy}>
 						Cancel
 					</Button>
-					<Button
-						type="submit"
-						form={formId}
-						colorPalette="blue"
-						loading={isSubmitting}
-					>
-						Upload
-					</Button>
+					{!processing && (
+						<Button
+							type="submit"
+							form={formId}
+							colorPalette="blue"
+							loading={isSubmitting}
+						>
+							Upload
+						</Button>
+					)}
 				</DialogFooter>
 				<DialogCloseTrigger onClick={handleClose} />
 			</DialogContent>

@@ -119,7 +119,7 @@ web/                          # @calibre-web-serverless/web
 ## Model ↔ Document Conversion
 
 - Never expose infrastructure types (`Timestamp`, `FieldValue`, `DocumentReference`, etc.) outside of services
-- `Document` interfaces and conversion logic must stay within services
+- Conversion logic (`toModel` / `toDocument`) must stay within services
 - Define a `Document` interface for complex entities with type differences (e.g., `BookDocument` uses `Timestamp`, singleton string codes)
 - For complex entities, create `toModel` / `toDocument` functions (e.g., `toBook` / `toBookDocument`) in the service; simple cases can inline
 - Create payload type: `Omit<Document, "id" | "createdAt" | "updatedAt"> & { createdAt: FieldValue; updatedAt: FieldValue }`

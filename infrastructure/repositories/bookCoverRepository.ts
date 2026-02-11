@@ -37,6 +37,7 @@ const uploadCover = async ({
 	);
 	const contentType = contentTypeMap[ext] ?? "application/octet-stream";
 	await uploadBytes(storageRef, file, { contentType });
+	// TODO
 };
 
 export const bookCoverRepository: BookCoverRepository = {

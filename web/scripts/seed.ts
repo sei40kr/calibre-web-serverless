@@ -3,11 +3,8 @@
  * - Auth: Admin SDK (to create user with emailVerified: true)
  * - Firestore/Storage: Client SDK via bookService (as authenticated user)
  * Automatically runs during `bun run dev` after emulators start.
- *
- * Note: FIREBASE_AUTH_EMULATOR_HOST must be set before process starts (see package.json)
  */
 
-// Load .env.local for NEXT_PUBLIC_* environment variables
 import * as fs from "node:fs";
 import * as path from "node:path";
 import type { Book } from "@calibre-web-serverless/domain/models/book";
@@ -200,7 +197,6 @@ async function main() {
 
 		const { bookId, format } = await bookRepository.uploadBook({
 			userId,
-			title: book.title,
 			file,
 		});
 
@@ -256,6 +252,8 @@ async function main() {
 			format,
 			fileSize: fileBuffer.byteLength,
 			coverFormat,
+			status: "ready",
+			errorMessage: null,
 			createdAt: now,
 			updatedAt: now,
 		};

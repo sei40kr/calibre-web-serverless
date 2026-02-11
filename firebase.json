@@ -1,4 +1,7 @@
 {
+	"hosting": {
+		"source": "web"
+	},
 	"firestore": {
 		"database": "(default)",
 		"location": "us-west1",
@@ -7,6 +10,10 @@
 	},
 	"storage": {
 		"rules": "storage.rules"
+	},
+	"functions": {
+		"source": "functions",
+		"runtime": "nodejs22"
 	},
 	"emulators": {
 		"auth": {
@@ -17,6 +24,12 @@
 		},
 		"storage": {
 			"port": 9199
+		},
+		"functions": {
+			"port": 5001
+		},
+		"eventarc": {
+			"port": 9299
 		},
 		"ui": {
 			"enabled": true

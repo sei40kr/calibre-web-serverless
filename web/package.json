@@ -3,8 +3,7 @@
 	"version": "0.0.0",
 	"private": true,
 	"scripts": {
-		"dev": "NODE_ENV=development concurrently --kill-others \"firebase emulators:start --project=demo-project\" \"wait-on http-get://127.0.0.1:8080 http-get://127.0.0.1:9099 tcp:9199 && bun run seed && next dev --webpack\"",
-		"seed": "NODE_ENV=development FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099 bun run scripts/seed.ts",
+		"dev": "bun run scripts/dev.ts",
 		"build": "NODE_ENV=production next build --webpack",
 		"test": "vitest",
 		"test:e2e": "playwright test",

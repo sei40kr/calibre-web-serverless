@@ -1,0 +1,28 @@
+{
+	"name": "@calibre-web-serverless/functions",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"main": "lib/index.js",
+	"scripts": {
+		"build": "esbuild src/index.ts --bundle --platform=node --target=node22 --format=esm --outfile=lib/index.js --external:firebase-admin --external:firebase-functions --external:sharp",
+		"build:watch": "bun run build --watch"
+	},
+	"dependencies": {
+		"@calibre-web-serverless/domain": "workspace:*",
+		"@calibre-web-serverless/firestore-documents": "workspace:*",
+		"fast-xml-parser": "^5.3.4",
+		"firebase-admin": "^13.4.0",
+		"firebase-functions": "^6.3.2",
+		"jszip": "^3.10.1",
+		"sharp": "^0.34.1"
+	},
+	"devDependencies": {
+		"esbuild": "^0.25.0",
+		"typescript": "^5",
+		"wait-on": "^8.0.0"
+	},
+	"engines": {
+		"node": "22"
+	}
+}

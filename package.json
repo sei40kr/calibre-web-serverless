@@ -3,17 +3,19 @@
 	"private": true,
 	"workspaces": [
 		"domain",
+		"firestore-documents",
 		"infrastructure",
+		"functions",
 		"web"
 	],
 	"scripts": {
-		"dev": "bun --filter @calibre-web-serverless/web run dev",
-		"build": "bun --filter @calibre-web-serverless/web run build",
+		"dev": "bun run --filter @calibre-web-serverless/web dev",
+		"build": "bun run --filter @calibre-web-serverless/web build",
 		"test": "vitest",
-		"test:e2e": "bun --filter @calibre-web-serverless/web run test:e2e",
+		"test:e2e": "bun run --filter @calibre-web-serverless/web test:e2e",
 		"lint": "biome check",
 		"format": "biome format --write",
-		"storybook": "bun --filter @calibre-web-serverless/web run storybook"
+		"storybook": "bun run --filter @calibre-web-serverless/web storybook"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.2.0",

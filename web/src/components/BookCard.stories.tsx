@@ -23,6 +23,8 @@ const mockBook: Book = {
 	format: "epub",
 	fileSize: 189000,
 	coverFormat: null,
+	status: "ready",
+	errorMessage: null,
 	createdAt: new Date("2024-01-01"),
 	updatedAt: new Date("2024-01-01"),
 };
@@ -68,6 +70,33 @@ export const CoverLoading: Story = {
 	args: {
 		coverUrl: null,
 		coverLoading: true,
+	},
+};
+
+export const Processing: Story = {
+	args: {
+		book: {
+			...mockBook,
+			status: "processing",
+		},
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+
+		await expect(canvas.getByText("Processing...")).toBeInTheDocument();
+		await expect(
+			canvas.queryByRole("link", { name: /edit book/i }),
+		).not.toBeInTheDocument();
+	},
+};
+
+export const ErrorState: Story = {
+	args: {
+		book: {
+			...mockBook,
+			status: "error",
+			errorMessage: "Failed to process book",
+		},
 	},
 };
 

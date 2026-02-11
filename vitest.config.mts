@@ -7,6 +7,6 @@ Object.assign(process.env, env);
 export default defineConfig({
 	test: {
 		env,
-		projects: ["domain", "infrastructure", "web"],
+		projects: ["domain", "infrastructure", "functions", "web"],
 	},
 });

@@ -1,1 +1,16 @@
-{}
+{
+	"files": {
+		"includes": [
+			"domain/models/**",
+			"domain/errors/**",
+			"domain/services/**",
+			"infrastructure/lib/**",
+			"domain/repositories/**",
+			"infrastructure/repositories/**",
+			"infrastructure/services/**",
+			"functions/src/**",
+			"web/src/**",
+			"!web/src/components/ui"
+		]
+	}
+}

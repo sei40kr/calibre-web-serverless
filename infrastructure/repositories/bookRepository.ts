@@ -7,11 +7,14 @@ import {
 } from "@calibre-web-serverless/domain/models/identifier";
 import { Language } from "@calibre-web-serverless/domain/models/language";
 import type { BookRepository } from "@calibre-web-serverless/domain/repositories/bookRepository";
+import type {
+	BookDocument as BaseBookDocument,
+	IdentifierDocument,
+} from "@calibre-web-serverless/firestore-documents/book";
 import { FirebaseError } from "firebase/app";
 import {
 	collection,
 	type DocumentData,
-	deleteDoc,
 	doc,
 	type FieldValue,
 	type FirestoreDataConverter,
@@ -32,11 +35,6 @@ import {
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { db, storage } from "../lib/firebase";
 
-interface IdentifierDocument {
-	type: string;
-	value: string;
-}
-
 const toIdentifier = (doc: IdentifierDocument): Identifier => {
 	const type = IdentifierType.from(doc.type);
 	if (!type) {
@@ -45,26 +43,7 @@ const toIdentifier = (doc: IdentifierDocument): Identifier => {
 	return { type, value: doc.value };
 };
 
-interface BookDocument {
-	id: string;
-	title: string;
-	sortTitle: string | null;
-	authorIds: string[];
-	seriesId: string | null;
-	seriesIndex: number;
-	tagIds: string[];
-	publisherId: string | null;
-	pubDate: Timestamp | null;
-	identifiers: IdentifierDocument[];
-	languages: string[];
-	description: string | null;
-	rating: number | null;
-	format: string;
-	fileSize: number;
-	coverFormat: string | null;
-	createdAt: Timestamp;
-	updatedAt: Timestamp;
-}
+type BookDocument = BaseBookDocument<Timestamp>;
 
 const bookConverter: FirestoreDataConverter<Book> = {
 	toFirestore(book: Book): DocumentData {
@@ -87,8 +66,10 @@ const bookConverter: FirestoreDataConverter<Book> = {
 			format: book.format,
 			fileSize: book.fileSize,
 			coverFormat: book.coverFormat,
+			status: book.status,
+			errorMessage: book.errorMessage,
 			updatedAt: serverTimestamp(),
-		} as Omit<BookDocument, "id" | "createdAt" | "updatedAt"> & {
+		} as Omit<BookDocument, "createdAt" | "updatedAt"> & {
 			updatedAt: FieldValue;
 		};
 	},
@@ -96,7 +77,7 @@ const bookConverter: FirestoreDataConverter<Book> = {
 		snapshot: QueryDocumentSnapshot,
 		options?: SnapshotOptions,
 	): Book {
-		const d = snapshot.data(options) as Omit<BookDocument, "id">;
+		const d = snapshot.data(options) as BookDocument;
 		return {
 			id: snapshot.id,
 			userId: snapshot.ref.parent.parent!.id,
@@ -108,8 +89,8 @@ const bookConverter: FirestoreDataConverter<Book> = {
 			tagIds: d.tagIds,
 			publisherId: d.publisherId,
 			pubDate: d.pubDate?.toDate() ?? null,
-			identifiers: d.identifiers.map(toIdentifier),
-			languages: d.languages.flatMap((code) => {
+			identifiers: (d.identifiers ?? []).map(toIdentifier),
+			languages: (d.languages ?? []).flatMap((code) => {
 				const lang = Language.from(code);
 				return lang ? [lang] : [];
 			}),
@@ -117,7 +98,9 @@ const bookConverter: FirestoreDataConverter<Book> = {
 			rating: d.rating,
 			format: d.format,
 			fileSize: d.fileSize,
-			coverFormat: d.coverFormat,
+			coverFormat: d.coverFormat ?? null,
+			status: d.status ?? "ready",
+			errorMessage: d.errorMessage ?? null,
 			createdAt: d.createdAt.toDate(),
 			updatedAt: d.updatedAt.toDate(),
 		};
@@ -165,6 +148,33 @@ const subscribeToBooks = (
 	);
 };
 
+const subscribeToBook = (
+	userId: string,
+	bookId: string,
+	{
+		onData,
+		onError,
+	}: {
+		onData: (book: Book) => void;
+		onError: (error: Error) => void;
+	},
+): (() => void) => {
+	const bookRef = doc(db, "users", userId, "books", bookId).withConverter(
+		bookConverter,
+	);
+
+	return onSnapshot(
+		bookRef,
+		(snapshot) => {
+			const data = snapshot.data();
+			if (data) {
+				onData(data);
+			}
+		},
+		onError,
+	);
+};
+
 const getBookDownloadUrl = async (
 	userId: string,
 	bookId: string,
@@ -179,20 +189,44 @@ const getBookDownloadUrl = async (
 
 interface UploadBookParams {
 	userId: string;
-	title: string;
 	file: File;
 }
 
-const uploadBook = async ({ userId, title, file }: UploadBookParams) => {
+const uploadBook = async ({ userId, file }: UploadBookParams) => {
 	const format = file.name.split(".").pop()?.toLowerCase() || "unknown";
 	const bookId = crypto.randomUUID();
-	const bookRef = doc(db, "users", userId, "books", bookId);
 
-	const bookData: Omit<BookDocument, "id" | "createdAt" | "updatedAt"> & {
+	// Upload file to Storage first
+	try {
+		const storageRef = ref(
+			storage,
+			`users/${userId}/books/${bookId}/book.${format}`,
+		);
+		// The stored object is always named book.<format>, so preserve the
+		// original filename in custom metadata for the extraction function to
+		// fall back on when the file itself carries no title.
+		await uploadBytes(storageRef, file, {
+			customMetadata: { originalName: file.name },
+		});
+	} catch (error) {
+		if (error instanceof FirebaseError) {
+			const codeMap: Record<string, StorageErrorCode> = {
+				"storage/unauthorized": "unauthorized",
+				"storage/canceled": "canceled",
+				"storage/quota-exceeded": "quota-exceeded",
+			};
+			throw new StorageError(codeMap[error.code] ?? "unknown", error.message);
+		}
+		throw error;
+	}
+
+	// Then create stub Firestore doc with processing status
+	const bookRef = doc(db, "users", userId, "books", bookId);
+	const bookData: Omit<BookDocument, "createdAt" | "updatedAt"> & {
 		createdAt: FieldValue;
 		updatedAt: FieldValue;
 	} = {
-		title,
+		title: "",
 		sortTitle: null,
 		authorIds: [],
 		seriesId: null,
@@ -207,30 +241,13 @@ const uploadBook = async ({ userId, title, file }: UploadBookParams) => {
 		format,
 		fileSize: file.size,
 		coverFormat: null,
+		status: "processing",
+		errorMessage: null,
 		createdAt: serverTimestamp(),
 		updatedAt: serverTimestamp(),
 	};
 
 	await setDoc(bookRef, bookData);
-
-	try {
-		const storageRef = ref(
-			storage,
-			`users/${userId}/books/${bookId}/book.${format}`,
-		);
-		await uploadBytes(storageRef, file);
-	} catch (error) {
-		await deleteDoc(doc(db, "users", userId, "books", bookId));
-		if (error instanceof FirebaseError) {
-			const codeMap: Record<string, StorageErrorCode> = {
-				"storage/unauthorized": "unauthorized",
-				"storage/canceled": "canceled",
-				"storage/quota-exceeded": "quota-exceeded",
-			};
-			throw new StorageError(codeMap[error.code] ?? "unknown", error.message);
-		}
-		throw error;
-	}
 
 	return { bookId, format };
 };
@@ -326,6 +343,7 @@ export const bookRepository: BookRepository = {
 	hasBooks,
 	getBook,
 	subscribeToBooks,
+	subscribeToBook,
 	getBookDownloadUrl,
 	uploadBook,
 	updateBook,

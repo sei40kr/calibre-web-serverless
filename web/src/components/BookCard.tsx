@@ -10,7 +10,7 @@ import {
 	VStack,
 } from "@chakra-ui/react";
 import Link from "next/link";
-import { LuBook, LuPencil } from "react-icons/lu";
+import { LuBook, LuPencil, LuTriangleAlert } from "react-icons/lu";
 
 interface BookCardProps {
 	book: Book;
@@ -19,6 +19,9 @@ interface BookCardProps {
 }
 
 export function BookCard({ book, coverUrl, coverLoading }: BookCardProps) {
+	const isProcessing = book.status === "processing";
+	const isError = book.status === "error";
+
 	return (
 		<Card.Root
 			overflow="hidden"
@@ -34,7 +37,11 @@ export function BookCard({ book, coverUrl, coverLoading }: BookCardProps) {
 				justifyContent="center"
 				overflow="hidden"
 			>
-				{coverLoading ? (
+				{isProcessing ? (
+					<Skeleton width="100%" height="100%" />
+				) : isError ? (
+					<LuTriangleAlert size={48} color="var(--chakra-colors-fg-muted)" />
+				) : coverLoading ? (
 					<Skeleton width="100%" height="100%" />
 				) : coverUrl ? (
 					<Image
@@ -51,7 +58,7 @@ export function BookCard({ book, coverUrl, coverLoading }: BookCardProps) {
 			<Card.Body p={3}>
 				<VStack align="start" gap={1}>
 					<Text fontWeight="medium" lineClamp={2} title={book.title}>
-						{book.title}
+						{isProcessing ? "Processing..." : book.title || "Untitled"}
 					</Text>
 					<Badge size="sm" colorPalette="blue">
 						{book.format.toUpperCase()}
@@ -59,19 +66,21 @@ export function BookCard({ book, coverUrl, coverLoading }: BookCardProps) {
 				</VStack>
 			</Card.Body>
 
-			<Box position="absolute" top={2} right={2}>
-				<IconButton
-					asChild
-					aria-label="Edit book"
-					variant="solid"
-					size="sm"
-					rounded="full"
-				>
-					<Link href={`/dashboard/books/${book.id}/edit`}>
-						<LuPencil />
-					</Link>
-				</IconButton>
-			</Box>
+			{!isProcessing && (
+				<Box position="absolute" top={2} right={2}>
+					<IconButton
+						asChild
+						aria-label="Edit book"
+						variant="solid"
+						size="sm"
+						rounded="full"
+					>
+						<Link href={`/dashboard/books/${book.id}/edit`}>
+							<LuPencil />
+						</Link>
+					</IconButton>
+				</Box>
+			)}
 		</Card.Root>
 	);
 }

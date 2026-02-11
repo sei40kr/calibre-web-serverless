@@ -15,6 +15,7 @@
 	},
 	"dependencies": {
 		"@calibre-web-serverless/domain": "workspace:*",
+		"@calibre-web-serverless/firestore-documents": "workspace:*",
 		"firebase": "^12.8.0"
 	},
 	"devDependencies": {

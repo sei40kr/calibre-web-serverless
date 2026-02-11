@@ -3,6 +3,8 @@ import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, within } from "storybook/test";
 import { BookCard } from "./BookCard";
 
+const coverPath = "/books/alice-in-wonderland/cover.jpg";
+
 const mockBook: Book = {
 	id: "book-001",
 	userId: "user-001",
@@ -31,6 +33,11 @@ const meta = {
 	parameters: {
 		layout: "centered",
 	},
+	args: {
+		book: mockBook,
+		coverUrl: coverPath,
+		coverLoading: false,
+	},
 	decorators: [
 		(Story) => (
 			<div style={{ width: "180px" }}>
@@ -44,9 +51,6 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
-	args: {
-		book: mockBook,
-	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
 
@@ -54,6 +58,16 @@ export const Default: Story = {
 			canvas.getByText("Alice's Adventures in Wonderland"),
 		).toBeInTheDocument();
 		await expect(canvas.getByText("EPUB")).toBeInTheDocument();
+		await expect(
+			canvas.getByRole("img", { name: "Alice's Adventures in Wonderland" }),
+		).toBeInTheDocument();
+	},
+};
+
+export const CoverLoading: Story = {
+	args: {
+		coverUrl: null,
+		coverLoading: true,
 	},
 };
 
@@ -64,6 +78,8 @@ export const LongTitle: Story = {
 			title:
 				"The Complete Works of William Shakespeare Including All His Plays and Sonnets",
 		},
+		coverUrl: coverPath,
+		coverLoading: false,
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
@@ -81,6 +97,8 @@ export const PdfFormat: Story = {
 			...mockBook,
 			format: "pdf",
 		},
+		coverUrl: coverPath,
+		coverLoading: false,
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
@@ -95,6 +113,8 @@ export const MobiFormat: Story = {
 			...mockBook,
 			format: "mobi",
 		},
+		coverUrl: coverPath,
+		coverLoading: false,
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);

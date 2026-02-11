@@ -16,9 +16,11 @@ import {
 	Grid,
 	Heading,
 	HStack,
+	Image,
 	Input,
 	Portal,
 	RatingGroup,
+	Skeleton,
 	Span,
 	Stack,
 	TagsInput,
@@ -113,6 +115,8 @@ export interface BookEditData {
 
 export interface EditBookPageProps {
 	book: BookEditData;
+	coverUrl: string | null;
+	coverLoading: boolean;
 	authorSuggestions: string[];
 	seriesSuggestions: string[];
 	tagSuggestions: string[];
@@ -123,6 +127,8 @@ export interface EditBookPageProps {
 
 export function EditBookPage({
 	book,
+	coverUrl,
+	coverLoading,
 	authorSuggestions,
 	seriesSuggestions,
 	tagSuggestions,
@@ -378,11 +384,26 @@ export function EditBookPage({
 									justifyContent="center"
 									flexDirection="column"
 									gap={2}
+									overflow="hidden"
 								>
-									<LuBook size={64} color="var(--chakra-colors-fg-muted)" />
-									<Text color="fg.muted" fontSize="sm">
-										Cover image
-									</Text>
+									{coverLoading ? (
+										<Skeleton width="100%" height="100%" />
+									) : coverUrl ? (
+										<Image
+											src={coverUrl}
+											alt={book.title || "Book cover"}
+											width="100%"
+											height="100%"
+											objectFit="cover"
+										/>
+									) : (
+										<>
+											<LuBook size={64} color="var(--chakra-colors-fg-muted)" />
+											<Text color="fg.muted" fontSize="sm">
+												Cover image
+											</Text>
+										</>
+									)}
 								</Box>
 								<Text color="fg.muted" fontSize="xs" mt={2} textAlign="center">
 									{book.format.toUpperCase()} &bull;{" "}

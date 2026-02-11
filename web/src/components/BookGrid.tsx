@@ -1,14 +1,18 @@
-"use client";
-
 import type { Book } from "@calibre-web-serverless/domain/models/book";
 import { Box, SimpleGrid, Skeleton, VStack } from "@chakra-ui/react";
 import { LuBookOpen } from "react-icons/lu";
 import { BookCard } from "./BookCard";
 import { EmptyState } from "./ui/empty-state";
 
+interface BookCoverInfo {
+	coverUrl: string | null;
+	loading: boolean;
+}
+
 interface BookGridProps {
 	books: Book[];
 	loading: boolean;
+	bookCoverInfos: Record<string, BookCoverInfo>;
 }
 
 function BookCardSkeleton() {
@@ -23,7 +27,7 @@ function BookCardSkeleton() {
 	);
 }
 
-export function BookGrid({ books, loading }: BookGridProps) {
+export function BookGrid({ books, loading, bookCoverInfos }: BookGridProps) {
 	if (loading) {
 		return (
 			<SimpleGrid columns={{ base: 2, sm: 3, md: 4, lg: 5, xl: 6 }} gap={4}>
@@ -47,9 +51,17 @@ export function BookGrid({ books, loading }: BookGridProps) {
 
 	return (
 		<SimpleGrid columns={{ base: 2, sm: 3, md: 4, lg: 5, xl: 6 }} gap={4}>
-			{books.map((book) => (
-				<BookCard key={book.id} book={book} />
-			))}
+			{books.map((book) => {
+				const coverInfo = bookCoverInfos[book.id];
+				return (
+					<BookCard
+						key={book.id}
+						book={book}
+						coverUrl={coverInfo?.coverUrl ?? null}
+						coverLoading={coverInfo?.loading ?? false}
+					/>
+				);
+			})}
 		</SimpleGrid>
 	);
 }

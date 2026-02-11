@@ -5,6 +5,8 @@ import { expect, fn, userEvent, within } from "storybook/test";
 import type { BookEditData } from "./EditBookPage";
 import { EditBookPage } from "./EditBookPage";
 
+const coverPath = "/books/alice-in-wonderland/cover.jpg";
+
 const mockAuthorSuggestions = ["Lewis Carroll", "J.R.R. Tolkien"];
 const mockSeriesSuggestions = ["Alice Series", "The Lord of the Rings"];
 const mockTagSuggestions = ["Fantasy", "Classic", "Children"];
@@ -35,6 +37,8 @@ const meta = {
 	},
 	args: {
 		book: mockBook,
+		coverUrl: coverPath,
+		coverLoading: false,
 		authorSuggestions: mockAuthorSuggestions,
 		seriesSuggestions: mockSeriesSuggestions,
 		tagSuggestions: mockTagSuggestions,
@@ -61,6 +65,16 @@ export const Default: Story = {
 		await expect(canvas.getByText("Fantasy")).toBeInTheDocument();
 		await expect(canvas.getByText("Children")).toBeInTheDocument();
 		await expect(canvas.getByText("English")).toBeInTheDocument();
+		await expect(
+			canvas.getByRole("img", { name: "Alice's Adventures in Wonderland" }),
+		).toBeInTheDocument();
+	},
+};
+
+export const CoverLoading: Story = {
+	args: {
+		coverUrl: null,
+		coverLoading: true,
 	},
 };
 

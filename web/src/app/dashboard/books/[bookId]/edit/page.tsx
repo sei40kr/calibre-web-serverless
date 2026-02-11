@@ -19,6 +19,7 @@ import { EditBookPageSkeleton } from "@/components/pages/EditBookPageSkeleton";
 import { toaster } from "@/components/ui/toaster";
 import { useAuthors } from "@/hooks/useAuthors";
 import { useBook } from "@/hooks/useBook";
+import { useBookCoverUrl } from "@/hooks/useBookCoverUrl";
 import { usePublishers } from "@/hooks/usePublishers";
 import { useSeries } from "@/hooks/useSeries";
 import { useTags } from "@/hooks/useTags";
@@ -46,6 +47,11 @@ function EditBookRouteContent({ userId, bookId }: EditBookRouteContentProps) {
 	const { series, loading: seriesLoading } = useSeries(userId);
 	const { tags, loading: tagsLoading } = useTags(userId);
 	const { publishers, loading: publishersLoading } = usePublishers(userId);
+	const { coverUrl, loading: coverLoading } = useBookCoverUrl(
+		userId,
+		bookId,
+		book?.coverFormat ?? null,
+	);
 
 	const bookEditData: BookEditData | null = useMemo(() => {
 		if (!book) return null;
@@ -173,6 +179,8 @@ function EditBookRouteContent({ userId, bookId }: EditBookRouteContentProps) {
 	return (
 		<EditBookPage
 			book={bookEditData}
+			coverUrl={coverUrl}
+			coverLoading={coverLoading}
 			authorSuggestions={authorSuggestions}
 			seriesSuggestions={seriesSuggestions}
 			tagSuggestions={tagSuggestions}

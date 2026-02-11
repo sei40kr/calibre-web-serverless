@@ -7,6 +7,7 @@ import { LuPlus } from "react-icons/lu";
 import { AuthGuard } from "@/components/AuthGuard";
 import { BookGrid } from "@/components/BookGrid";
 import { UploadBookDialog } from "@/components/UploadBookDialog";
+import { useBookCoverUrls } from "@/hooks/useBookCoverUrls";
 import { useBooks } from "@/hooks/useBooks";
 
 interface DashboardContentProps {
@@ -23,6 +24,7 @@ function DashboardContent({
 	setIsUploadDialogOpen,
 }: DashboardContentProps) {
 	const { books, loading } = useBooks(user.uid);
+	const bookCoverInfos = useBookCoverUrls(books);
 
 	return (
 		<>
@@ -44,7 +46,11 @@ function DashboardContent({
 						</HStack>
 					</HStack>
 
-					<BookGrid books={books} loading={loading} />
+					<BookGrid
+						books={books}
+						loading={loading}
+						bookCoverInfos={bookCoverInfos}
+					/>
 				</VStack>
 			</Container>
 

@@ -71,7 +71,7 @@ export function BookCard({ book, coverUrl, coverLoading }: BookCardProps) {
 					<IconButton
 						asChild
 						aria-label="Edit book"
-						variant="solid"
+						variant="surface"
 						size="sm"
 						rounded="full"
 					>

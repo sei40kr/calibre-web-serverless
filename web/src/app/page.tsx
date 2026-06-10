@@ -88,14 +88,20 @@ export default function Home() {
 	};
 
 	return (
-		<Flex minH="100vh" align="center" justify="center" bg="gray.50">
+		<Flex minH="100vh" align="center" justify="center" bg="bg.subtle">
 			<Container maxW="md">
-				<Box p={8} borderWidth={1} borderRadius="lg" boxShadow="lg" bg="white">
+				<Box
+					p={8}
+					borderWidth={1}
+					borderRadius="lg"
+					boxShadow="lg"
+					bg="bg.panel"
+				>
 					<Stack gap={6}>
 						<Heading size="xl" textAlign="center">
 							Sign In
 						</Heading>
-						<Text textAlign="center" color="gray.600">
+						<Text textAlign="center" color="fg.muted">
 							Sign in to Calibre-Web
 						</Text>
 

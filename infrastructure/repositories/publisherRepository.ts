@@ -18,15 +18,15 @@ interface PublisherDocument {
 	id: string;
 	name: string;
 	bookCount: number;
-	createdAt: Timestamp;
-	updatedAt: Timestamp;
+	createdAt: Timestamp | null;
+	updatedAt: Timestamp | null;
 }
 
 const toPublisher = (doc: PublisherDocument): Publisher => ({
 	id: doc.id,
 	name: doc.name,
-	createdAt: doc.createdAt.toDate(),
-	updatedAt: doc.updatedAt.toDate(),
+	createdAt: doc.createdAt?.toDate() ?? null,
+	updatedAt: doc.updatedAt?.toDate() ?? null,
 });
 
 const getAll = async (userId: string): Promise<Publisher[]> => {

@@ -30,6 +30,6 @@ export interface BookDocument<Time> {
 	coverFormat: string | null;
 	status: BookStatus;
 	errorMessage: string | null;
-	createdAt: Time;
-	updatedAt: Time;
+	createdAt: Time | null;
+	updatedAt: Time | null;
 }

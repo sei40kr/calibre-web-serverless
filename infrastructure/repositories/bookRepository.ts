@@ -101,8 +101,8 @@ const bookConverter: FirestoreDataConverter<Book> = {
 			coverFormat: d.coverFormat ?? null,
 			status: d.status ?? "ready",
 			errorMessage: d.errorMessage ?? null,
-			createdAt: d.createdAt.toDate(),
-			updatedAt: d.updatedAt.toDate(),
+			createdAt: d.createdAt?.toDate() ?? null,
+			updatedAt: d.updatedAt?.toDate() ?? null,
 		};
 	},
 };

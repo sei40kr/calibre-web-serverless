@@ -19,16 +19,16 @@ interface AuthorDocument {
 	name: string;
 	sortName: string | null;
 	bookCount: number;
-	createdAt: Timestamp;
-	updatedAt: Timestamp;
+	createdAt: Timestamp | null;
+	updatedAt: Timestamp | null;
 }
 
 const toAuthor = (doc: AuthorDocument): Author => ({
 	id: doc.id,
 	name: doc.name,
 	sortName: doc.sortName,
-	createdAt: doc.createdAt.toDate(),
-	updatedAt: doc.updatedAt.toDate(),
+	createdAt: doc.createdAt?.toDate() ?? null,
+	updatedAt: doc.updatedAt?.toDate() ?? null,
 });
 
 const getAll = async (userId: string): Promise<Author[]> => {

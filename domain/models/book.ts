@@ -23,6 +23,6 @@ export interface Book {
 	coverFormat: string | null;
 	status: BookStatus;
 	errorMessage: string | null;
-	createdAt: Date;
-	updatedAt: Date;
+	createdAt: Date | null;
+	updatedAt: Date | null;
 }

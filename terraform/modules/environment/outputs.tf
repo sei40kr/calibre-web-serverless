@@ -25,8 +25,10 @@ output "firebase_auth_domain" {
 }
 
 output "firebase_storage_bucket" {
-  description = "Firebase Storage bucket"
-  value       = google_storage_bucket.firebase.name
+  description = "Firebase Storage default bucket"
+  # New-format default bucket name; the resource ensures it exists.
+  value      = "${var.project_id}.firebasestorage.app"
+  depends_on = [google_firebase_storage_default_bucket.this]
 }
 
 output "firebase_messaging_sender_id" {

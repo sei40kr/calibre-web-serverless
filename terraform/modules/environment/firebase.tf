@@ -59,21 +59,15 @@ resource "google_identity_platform_config" "this" {
 
 # -----------------------------------------------------------------------------
 # Cloud Storage for Firebase
+#
+# Provision the project's default bucket (<project>.firebasestorage.app). Using
+# the default bucket lets `firebase deploy --only storage` and the function's
+# storage trigger work without per-bucket workarounds.
 # -----------------------------------------------------------------------------
-resource "google_storage_bucket" "firebase" {
-  provider                    = google-beta
-  project                     = var.project_id
-  name                        = "${var.project_id}-firebase-storage"
-  location                    = var.region
-  uniform_bucket_level_access = true
-
-  depends_on = [google_project_service.apis["storage.googleapis.com"]]
-}
-
-resource "google_firebase_storage_bucket" "this" {
-  provider  = google-beta
-  project   = google_firebase_project.this.project
-  bucket_id = google_storage_bucket.firebase.name
+resource "google_firebase_storage_default_bucket" "this" {
+  provider = google-beta
+  project  = google_firebase_project.this.project
+  location = var.region
 
   depends_on = [google_project_service.apis["firebasestorage.googleapis.com"]]
 }

@@ -8,10 +8,20 @@ locals {
     "storage.googleapis.com",
     "firebasestorage.googleapis.com",
     "firebasehosting.googleapis.com",
+    "firebaserules.googleapis.com",
     "iam.googleapis.com",
     "sts.googleapis.com",
     "iamcredentials.googleapis.com",
     "identitytoolkit.googleapis.com",
+    # Cloud Functions (2nd gen) for the book-metadata extraction trigger.
+    "cloudfunctions.googleapis.com",
+    "cloudbuild.googleapis.com",
+    "artifactregistry.googleapis.com",
+    "run.googleapis.com",
+    "eventarc.googleapis.com",
+    "pubsub.googleapis.com",
+    # firebase deploy verifies the project is on a billing plan (2nd gen).
+    "cloudbilling.googleapis.com",
   ]
 }
 

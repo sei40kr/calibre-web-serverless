@@ -38,9 +38,14 @@ locals {
   environments = {
     staging = {
       project_id = "calibre-web-serverless-stg"
+      test_user = var.test_user_password == "" ? null : {
+        email    = var.test_user_email
+        password = var.test_user_password
+      }
     }
     production = {
       project_id = "calibre-web-serverless-prd"
+      test_user  = null
     }
   }
 }
@@ -53,6 +58,7 @@ module "environment" {
   project_id  = each.value.project_id
   region      = var.region
   github_repo = var.github_repo
+  test_user   = each.value.test_user
 }
 
 # -----------------------------------------------------------------------------

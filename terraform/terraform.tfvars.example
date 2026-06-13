@@ -1,0 +1,4 @@
+# Copy this file to terraform.tfvars (git-ignored) and set real values.
+# The staging test user is created only when test_user_password is non-empty.
+test_user_email    = "test@example.com"
+test_user_password = "change-me"

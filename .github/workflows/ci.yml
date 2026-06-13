@@ -56,7 +56,18 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
-      - run: bun vitest run
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/firebase/emulators
+          key: firebase-emulators-${{ runner.os }}
+      # Start one shared emulator instance up front (with visible output) and run
+      # the tests inside it. The per-project globalSetups detect the running
+      # emulators and reuse them, avoiding the port races and 30s wait-on
+      # timeouts that happened when each project started its own emulators.
+      - run: >-
+          ./infrastructure/node_modules/.bin/firebase emulators:exec
+          --only auth,firestore,storage --project demo-test
+          'bun vitest run'
 
   deploy-staging:
     needs: [typecheck, lint, test]

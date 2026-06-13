@@ -6,8 +6,8 @@ import { bookRepository } from "@calibre-web-serverless/infrastructure/repositor
 import { publisherRepository } from "@calibre-web-serverless/infrastructure/repositories/publisherRepository";
 import { seriesRepository } from "@calibre-web-serverless/infrastructure/repositories/seriesRepository";
 import { tagRepository } from "@calibre-web-serverless/infrastructure/repositories/tagRepository";
-import { useParams, useRouter } from "next/navigation";
-import { useCallback, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { useCallback, useMemo, useState } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
 import { BookNotFoundPage } from "@/components/pages/BookNotFoundPage";
 import {
@@ -25,8 +25,13 @@ import { useSeries } from "@/hooks/useSeries";
 import { useTags } from "@/hooks/useTags";
 
 export default function EditBookRoute() {
-	const params = useParams();
-	const bookId = params.bookId as string;
+	// This route is served as a static shell (rewritten from any book id), so
+	// the prerendered route params are a placeholder. Read the real id from the
+	// browser URL instead.
+	const [bookId] = useState(() => {
+		if (typeof window === "undefined") return "";
+		return window.location.pathname.match(/\/books\/([^/]+)\/edit/)?.[1] ?? "";
+	});
 
 	return (
 		<AuthGuard>

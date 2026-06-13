@@ -9,16 +9,16 @@
 		"build:watch": "bun run build --watch"
 	},
 	"dependencies": {
-		"@calibre-web-serverless/domain": "workspace:*",
-		"@calibre-web-serverless/firestore-documents": "workspace:*",
-		"fast-xml-parser": "^5.3.4",
 		"firebase-admin": "^13.4.0",
 		"firebase-functions": "^6.3.2",
-		"jszip": "^3.10.1",
 		"sharp": "^0.34.1"
 	},
 	"devDependencies": {
+		"@calibre-web-serverless/domain": "workspace:*",
+		"@calibre-web-serverless/firestore-documents": "workspace:*",
 		"esbuild": "^0.25.0",
+		"fast-xml-parser": "^5.3.4",
+		"jszip": "^3.10.1",
 		"typescript": "^5",
 		"wait-on": "^8.0.0"
 	},

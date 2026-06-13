@@ -1,5 +1,7 @@
 {
   "projects": {
-    "default": "calibre-web-serverless-465518"
+    "default": "calibre-web-serverless-stg",
+    "staging": "calibre-web-serverless-stg",
+    "production": "calibre-web-serverless-prd"
   }
 }

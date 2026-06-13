@@ -1,6 +1,14 @@
 {
 	"hosting": {
-		"source": "web"
+		"public": "web/out",
+		"cleanUrls": true,
+		"ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+		"rewrites": [
+			{
+				"regex": "^/dashboard/books/[^/]+/edit/?$",
+				"destination": "/dashboard/books/__shell__/edit.html"
+			}
+		]
 	},
 	"firestore": {
 		"database": "(default)",

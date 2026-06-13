@@ -34,10 +34,14 @@ jobs:
           restore-keys: bun-${{ runner.os }}-
       - run: bun install --frozen-lockfile
       - run: cat web/.env.${{ inputs.environment }} >>"$GITHUB_ENV"
+      # Produces the static export in web/out, served as plain Firebase Hosting.
       - run: bun run build
+      # Bundle the metadata function into a single esbuild bundle for Cloud Functions.
+      - run: bun run --filter @calibre-web-serverless/functions build
       - uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ vars.WIF_PROVIDER }}
           service_account: ${{ vars.FIREBASE_SERVICE_ACCOUNT }}
-      - run: bunx firebase-tools experiments:enable webframeworks
-      - run: bunx firebase-tools deploy --only hosting,firestore:rules,firestore:indexes,storage --project ${{ vars.FIREBASE_PROJECT_ID }}
+      # --force auto-confirms non-interactive prompts (e.g. the Artifact
+      # Registry cleanup policy for function images).
+      - run: bunx firebase-tools deploy --only hosting,firestore:rules,firestore:indexes,storage,functions --project ${{ vars.FIREBASE_PROJECT_ID }} --force

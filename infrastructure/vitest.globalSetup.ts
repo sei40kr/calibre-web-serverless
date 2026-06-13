@@ -30,6 +30,7 @@ export const setup = async (): Promise<void> => {
 		firebaseBin,
 		[
 			"emulators:start",
+			"--only=auth,firestore,storage",
 			`--project=${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}`,
 		],
 		{ stdio: "ignore" },

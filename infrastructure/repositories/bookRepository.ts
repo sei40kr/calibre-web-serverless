@@ -32,7 +32,12 @@ import {
 	type Timestamp,
 	type Transaction,
 } from "firebase/firestore";
-import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import {
+	deleteObject,
+	getDownloadURL,
+	ref,
+	uploadBytes,
+} from "firebase/storage";
 import { db, storage } from "../lib/firebase";
 
 const toIdentifier = (doc: IdentifierDocument): Identifier => {
@@ -252,42 +257,6 @@ const uploadBook = async ({ userId, file }: UploadBookParams) => {
 	return { bookId, format };
 };
 
-const syncBookCountInCollection = async (
-	transaction: Transaction,
-	userId: string,
-	collectionName: string,
-	oldIds: string[],
-	newIds: string[],
-): Promise<void> => {
-	const oldIdSet = new Set(oldIds);
-	const newIdSet = new Set(newIds);
-	const addedIds = newIds.filter((id) => !oldIdSet.has(id));
-	const removedIds = oldIds.filter((id) => !newIdSet.has(id));
-
-	// Read phase: fetch removed docs to check counts
-	const removedDocs = await Promise.all(
-		removedIds.map((id) =>
-			transaction.get(doc(db, "users", userId, collectionName, id)),
-		),
-	);
-
-	// Write phase: increment for added, decrement/delete for removed
-	for (const id of addedIds) {
-		const ref = doc(db, "users", userId, collectionName, id);
-		transaction.update(ref, { bookCount: increment(1) });
-	}
-
-	for (let i = 0; i < removedIds.length; i++) {
-		const ref = doc(db, "users", userId, collectionName, removedIds[i]);
-		const currentCount = removedDocs[i].data()?.bookCount ?? 0;
-		if (currentCount <= 1) {
-			transaction.delete(ref);
-		} else {
-			transaction.update(ref, { bookCount: increment(-1) });
-		}
-	}
-};
-
 const syncBookCounts = async (
 	transaction: Transaction,
 	userId: string,
@@ -298,15 +267,50 @@ const syncBookCounts = async (
 		publishers: { oldIds: string[]; newIds: string[] };
 	},
 ): Promise<void> => {
-	for (const [collectionName, { oldIds, newIds }] of Object.entries(changes)) {
-		await syncBookCountInCollection(
-			transaction,
-			userId,
-			collectionName,
-			oldIds,
-			newIds,
-		);
-	}
+	// Firestore transactions require every read to happen before any write, so
+	// the read and write phases below must span all collections at once rather
+	// than be interleaved per collection.
+	const plans = Object.entries(changes).map(
+		([collectionName, { oldIds, newIds }]) => {
+			const oldIdSet = new Set(oldIds);
+			const newIdSet = new Set(newIds);
+			return {
+				collectionName,
+				addedIds: newIds.filter((id) => !oldIdSet.has(id)),
+				removedIds: oldIds.filter((id) => !newIdSet.has(id)),
+			};
+		},
+	);
+
+	// Read phase: fetch every removed doc across all collections to check counts.
+	const removedDocsByPlan = await Promise.all(
+		plans.map((plan) =>
+			Promise.all(
+				plan.removedIds.map((id) =>
+					transaction.get(doc(db, "users", userId, plan.collectionName, id)),
+				),
+			),
+		),
+	);
+
+	// Write phase: increment for added, decrement/delete for removed.
+	plans.forEach((plan, planIndex) => {
+		for (const id of plan.addedIds) {
+			const ref = doc(db, "users", userId, plan.collectionName, id);
+			transaction.update(ref, { bookCount: increment(1) });
+		}
+
+		plan.removedIds.forEach((id, i) => {
+			const ref = doc(db, "users", userId, plan.collectionName, id);
+			const currentCount =
+				removedDocsByPlan[planIndex][i].data()?.bookCount ?? 0;
+			if (currentCount <= 1) {
+				transaction.delete(ref);
+			} else {
+				transaction.update(ref, { bookCount: increment(-1) });
+			}
+		});
+	});
 };
 
 const updateBook = async (userId: string, book: Book) => {
@@ -339,6 +343,69 @@ const updateBook = async (userId: string, book: Book) => {
 	});
 };
 
+const deleteBook = async (userId: string, bookId: string): Promise<void> => {
+	const bookRef = doc(db, "users", userId, "books", bookId);
+
+	let format: string | undefined;
+	let coverFormat: string | null = null;
+
+	await runTransaction(db, async (transaction) => {
+		const bookDoc = await transaction.get(bookRef);
+		const bookData = bookDoc.data() as BookDocument | undefined;
+		if (!bookData) {
+			return;
+		}
+
+		format = bookData.format;
+		coverFormat = bookData.coverFormat ?? null;
+
+		const oldAuthorIds = bookData.authorIds ?? [];
+		const oldSeriesIds = bookData.seriesId ? [bookData.seriesId] : [];
+		const oldTagIds = bookData.tagIds ?? [];
+		const oldPublisherIds = bookData.publisherId ? [bookData.publisherId] : [];
+
+		// syncBookCounts does reads then writes internally, so call before the
+		// delete. Empty newIds decrements (and removes orphaned) related docs.
+		await syncBookCounts(transaction, userId, {
+			authors: { oldIds: oldAuthorIds, newIds: [] },
+			series: { oldIds: oldSeriesIds, newIds: [] },
+			tags: { oldIds: oldTagIds, newIds: [] },
+			publishers: { oldIds: oldPublisherIds, newIds: [] },
+		});
+
+		transaction.delete(bookRef);
+	});
+
+	// Remove Storage objects after the Firestore doc is gone. A missing object
+	// is ignored so deletion stays idempotent even on partial earlier failures.
+	const ignoreMissing = (error: unknown) => {
+		if (
+			error instanceof FirebaseError &&
+			error.code === "storage/object-not-found"
+		) {
+			return;
+		}
+		throw error;
+	};
+
+	const deletions: Promise<void>[] = [];
+	if (format) {
+		deletions.push(
+			deleteObject(
+				ref(storage, `users/${userId}/books/${bookId}/book.${format}`),
+			).catch(ignoreMissing),
+		);
+	}
+	if (coverFormat) {
+		deletions.push(
+			deleteObject(
+				ref(storage, `users/${userId}/books/${bookId}/cover.${coverFormat}`),
+			).catch(ignoreMissing),
+		);
+	}
+	await Promise.all(deletions);
+};
+
 export const bookRepository: BookRepository = {
 	hasBooks,
 	getBook,
@@ -347,4 +414,5 @@ export const bookRepository: BookRepository = {
 	getBookDownloadUrl,
 	uploadBook,
 	updateBook,
+	deleteBook,
 };

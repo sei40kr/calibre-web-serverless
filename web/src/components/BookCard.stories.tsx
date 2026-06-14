@@ -1,6 +1,6 @@
 import type { Book } from "@calibre-web-serverless/domain/models/book";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { expect, within } from "storybook/test";
+import { expect, fn, userEvent, within } from "storybook/test";
 import { BookCard } from "./BookCard";
 
 const coverPath = "/books/alice-in-wonderland/cover.jpg";
@@ -39,6 +39,7 @@ const meta = {
 		book: mockBook,
 		coverUrl: coverPath,
 		coverLoading: false,
+		onDelete: fn(async () => {}),
 	},
 	decorators: [
 		(Story) => (
@@ -117,6 +118,38 @@ export const LongTitle: Story = {
 			"The Complete Works of William Shakespeare Including All His Plays and Sonnets",
 		);
 		await expect(titleElement).toBeInTheDocument();
+	},
+};
+
+export const DeleteConfirmed: Story = {
+	play: async ({ canvasElement, args }) => {
+		const canvas = within(canvasElement);
+		const body = within(canvasElement.ownerDocument.body);
+
+		await userEvent.click(canvas.getByRole("button", { name: /delete book/i }));
+
+		const dialog = await body.findByRole("alertdialog");
+		await userEvent.click(
+			within(dialog).getByRole("button", { name: /^delete$/i }),
+		);
+
+		await expect(args.onDelete).toHaveBeenCalled();
+	},
+};
+
+export const DeleteCancelled: Story = {
+	play: async ({ canvasElement, args }) => {
+		const canvas = within(canvasElement);
+		const body = within(canvasElement.ownerDocument.body);
+
+		await userEvent.click(canvas.getByRole("button", { name: /delete book/i }));
+
+		const dialog = await body.findByRole("alertdialog");
+		await userEvent.click(
+			within(dialog).getByRole("button", { name: /cancel/i }),
+		);
+
+		await expect(args.onDelete).not.toHaveBeenCalled();
 	},
 };
 

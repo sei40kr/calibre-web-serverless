@@ -28,4 +28,5 @@ export interface BookRepository {
 		file: File;
 	}): Promise<{ bookId: string; format: string }>;
 	updateBook(userId: string, book: Book): Promise<void>;
+	deleteBook(userId: string, bookId: string): Promise<void>;
 }

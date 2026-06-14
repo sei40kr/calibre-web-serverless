@@ -1,6 +1,6 @@
 import type { Book } from "@calibre-web-serverless/domain/models/book";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { expect, within } from "storybook/test";
+import { expect, fn, within } from "storybook/test";
 import { BookGrid } from "./BookGrid";
 
 const baseBook: Book = {
@@ -75,6 +75,7 @@ const meta = {
 		books: mockBooks,
 		loading: false,
 		bookCoverInfos: mockBookCoverInfos,
+		onDeleteBook: fn(async () => {}),
 	},
 } satisfies Meta<typeof BookGrid>;
 

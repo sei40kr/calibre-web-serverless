@@ -8,6 +8,9 @@ import { clearFirestore } from "../testing/clearFirestore";
 import { signInTestUser } from "../testing/testUser";
 import { authorRepository } from "./authorRepository";
 import { bookRepository } from "./bookRepository";
+import { publisherRepository } from "./publisherRepository";
+import { seriesRepository } from "./seriesRepository";
+import { tagRepository } from "./tagRepository";
 
 let userId: string;
 
@@ -200,6 +203,125 @@ describe("bookRepository", () => {
 			const author2Ref = doc(db, "users", userId, "authors", author2.id);
 			const author2After = await getDoc(author2Ref);
 			expect(author2After.data()?.bookCount).toBe(1);
+		});
+	});
+
+	describe("deleteBook", () => {
+		it("removes the book so it can no longer be retrieved", async () => {
+			const { bookId } = await bookRepository.uploadBook({
+				userId,
+				file: createTestFile("book.epub"),
+			});
+
+			expect(await bookRepository.getBook(userId, bookId)).not.toBeNull();
+
+			await bookRepository.deleteBook(userId, bookId);
+
+			expect(await bookRepository.getBook(userId, bookId)).toBeNull();
+		});
+
+		it("is a no-op for a non-existent book", async () => {
+			await expect(
+				bookRepository.deleteBook(userId, "non-existent"),
+			).resolves.toBeUndefined();
+		});
+
+		// Assigns one author, series, tag and publisher to an existing book.
+		const assignRelations = async (
+			bookId: string,
+			ids: {
+				authorId: string;
+				seriesId: string;
+				tagId: string;
+				publisherId: string;
+			},
+		): Promise<void> => {
+			const book = await bookRepository.getBook(userId, bookId);
+			if (!book) throw new Error(`book ${bookId} not found`);
+			await bookRepository.updateBook(userId, {
+				...book,
+				authorIds: [ids.authorId],
+				seriesId: ids.seriesId,
+				tagIds: [ids.tagId],
+				publisherId: ids.publisherId,
+			});
+		};
+
+		it("removes related entities that are no longer referenced", async () => {
+			const author = await authorRepository.create(userId, "Author");
+			const series = await seriesRepository.create(userId, "Series");
+			const tag = await tagRepository.create(userId, "Tag");
+			const publisher = await publisherRepository.create(userId, "Publisher");
+
+			const { bookId } = await bookRepository.uploadBook({
+				userId,
+				file: createTestFile("book.epub"),
+			});
+			await assignRelations(bookId, {
+				authorId: author.id,
+				seriesId: series.id,
+				tagId: tag.id,
+				publisherId: publisher.id,
+			});
+
+			const authorRef = doc(db, "users", userId, "authors", author.id);
+			const seriesRef = doc(db, "users", userId, "series", series.id);
+			const tagRef = doc(db, "users", userId, "tags", tag.id);
+			const publisherRef = doc(db, "users", userId, "publishers", publisher.id);
+			expect((await getDoc(authorRef)).data()?.bookCount).toBe(1);
+			expect((await getDoc(seriesRef)).data()?.bookCount).toBe(1);
+			expect((await getDoc(tagRef)).data()?.bookCount).toBe(1);
+			expect((await getDoc(publisherRef)).data()?.bookCount).toBe(1);
+
+			await bookRepository.deleteBook(userId, bookId);
+
+			// bookCount reached 0 → the related docs are removed
+			expect((await getDoc(authorRef)).exists()).toBe(false);
+			expect((await getDoc(seriesRef)).exists()).toBe(false);
+			expect((await getDoc(tagRef)).exists()).toBe(false);
+			expect((await getDoc(publisherRef)).exists()).toBe(false);
+		});
+
+		it("keeps related entities still referenced by other books", async () => {
+			const author = await authorRepository.create(userId, "Author");
+			const series = await seriesRepository.create(userId, "Series");
+			const tag = await tagRepository.create(userId, "Tag");
+			const publisher = await publisherRepository.create(userId, "Publisher");
+			const ids = {
+				authorId: author.id,
+				seriesId: series.id,
+				tagId: tag.id,
+				publisherId: publisher.id,
+			};
+
+			const { bookId: firstId } = await bookRepository.uploadBook({
+				userId,
+				file: createTestFile("first.epub"),
+			});
+			await assignRelations(firstId, ids);
+
+			const { bookId: secondId } = await bookRepository.uploadBook({
+				userId,
+				file: createTestFile("second.epub"),
+			});
+			await assignRelations(secondId, ids);
+
+			const authorRef = doc(db, "users", userId, "authors", author.id);
+			const seriesRef = doc(db, "users", userId, "series", series.id);
+			const tagRef = doc(db, "users", userId, "tags", tag.id);
+			const publisherRef = doc(db, "users", userId, "publishers", publisher.id);
+			expect((await getDoc(authorRef)).data()?.bookCount).toBe(2);
+			expect((await getDoc(seriesRef)).data()?.bookCount).toBe(2);
+			expect((await getDoc(tagRef)).data()?.bookCount).toBe(2);
+			expect((await getDoc(publisherRef)).data()?.bookCount).toBe(2);
+
+			await bookRepository.deleteBook(userId, firstId);
+
+			// Still referenced by the second book → docs survive, count decremented
+			expect((await getDoc(authorRef)).data()?.bookCount).toBe(1);
+			expect((await getDoc(seriesRef)).data()?.bookCount).toBe(1);
+			expect((await getDoc(tagRef)).data()?.bookCount).toBe(1);
+			expect((await getDoc(publisherRef)).data()?.bookCount).toBe(1);
 		});
 	});
 

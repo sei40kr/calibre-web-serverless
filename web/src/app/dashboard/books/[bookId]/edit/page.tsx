@@ -163,6 +163,17 @@ function EditBookRouteContent({ userId, bookId }: EditBookRouteContentProps) {
 		[book, userId, router],
 	);
 
+	const handleDeleteBook = useCallback(async () => {
+		const title = book?.title;
+		await bookRepository.deleteBook(userId, bookId);
+
+		toaster.success({
+			title: "Book deleted",
+			description: title ? `"${title}" has been deleted.` : undefined,
+		});
+		router.push("/dashboard");
+	}, [book, userId, bookId, router]);
+
 	const handleCancel = useCallback(() => {
 		router.push("/dashboard");
 	}, [router]);
@@ -191,6 +202,7 @@ function EditBookRouteContent({ userId, bookId }: EditBookRouteContentProps) {
 			tagSuggestions={tagSuggestions}
 			publisherNames={publisherSuggestions}
 			onUpdateBook={handleUpdateBook}
+			onDeleteBook={handleDeleteBook}
 			onCancel={handleCancel}
 		/>
 	);

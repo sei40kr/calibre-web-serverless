@@ -44,6 +44,7 @@ const meta = {
 		tagSuggestions: mockTagSuggestions,
 		publisherNames: mockPublisherNames,
 		onUpdateBook: fn(async () => {}),
+		onDeleteBook: fn(async () => {}),
 		onCancel: fn(),
 	},
 } satisfies Meta<typeof EditBookPage>;
@@ -510,6 +511,68 @@ export const CancelButtonWithChangesDeclined: Story = {
 		} finally {
 			win.confirm = originalConfirm;
 		}
+	},
+};
+
+export const DeleteBookConfirmed: Story = {
+	play: async ({ canvasElement, args }) => {
+		const canvas = within(canvasElement);
+		const body = within(canvasElement.ownerDocument.body);
+
+		const deleteButton = canvas.getByRole("button", { name: /^delete$/i });
+		await userEvent.click(deleteButton);
+
+		const dialog = await body.findByRole("alertdialog");
+		const confirmButton = within(dialog).getByRole("button", {
+			name: /delete/i,
+		});
+		await userEvent.click(confirmButton);
+
+		await expect(args.onDeleteBook).toHaveBeenCalled();
+	},
+};
+
+export const DeleteBookCancelled: Story = {
+	play: async ({ canvasElement, args }) => {
+		const canvas = within(canvasElement);
+		const body = within(canvasElement.ownerDocument.body);
+
+		const deleteButton = canvas.getByRole("button", { name: /^delete$/i });
+		await userEvent.click(deleteButton);
+
+		const dialog = await body.findByRole("alertdialog");
+		const cancelButton = within(dialog).getByRole("button", {
+			name: /cancel/i,
+		});
+		await userEvent.click(cancelButton);
+
+		await expect(args.onDeleteBook).not.toHaveBeenCalled();
+	},
+};
+
+export const DeleteError: Story = {
+	args: {
+		onDeleteBook: fn(async () => {
+			throw new Error("Network error");
+		}),
+	},
+	play: async ({ canvasElement, args }) => {
+		const canvas = within(canvasElement);
+		const body = within(canvasElement.ownerDocument.body);
+
+		const deleteButton = canvas.getByRole("button", { name: /^delete$/i });
+		await userEvent.click(deleteButton);
+
+		const dialog = await body.findByRole("alertdialog");
+		const confirmButton = within(dialog).getByRole("button", {
+			name: /delete/i,
+		});
+		await userEvent.click(confirmButton);
+
+		await expect(args.onDeleteBook).toHaveBeenCalled();
+		await expect(
+			canvas.findByText(/failed to delete book/i),
+		).resolves.toBeInTheDocument();
 	},
 };
 

@@ -1,26 +1,62 @@
+"use client";
+
 import type { Book } from "@calibre-web-serverless/domain/models/book";
 import {
 	Badge,
 	Box,
+	Button,
 	Card,
+	HStack,
 	IconButton,
 	Image,
 	Skeleton,
+	Span,
 	Text,
 	VStack,
 } from "@chakra-ui/react";
 import Link from "next/link";
-import { LuBook, LuPencil, LuTriangleAlert } from "react-icons/lu";
+import { useState } from "react";
+import { LuBook, LuPencil, LuTrash2, LuTriangleAlert } from "react-icons/lu";
+import {
+	DialogBody,
+	DialogCloseTrigger,
+	DialogContent,
+	DialogFooter,
+	DialogHeader,
+	DialogRoot,
+	DialogTitle,
+} from "@/components/ui/dialog";
 
 interface BookCardProps {
 	book: Book;
 	coverUrl: string | null;
 	coverLoading: boolean;
+	onDelete: () => Promise<void>;
 }
 
-export function BookCard({ book, coverUrl, coverLoading }: BookCardProps) {
+export function BookCard({
+	book,
+	coverUrl,
+	coverLoading,
+	onDelete,
+}: BookCardProps) {
 	const isProcessing = book.status === "processing";
 	const isError = book.status === "error";
+	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+	const [isDeleting, setIsDeleting] = useState(false);
+
+	const handleDelete = async () => {
+		setIsDeleting(true);
+		try {
+			await onDelete();
+			setIsDeleteDialogOpen(false);
+		} catch {
+			// Keep the dialog open so the user can retry; the failure is surfaced
+			// by the caller (e.g. a toast).
+		} finally {
+			setIsDeleting(false);
+		}
+	};
 
 	return (
 		<Card.Root
@@ -68,19 +104,71 @@ export function BookCard({ book, coverUrl, coverLoading }: BookCardProps) {
 
 			{!isProcessing && (
 				<Box position="absolute" top={2} right={2}>
-					<IconButton
-						asChild
-						aria-label="Edit book"
-						variant="surface"
-						size="sm"
-						rounded="full"
-					>
-						<Link href={`/dashboard/books/${book.id}/edit`}>
-							<LuPencil />
-						</Link>
-					</IconButton>
+					<HStack gap={1}>
+						<IconButton
+							asChild
+							aria-label="Edit book"
+							variant="surface"
+							size="sm"
+							rounded="full"
+						>
+							<Link href={`/dashboard/books/${book.id}/edit`}>
+								<LuPencil />
+							</Link>
+						</IconButton>
+						<IconButton
+							aria-label="Delete book"
+							variant="surface"
+							colorPalette="red"
+							size="sm"
+							rounded="full"
+							onClick={() => setIsDeleteDialogOpen(true)}
+						>
+							<LuTrash2 />
+						</IconButton>
+					</HStack>
 				</Box>
 			)}
+
+			<DialogRoot
+				role="alertdialog"
+				open={isDeleteDialogOpen}
+				onOpenChange={(e) => {
+					if (!isDeleting) {
+						setIsDeleteDialogOpen(e.open);
+					}
+				}}
+			>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>Delete Book</DialogTitle>
+					</DialogHeader>
+					<DialogBody>
+						<Text>
+							Are you sure you want to delete{" "}
+							<Span fontWeight="semibold">{book.title || "this book"}</Span>?
+							This action cannot be undone.
+						</Text>
+					</DialogBody>
+					<DialogFooter>
+						<Button
+							variant="outline"
+							onClick={() => setIsDeleteDialogOpen(false)}
+							disabled={isDeleting}
+						>
+							Cancel
+						</Button>
+						<Button
+							colorPalette="red"
+							onClick={handleDelete}
+							loading={isDeleting}
+						>
+							Delete
+						</Button>
+					</DialogFooter>
+					<DialogCloseTrigger disabled={isDeleting} />
+				</DialogContent>
+			</DialogRoot>
 		</Card.Root>
 	);
 }

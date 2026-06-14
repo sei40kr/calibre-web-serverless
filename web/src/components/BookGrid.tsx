@@ -13,6 +13,7 @@ interface BookGridProps {
 	books: Book[];
 	loading: boolean;
 	bookCoverInfos: Record<string, BookCoverInfo>;
+	onDeleteBook: (book: Book) => Promise<void>;
 }
 
 function BookCardSkeleton() {
@@ -27,7 +28,12 @@ function BookCardSkeleton() {
 	);
 }
 
-export function BookGrid({ books, loading, bookCoverInfos }: BookGridProps) {
+export function BookGrid({
+	books,
+	loading,
+	bookCoverInfos,
+	onDeleteBook,
+}: BookGridProps) {
 	if (loading) {
 		return (
 			<SimpleGrid columns={{ base: 2, sm: 3, md: 4, lg: 5, xl: 6 }} gap={4}>
@@ -59,6 +65,7 @@ export function BookGrid({ books, loading, bookCoverInfos }: BookGridProps) {
 						book={book}
 						coverUrl={coverInfo?.coverUrl ?? null}
 						coverLoading={coverInfo?.loading ?? false}
+						onDelete={() => onDeleteBook(book)}
 					/>
 				);
 			})}

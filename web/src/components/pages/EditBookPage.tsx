@@ -33,9 +33,16 @@ import {
 	VStack,
 	Wrap,
 } from "@chakra-ui/react";
-import { useCallback, useEffect, useId, useMemo, useRef } from "react";
+import {
+	useCallback,
+	useEffect,
+	useId,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { Controller, FormProvider, useForm } from "react-hook-form";
-import { LuArrowLeft, LuBook } from "react-icons/lu";
+import { LuArrowLeft, LuBook, LuTrash2 } from "react-icons/lu";
 import {
 	IdentifierFieldArray,
 	type IdentifierFormData,
@@ -49,6 +56,15 @@ import {
 	ComboboxItemText,
 	ComboboxLabel,
 } from "@/components/ui/combobox";
+import {
+	DialogBody,
+	DialogCloseTrigger,
+	DialogContent,
+	DialogFooter,
+	DialogHeader,
+	DialogRoot,
+	DialogTitle,
+} from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
 import {
 	NumberInputField,
@@ -122,6 +138,7 @@ export interface EditBookPageProps {
 	tagSuggestions: string[];
 	publisherNames: string[];
 	onUpdateBook: (params: UpdateBookParams) => Promise<void>;
+	onDeleteBook: () => Promise<void>;
 	onCancel: () => void;
 }
 
@@ -134,8 +151,11 @@ export function EditBookPage({
 	tagSuggestions,
 	publisherNames,
 	onUpdateBook,
+	onDeleteBook,
 	onCancel: onBack,
 }: EditBookPageProps) {
+	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+	const [isDeleting, setIsDeleting] = useState(false);
 	const methods = useForm<BookEditFormData>({
 		defaultValues: {
 			title: "",
@@ -356,6 +376,20 @@ export function EditBookPage({
 			});
 		}
 	};
+
+	const handleDelete = useCallback(async () => {
+		setIsDeleting(true);
+		try {
+			await onDeleteBook();
+		} catch {
+			setError("root", {
+				message: "Failed to delete book. Please try again.",
+			});
+			setIsDeleteDialogOpen(false);
+		} finally {
+			setIsDeleting(false);
+		}
+	}, [onDeleteBook, setError]);
 
 	return (
 		<Container maxW="container.lg" py={8}>
@@ -702,21 +736,71 @@ export function EditBookPage({
 							mx={-4}
 							px={4}
 						>
-							<HStack justify="flex-end">
-								<Button variant="outline" onClick={handleBack}>
-									Cancel
-								</Button>
+							<HStack justify="space-between">
 								<Button
-									type="submit"
-									colorPalette="blue"
-									loading={isSubmitting}
+									variant="outline"
+									colorPalette="red"
+									onClick={() => setIsDeleteDialogOpen(true)}
 								>
-									Save
+									<LuTrash2 />
+									Delete
 								</Button>
+								<HStack>
+									<Button variant="outline" onClick={handleBack}>
+										Cancel
+									</Button>
+									<Button
+										type="submit"
+										colorPalette="blue"
+										loading={isSubmitting}
+									>
+										Save
+									</Button>
+								</HStack>
 							</HStack>
 						</Box>
 					</form>
 				</FormProvider>
+
+				<DialogRoot
+					role="alertdialog"
+					open={isDeleteDialogOpen}
+					onOpenChange={(e) => {
+						if (!isDeleting) {
+							setIsDeleteDialogOpen(e.open);
+						}
+					}}
+				>
+					<DialogContent>
+						<DialogHeader>
+							<DialogTitle>Delete Book</DialogTitle>
+						</DialogHeader>
+						<DialogBody>
+							<Text>
+								Are you sure you want to delete{" "}
+								<Span fontWeight="semibold">{book.title || "this book"}</Span>?
+								This action cannot be undone.
+							</Text>
+						</DialogBody>
+						<DialogFooter>
+							<Button
+								variant="outline"
+								onClick={() => setIsDeleteDialogOpen(false)}
+								disabled={isDeleting}
+							>
+								Cancel
+							</Button>
+							<Button
+								colorPalette="red"
+								onClick={handleDelete}
+								loading={isDeleting}
+							>
+								Delete
+							</Button>
+						</DialogFooter>
+						<DialogCloseTrigger disabled={isDeleting} />
+					</DialogContent>
+				</DialogRoot>
 			</VStack>
 		</Container>
 	);

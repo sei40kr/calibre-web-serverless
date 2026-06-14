@@ -27,7 +27,8 @@ export interface BookDocument<Time> {
 	rating: number | null;
 	format: string;
 	fileSize: number;
-	coverFormat: string | null;
+	hasCover: boolean;
+	hasCustomCover: boolean;
 	status: BookStatus;
 	errorMessage: string | null;
 	createdAt: Time | null;

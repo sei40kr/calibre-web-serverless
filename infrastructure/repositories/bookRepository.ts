@@ -70,7 +70,8 @@ const bookConverter: FirestoreDataConverter<Book> = {
 			rating: book.rating,
 			format: book.format,
 			fileSize: book.fileSize,
-			coverFormat: book.coverFormat,
+			hasCover: book.hasCover,
+			hasCustomCover: book.hasCustomCover,
 			status: book.status,
 			errorMessage: book.errorMessage,
 			updatedAt: serverTimestamp(),
@@ -103,7 +104,8 @@ const bookConverter: FirestoreDataConverter<Book> = {
 			rating: d.rating,
 			format: d.format,
 			fileSize: d.fileSize,
-			coverFormat: d.coverFormat ?? null,
+			hasCover: d.hasCover ?? false,
+			hasCustomCover: d.hasCustomCover ?? false,
 			status: d.status ?? "ready",
 			errorMessage: d.errorMessage ?? null,
 			createdAt: d.createdAt?.toDate() ?? null,
@@ -245,7 +247,8 @@ const uploadBook = async ({ userId, file }: UploadBookParams) => {
 		rating: null,
 		format,
 		fileSize: file.size,
-		coverFormat: null,
+		hasCover: false,
+		hasCustomCover: false,
 		status: "processing",
 		errorMessage: null,
 		createdAt: serverTimestamp(),
@@ -347,7 +350,8 @@ const deleteBook = async (userId: string, bookId: string): Promise<void> => {
 	const bookRef = doc(db, "users", userId, "books", bookId);
 
 	let format: string | undefined;
-	let coverFormat: string | null = null;
+	let hasCover = false;
+	let hasCustomCover = false;
 
 	await runTransaction(db, async (transaction) => {
 		const bookDoc = await transaction.get(bookRef);
@@ -357,7 +361,8 @@ const deleteBook = async (userId: string, bookId: string): Promise<void> => {
 		}
 
 		format = bookData.format;
-		coverFormat = bookData.coverFormat ?? null;
+		hasCover = bookData.hasCover ?? false;
+		hasCustomCover = bookData.hasCustomCover ?? false;
 
 		const oldAuthorIds = bookData.authorIds ?? [];
 		const oldSeriesIds = bookData.seriesId ? [bookData.seriesId] : [];
@@ -396,10 +401,17 @@ const deleteBook = async (userId: string, bookId: string): Promise<void> => {
 			).catch(ignoreMissing),
 		);
 	}
-	if (coverFormat) {
+	if (hasCover) {
 		deletions.push(
 			deleteObject(
-				ref(storage, `users/${userId}/books/${bookId}/cover.${coverFormat}`),
+				ref(storage, `users/${userId}/books/${bookId}/cover.png`),
+			).catch(ignoreMissing),
+		);
+	}
+	if (hasCustomCover) {
+		deletions.push(
+			deleteObject(
+				ref(storage, `users/${userId}/books/${bookId}/custom_cover.png`),
 			).catch(ignoreMissing),
 		);
 	}

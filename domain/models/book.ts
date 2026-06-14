@@ -20,7 +20,10 @@ export interface Book {
 	rating: number | null;
 	format: string;
 	fileSize: number;
-	coverFormat: string | null;
+	/** Whether a metadata-extracted cover exists. */
+	hasCover: boolean;
+	/** Whether a user-uploaded custom cover is active. */
+	hasCustomCover: boolean;
 	status: BookStatus;
 	errorMessage: string | null;
 	createdAt: Date | null;

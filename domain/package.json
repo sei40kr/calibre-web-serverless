@@ -5,6 +5,7 @@
 	"type": "module",
 	"exports": {
 		"./models/book": "./models/book.ts",
+		"./models/bookCover": "./models/bookCover.ts",
 		"./models/author": "./models/author.ts",
 		"./models/series": "./models/series.ts",
 		"./models/tag": "./models/tag.ts",

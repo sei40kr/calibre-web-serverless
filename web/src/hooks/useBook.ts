@@ -8,18 +8,28 @@ export const useBook = (userId: string, bookId: string) => {
 	const [error, setError] = useState<Error | null>(null);
 
 	useEffect(() => {
+		if (!userId || !bookId) return;
+
+		let active = true;
 		setLoading(true);
+		setError(null);
 
 		bookRepository
 			.getBook(userId, bookId)
 			.then((bookData) => {
+				if (!active) return;
 				setBook(bookData);
 				setLoading(false);
 			})
 			.catch((err) => {
+				if (!active) return;
 				setError(err);
 				setLoading(false);
 			});
+
+		return () => {
+			active = false;
+		};
 	}, [userId, bookId]);
 
 	return { book, loading, error };

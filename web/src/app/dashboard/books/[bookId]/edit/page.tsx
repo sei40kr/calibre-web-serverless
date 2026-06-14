@@ -6,8 +6,8 @@ import { bookRepository } from "@calibre-web-serverless/infrastructure/repositor
 import { publisherRepository } from "@calibre-web-serverless/infrastructure/repositories/publisherRepository";
 import { seriesRepository } from "@calibre-web-serverless/infrastructure/repositories/seriesRepository";
 import { tagRepository } from "@calibre-web-serverless/infrastructure/repositories/tagRepository";
-import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useCallback, useMemo } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
 import { BookNotFoundPage } from "@/components/pages/BookNotFoundPage";
 import {
@@ -25,13 +25,13 @@ import { useSeries } from "@/hooks/useSeries";
 import { useTags } from "@/hooks/useTags";
 
 export default function EditBookRoute() {
-	// This route is served as a static shell (rewritten from any book id), so
-	// the prerendered route params are a placeholder. Read the real id from the
-	// browser URL instead.
-	const [bookId] = useState(() => {
-		if (typeof window === "undefined") return "";
-		return window.location.pathname.match(/\/books\/([^/]+)\/edit/)?.[1] ?? "";
-	});
+	// This route is served as a static shell (rewritten from any book id), so the
+	// prerendered route params are a placeholder. Derive the real id reactively
+	// from the browser path instead — usePathname() updates on client-side
+	// navigation, whereas a one-time window.location read can run before the URL
+	// has changed and capture an empty id.
+	const pathname = usePathname();
+	const bookId = pathname?.match(/\/books\/([^/]+)\/edit/)?.[1] ?? "";
 
 	return (
 		<AuthGuard>

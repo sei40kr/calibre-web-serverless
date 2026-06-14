@@ -108,9 +108,9 @@ export async function extractBookMetadata(
 		const title = metadata.title ?? titleFromFilename(originalName);
 		const entities = await resolveEntities(userId, metadata);
 
-		let coverFormat: string | null = null;
+		let hasCover = false;
 		if (metadata.coverImage) {
-			coverFormat = await uploadCover(
+			hasCover = await uploadCover(
 				bucketName,
 				userId,
 				bookId,
@@ -125,7 +125,7 @@ export async function extractBookMetadata(
 			description: metadata.description,
 			languages: entities.languages,
 			identifiers: entities.identifiers,
-			coverFormat,
+			hasCover,
 			pubDate: metadata.pubDate,
 		});
 

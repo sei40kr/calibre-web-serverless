@@ -1,20 +1,16 @@
 import { getStorage } from "firebase-admin/storage";
 import { logger } from "firebase-functions/v2";
-import sharp from "sharp";
+import { resizeCoverImage } from "../../shared/resizeCover";
 
-const MAX_COVER_WIDTH = 1024;
-
+/** Resizes and stores the extracted cover as cover.png. Returns whether it saved. */
 export async function uploadCover(
 	bucketName: string,
 	userId: string,
 	bookId: string,
 	coverImage: Buffer,
-): Promise<string | null> {
+): Promise<boolean> {
 	try {
-		const pngBuffer = await sharp(coverImage)
-			.resize({ width: MAX_COVER_WIDTH, withoutEnlargement: true })
-			.png()
-			.toBuffer();
+		const pngBuffer = await resizeCoverImage(coverImage);
 
 		const coverPath = `users/${userId}/books/${bookId}/cover.png`;
 		const bucket = getStorage().bucket(bucketName);
@@ -22,9 +18,9 @@ export async function uploadCover(
 		await coverFile.save(pngBuffer, {
 			metadata: { contentType: "image/png" },
 		});
-		return "png";
+		return true;
 	} catch (err) {
 		logger.warn("Failed to process cover image", { error: err });
-		return null;
+		return false;
 	}
 }

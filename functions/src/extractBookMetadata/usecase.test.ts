@@ -29,7 +29,7 @@ async function createStubBook(userId: string, bookId: string): Promise<void> {
 		description: null,
 		languages: [],
 		identifiers: [],
-		coverFormat: null,
+		hasCover: false,
 		status: "uploading",
 		errorMessage: null,
 		createdAt: FieldValue.serverTimestamp(),
@@ -111,7 +111,7 @@ describe("extractBookMetadata", () => {
 		expect(book.title).toBe("Alice's Adventures in Wonderland");
 		expect(book.languages).toContain("en");
 		expect(book.authorIds).toHaveLength(1);
-		expect(book.coverFormat).toBe("png");
+		expect(book.hasCover).toBe(true);
 
 		// Verify author doc was created
 		const authorsSnap = await db

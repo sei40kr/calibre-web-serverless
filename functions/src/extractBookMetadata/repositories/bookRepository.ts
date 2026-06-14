@@ -24,7 +24,7 @@ export async function updateBookMetadata(
 		description: string | null;
 		languages: Language[];
 		identifiers: Identifier[];
-		coverFormat: string | null;
+		hasCover: boolean;
 		pubDate: Date | null;
 	},
 ): Promise<void> {
@@ -42,7 +42,7 @@ export async function updateBookMetadata(
 			type: identifier.type.value,
 			value: identifier.value,
 		})),
-		coverFormat: data.coverFormat,
+		hasCover: data.hasCover,
 		pubDate: data.pubDate ? Timestamp.fromDate(data.pubDate) : null,
 		status: "ready",
 		errorMessage: null,

@@ -2,6 +2,7 @@
 
 import type { Book } from "@calibre-web-serverless/domain/models/book";
 import { authorRepository } from "@calibre-web-serverless/infrastructure/repositories/authorRepository";
+import { bookCoverRepository } from "@calibre-web-serverless/infrastructure/repositories/bookCoverRepository";
 import { bookRepository } from "@calibre-web-serverless/infrastructure/repositories/bookRepository";
 import { publisherRepository } from "@calibre-web-serverless/infrastructure/repositories/publisherRepository";
 import { seriesRepository } from "@calibre-web-serverless/infrastructure/repositories/seriesRepository";
@@ -55,7 +56,17 @@ function EditBookRouteContent({ userId, bookId }: EditBookRouteContentProps) {
 	const { coverUrl, loading: coverLoading } = useBookCoverUrl(
 		userId,
 		bookId,
-		book?.coverFormat ?? null,
+		book?.hasCover ?? false,
+		book?.hasCustomCover ?? false,
+		book?.updatedAt?.getTime(),
+	);
+	// The extracted cover, shown when previewing a reset of a custom cover.
+	const { coverUrl: originalCoverUrl } = useBookCoverUrl(
+		userId,
+		bookId,
+		book?.hasCover ?? false,
+		false,
+		book?.updatedAt?.getTime(),
 	);
 
 	const bookEditData: BookEditData | null = useMemo(() => {
@@ -154,13 +165,26 @@ function EditBookRouteContent({ userId, bookId }: EditBookRouteContentProps) {
 
 			await bookRepository.updateBook(userId, updatedBook);
 
+			// Apply the pending cover change alongside the metadata. A custom upload
+			// is resized and applied asynchronously by the resizeBookCover function;
+			// a reset clears the custom cover immediately.
+			if (params.coverChange?.type === "upload") {
+				await bookCoverRepository.uploadCustomCover({
+					userId,
+					bookId,
+					file: params.coverChange.file,
+				});
+			} else if (params.coverChange?.type === "reset") {
+				await bookCoverRepository.resetCustomCover({ userId, bookId });
+			}
+
 			toaster.success({
 				title: "Book updated",
 				description: `"${params.title}" has been updated.`,
 			});
 			router.push("/dashboard");
 		},
-		[book, userId, router],
+		[book, userId, bookId, router],
 	);
 
 	const handleDeleteBook = useCallback(async () => {
@@ -197,6 +221,8 @@ function EditBookRouteContent({ userId, bookId }: EditBookRouteContentProps) {
 			book={bookEditData}
 			coverUrl={coverUrl}
 			coverLoading={coverLoading}
+			originalCoverUrl={originalCoverUrl}
+			hasCustomCover={book?.hasCustomCover ?? false}
 			authorSuggestions={authorSuggestions}
 			seriesSuggestions={seriesSuggestions}
 			tagSuggestions={tagSuggestions}

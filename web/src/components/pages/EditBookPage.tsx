@@ -1,6 +1,10 @@
 "use client";
 
 import {
+	COVER_UPLOAD_ACCEPT,
+	MAX_COVER_UPLOAD_BYTES,
+} from "@calibre-web-serverless/domain/models/bookCover";
+import {
 	type Identifier,
 	IdentifierType,
 } from "@calibre-web-serverless/domain/models/identifier";
@@ -42,7 +46,14 @@ import {
 	useState,
 } from "react";
 import { Controller, FormProvider, useForm } from "react-hook-form";
-import { LuArrowLeft, LuBook, LuTrash2 } from "react-icons/lu";
+import {
+	LuArrowLeft,
+	LuBook,
+	LuImageUp,
+	LuRotateCcw,
+	LuTrash2,
+	LuUndo2,
+} from "react-icons/lu";
 import {
 	IdentifierFieldArray,
 	type IdentifierFormData,
@@ -66,6 +77,7 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
+import { FileUploadRoot, FileUploadTrigger } from "@/components/ui/file-upload";
 import {
 	NumberInputField,
 	NumberInputRoot,
@@ -77,6 +89,7 @@ import {
 	TagsInputLabel,
 	TagsInputRootProvider,
 } from "@/components/ui/tags-input";
+import { toaster } from "@/components/ui/toaster";
 import {
 	isNewItemValue,
 	useCreatableCombobox,
@@ -97,6 +110,16 @@ interface BookEditFormData {
 	identifiers: IdentifierFormData[];
 }
 
+/**
+ * A pending cover change, applied together with the book metadata on save:
+ * `upload` stages a new custom cover, `reset` reverts to the extracted cover,
+ * `null` leaves the cover untouched.
+ */
+export type CoverChange =
+	| { type: "upload"; file: File }
+	| { type: "reset" }
+	| null;
+
 export interface UpdateBookParams {
 	title: string;
 	sortTitle: string | null;
@@ -110,6 +133,7 @@ export interface UpdateBookParams {
 	languages: Language[];
 	rating: number | null;
 	identifiers: Identifier[];
+	coverChange: CoverChange;
 }
 
 export interface BookEditData {
@@ -131,8 +155,13 @@ export interface BookEditData {
 
 export interface EditBookPageProps {
 	book: BookEditData;
+	/** URL of the currently saved cover (custom if active, else extracted). */
 	coverUrl: string | null;
 	coverLoading: boolean;
+	/** URL of the metadata-extracted cover, shown when previewing a reset. */
+	originalCoverUrl: string | null;
+	/** Whether a custom cover is currently saved, enabling reset-to-original. */
+	hasCustomCover: boolean;
 	authorSuggestions: string[];
 	seriesSuggestions: string[];
 	tagSuggestions: string[];
@@ -142,10 +171,157 @@ export interface EditBookPageProps {
 	onCancel: () => void;
 }
 
+const ACCEPTED_COVER_EXT_LABEL = "PNG, JPEG, WebP";
+const MAX_COVER_UPLOAD_MB = Math.round(MAX_COVER_UPLOAD_BYTES / (1024 * 1024));
+
+interface CoverEditorProps {
+	previewUrl: string | null;
+	previewLoading: boolean;
+	title: string;
+	format: string;
+	fileSize: number;
+	/** A pending (unsaved) cover change exists. */
+	changed: boolean;
+	/** A saved custom cover can be reverted to the extracted one. */
+	canResetToOriginal: boolean;
+	disabled: boolean;
+	onPickFile: (file: File) => void;
+	onResetToOriginal: () => void;
+	onUndo: () => void;
+}
+
+function CoverEditor({
+	previewUrl,
+	previewLoading,
+	title,
+	format,
+	fileSize,
+	changed,
+	canResetToOriginal,
+	disabled,
+	onPickFile,
+	onResetToOriginal,
+	onUndo,
+}: CoverEditorProps) {
+	const handleFileChange = useCallback(
+		(details: {
+			acceptedFiles: File[];
+			rejectedFiles: { file: File; errors: string[] }[];
+		}) => {
+			const rejected = details.rejectedFiles[0];
+			if (rejected) {
+				const tooLarge = rejected.errors.includes("FILE_TOO_LARGE");
+				toaster.error({
+					title: "Couldn't use that image",
+					description: tooLarge
+						? `Image must be ${MAX_COVER_UPLOAD_MB} MB or smaller.`
+						: `Use a supported image type (${ACCEPTED_COVER_EXT_LABEL}).`,
+				});
+				return;
+			}
+
+			const file = details.acceptedFiles[0];
+			if (file) onPickFile(file);
+		},
+		[onPickFile],
+	);
+
+	return (
+		<Box>
+			<Box
+				position="relative"
+				bg="bg.muted"
+				aspectRatio={2 / 3}
+				borderRadius="md"
+				display="flex"
+				alignItems="center"
+				justifyContent="center"
+				flexDirection="column"
+				gap={2}
+				overflow="hidden"
+			>
+				{previewLoading ? (
+					<Skeleton width="100%" height="100%" />
+				) : previewUrl ? (
+					<Image
+						src={previewUrl}
+						alt={title || "Book cover"}
+						width="100%"
+						height="100%"
+						objectFit="cover"
+					/>
+				) : (
+					<>
+						<LuBook size={64} color="var(--chakra-colors-fg-muted)" />
+						<Text color="fg.muted" fontSize="sm">
+							Cover image
+						</Text>
+					</>
+				)}
+			</Box>
+			<Text color="fg.muted" fontSize="xs" mt={2} textAlign="center">
+				{format.toUpperCase()} &bull; <FormatByte value={fileSize} />
+			</Text>
+
+			<Stack gap={2} mt={3}>
+				<FileUploadRoot
+					maxFiles={1}
+					maxFileSize={MAX_COVER_UPLOAD_BYTES}
+					accept={COVER_UPLOAD_ACCEPT}
+					disabled={disabled}
+					onFileChange={handleFileChange}
+				>
+					<FileUploadTrigger asChild>
+						<Button
+							variant="outline"
+							size="sm"
+							width="full"
+							disabled={disabled}
+						>
+							<LuImageUp />
+							Upload cover
+						</Button>
+					</FileUploadTrigger>
+				</FileUploadRoot>
+				{canResetToOriginal && (
+					<Button
+						variant="ghost"
+						size="sm"
+						width="full"
+						disabled={disabled}
+						onClick={onResetToOriginal}
+					>
+						<LuRotateCcw />
+						Reset to original
+					</Button>
+				)}
+				{changed && (
+					<Button
+						variant="ghost"
+						size="sm"
+						width="full"
+						disabled={disabled}
+						onClick={onUndo}
+					>
+						<LuUndo2 />
+						Undo change
+					</Button>
+				)}
+				<Text color="fg.muted" fontSize="xs" textAlign="center">
+					{ACCEPTED_COVER_EXT_LABEL} up to {MAX_COVER_UPLOAD_MB} MB
+					{changed && " · saved when you click Save"}
+				</Text>
+			</Stack>
+		</Box>
+	);
+}
+
 export function EditBookPage({
 	book,
 	coverUrl,
 	coverLoading,
+	originalCoverUrl,
+	hasCustomCover,
 	authorSuggestions,
 	seriesSuggestions,
 	tagSuggestions,
@@ -156,6 +332,42 @@ export function EditBookPage({
 }: EditBookPageProps) {
 	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 	const [isDeleting, setIsDeleting] = useState(false);
+	const [coverChange, setCoverChange] = useState<CoverChange>(null);
+
+	// Show a local preview of the pending cover until the form is saved.
+	const [pendingPreviewUrl, setPendingPreviewUrl] = useState<string | null>(
+		null,
+	);
+	useEffect(() => {
+		if (coverChange?.type === "upload") {
+			const url = URL.createObjectURL(coverChange.file);
+			setPendingPreviewUrl(url);
+			return () => URL.revokeObjectURL(url);
+		}
+		setPendingPreviewUrl(null);
+	}, [coverChange]);
+
+	const coverPreviewUrl =
+		coverChange?.type === "upload"
+			? pendingPreviewUrl
+			: coverChange?.type === "reset"
+				? originalCoverUrl
+				: coverUrl;
+	const coverDirty = coverChange !== null;
+	// The preview already shows the extracted original when resetting, or when no
+	// custom cover is saved and nothing is staged. Offer reset only otherwise.
+	const coverPreviewIsOriginal =
+		coverChange?.type === "reset" || (coverChange === null && !hasCustomCover);
+
+	const handlePickCover = useCallback((file: File) => {
+		setCoverChange({ type: "upload", file });
+	}, []);
+	const handleResetCover = useCallback(() => {
+		setCoverChange({ type: "reset" });
+	}, []);
+	const handleUndoCover = useCallback(() => {
+		setCoverChange(null);
+	}, []);
 	const methods = useForm<BookEditFormData>({
 		defaultValues: {
 			title: "",
@@ -319,7 +531,7 @@ export function EditBookPage({
 	}, [book, reset]);
 
 	const handleBack = useCallback(() => {
-		if (isDirty) {
+		if (isDirty || coverDirty) {
 			const confirmed = window.confirm(
 				"You have unsaved changes. Are you sure you want to leave without saving?",
 			);
@@ -328,18 +540,18 @@ export function EditBookPage({
 			}
 		}
 		onBack();
-	}, [isDirty, onBack]);
+	}, [isDirty, coverDirty, onBack]);
 
 	useEffect(() => {
 		const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-			if (isDirty) {
+			if (isDirty || coverDirty) {
 				e.preventDefault();
 			}
 		};
 
 		window.addEventListener("beforeunload", handleBeforeUnload);
 		return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-	}, [isDirty]);
+	}, [isDirty, coverDirty]);
 
 	const onSubmit = async (data: BookEditFormData) => {
 		const allLangs = Language.all();
@@ -369,6 +581,7 @@ export function EditBookPage({
 				languages,
 				rating: data.rating || null,
 				identifiers,
+				coverChange,
 			});
 		} catch {
 			setError("root", {
@@ -408,42 +621,19 @@ export function EditBookPage({
 				<FormProvider {...methods}>
 					<form noValidate onSubmit={handleSubmit(onSubmit)}>
 						<Grid templateColumns={{ base: "1fr", md: "200px 1fr" }} gap={8}>
-							<Box>
-								<Box
-									bg="bg.muted"
-									aspectRatio={2 / 3}
-									borderRadius="md"
-									display="flex"
-									alignItems="center"
-									justifyContent="center"
-									flexDirection="column"
-									gap={2}
-									overflow="hidden"
-								>
-									{coverLoading ? (
-										<Skeleton width="100%" height="100%" />
-									) : coverUrl ? (
-										<Image
-											src={coverUrl}
-											alt={book.title || "Book cover"}
-											width="100%"
-											height="100%"
-											objectFit="cover"
-										/>
-									) : (
-										<>
-											<LuBook size={64} color="var(--chakra-colors-fg-muted)" />
-											<Text color="fg.muted" fontSize="sm">
-												Cover image
-											</Text>
-										</>
-									)}
-								</Box>
-								<Text color="fg.muted" fontSize="xs" mt={2} textAlign="center">
-									{book.format.toUpperCase()} &bull;{" "}
-									<FormatByte value={book.fileSize} />
-								</Text>
-							</Box>
+							<CoverEditor
+								previewUrl={coverPreviewUrl}
+								previewLoading={!coverDirty && coverLoading}
+								title={book.title}
+								format={book.format}
+								fileSize={book.fileSize}
+								changed={coverDirty}
+								canResetToOriginal={!coverPreviewIsOriginal}
+								disabled={isSubmitting}
+								onPickFile={handlePickCover}
+								onResetToOriginal={handleResetCover}
+								onUndo={handleUndoCover}
+							/>
 
 							<Fieldset.Root disabled={isSubmitting}>
 								<Fieldset.Content>

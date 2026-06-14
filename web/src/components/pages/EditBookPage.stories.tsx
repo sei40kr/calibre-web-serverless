@@ -39,6 +39,8 @@ const meta = {
 		book: mockBook,
 		coverUrl: coverPath,
 		coverLoading: false,
+		originalCoverUrl: coverPath,
+		hasCustomCover: false,
 		authorSuggestions: mockAuthorSuggestions,
 		seriesSuggestions: mockSeriesSuggestions,
 		tagSuggestions: mockTagSuggestions,

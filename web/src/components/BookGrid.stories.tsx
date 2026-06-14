@@ -20,7 +20,8 @@ const baseBook: Book = {
 	rating: null,
 	format: "epub",
 	fileSize: 189000,
-	coverFormat: "jpg",
+	hasCover: true,
+	hasCustomCover: false,
 	status: "ready",
 	errorMessage: null,
 	createdAt: new Date("2024-01-01"),
@@ -33,19 +34,19 @@ const mockBooks: Book[] = [
 		...baseBook,
 		id: "book-002",
 		title: "Rashomon",
-		coverFormat: "jpg",
+		hasCover: true,
 	},
 	{
 		...baseBook,
 		id: "book-003",
 		title: "The Metamorphosis",
-		coverFormat: "jpg",
+		hasCover: true,
 	},
 	{
 		...baseBook,
 		id: "book-004",
 		title: "I Am a Cat",
-		coverFormat: "jpg",
+		hasCover: true,
 	},
 ];
 

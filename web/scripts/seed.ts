@@ -8,6 +8,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import type { Book } from "@calibre-web-serverless/domain/models/book";
+import { MAX_COVER_WIDTH } from "@calibre-web-serverless/domain/models/bookCover";
 import {
 	AMAZON,
 	ISBN,
@@ -15,13 +16,14 @@ import {
 } from "@calibre-web-serverless/domain/models/identifier";
 import { Language } from "@calibre-web-serverless/domain/models/language";
 import { authorRepository } from "@calibre-web-serverless/infrastructure/repositories/authorRepository";
-import { bookCoverRepository } from "@calibre-web-serverless/infrastructure/repositories/bookCoverRepository";
+import { uploadExtractedCover } from "@calibre-web-serverless/infrastructure/repositories/bookCoverRepository";
 import { bookRepository } from "@calibre-web-serverless/infrastructure/repositories/bookRepository";
 import { seriesRepository } from "@calibre-web-serverless/infrastructure/repositories/seriesRepository";
 import { tagRepository } from "@calibre-web-serverless/infrastructure/repositories/tagRepository";
 import { authService } from "@calibre-web-serverless/infrastructure/services/authService";
 import { initializeApp as initializeAdminApp } from "firebase-admin/app";
 import { getAuth as getAdminAuth } from "firebase-admin/auth";
+import sharp from "sharp";
 
 const TEST_USER = {
 	email: "test@example.com",
@@ -210,18 +212,17 @@ async function main() {
 			book.fixtureName,
 			"cover.jpg",
 		);
-		let coverFormat: string | null = null;
+		let hasCover = false;
 		if (fs.existsSync(coverPath)) {
 			const coverBuffer = fs.readFileSync(coverPath);
-			const coverFile = new File([coverBuffer], "cover.jpg", {
-				type: "image/jpeg",
-			});
-			await bookCoverRepository.uploadCover({
-				userId,
-				bookId,
-				file: coverFile,
-			});
-			coverFormat = "jpg";
+			// Mirror the extractBookMetadata function: normalise to a size-bounded
+			// PNG so the seeded cover matches what the function would produce.
+			const pngData = await sharp(coverBuffer)
+				.resize({ width: MAX_COVER_WIDTH, withoutEnlargement: true })
+				.png()
+				.toBuffer();
+			await uploadExtractedCover({ userId, bookId, pngData });
+			hasCover = true;
 			console.log(`[seed] Uploaded cover for: ${book.fixtureName}`);
 		}
 
@@ -251,7 +252,8 @@ async function main() {
 			rating: book.rating ?? null,
 			format,
 			fileSize: fileBuffer.byteLength,
-			coverFormat,
+			hasCover,
+			hasCustomCover: false,
 			status: "ready",
 			errorMessage: null,
 			createdAt: now,

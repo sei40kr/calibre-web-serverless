@@ -11,10 +11,20 @@ service firebase.storage {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
+    // Custom cover uploads are capped tighter than book files. The resized
+    // cover.* / custom_cover.png are written server-side by Cloud Functions
+    // (admin SDK), which bypass these rules; clients only write book.* and
+    // cover_upload.* objects.
+    function coverUploadWithinLimit(fileName) {
+      return fileName.matches('cover_upload\\..*')
+        ? request.resource.size < 10 * 1024 * 1024
+        : request.resource.size < 100 * 1024 * 1024;
+    }
+
     match /users/{userId}/books/{bookId}/{fileName} {
       allow read: if isOwner(userId);
       allow create, update: if isOwner(userId)
-        && request.resource.size < 100 * 1024 * 1024;
+        && coverUploadWithinLimit(fileName);
       allow delete: if isOwner(userId);
     }
   }

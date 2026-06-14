@@ -1,5 +1,11 @@
 # -----------------------------------------------------------------------------
-# IAM for the book-metadata Cloud Function (2nd gen, Storage/Eventarc trigger)
+# IAM for the Cloud Functions (2nd gen, Storage/Eventarc triggers).
+#
+# Covers every Storage-triggered function in functions/src/index.ts
+# (extractBookMetadata, resizeBookCover, ...). All grants below are
+# project-level and the trigger plumbing (GCS -> Pub/Sub -> Eventarc) is
+# shared, so adding another onObjectFinalized function needs no Terraform
+# changes; firebase deploy --only functions ships it from the bundled source.
 # -----------------------------------------------------------------------------
 data "google_project" "this" {
   project_id = var.project_id

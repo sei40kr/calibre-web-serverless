@@ -36,7 +36,8 @@ jobs:
       - run: cat web/.env.${{ inputs.environment }} >>"$GITHUB_ENV"
       # Produces the static export in web/out, served as plain Firebase Hosting.
       - run: bun run build
-      # Bundle the metadata function into a single esbuild bundle for Cloud Functions.
+      # Bundle the Cloud Functions (extractBookMetadata, resizeBookCover) into a
+      # single esbuild bundle.
       - run: bun run --filter @calibre-web-serverless/functions build
       - uses: google-github-actions/auth@v2
         with:

@@ -39,6 +39,15 @@ jobs:
       # Bundle the Cloud Functions (extractBookMetadata, resizeBookCover) into a
       # single esbuild bundle.
       - run: bun run --filter @calibre-web-serverless/functions build
+      # esbuild inlines every devDependency (including the bun "workspace:*"
+      # domain/firestore-documents packages) into lib/index.js, so only the
+      # runtime deps need to ship. The workspace deps must stay declared for the
+      # build and tests to resolve them, but they cannot reach the upload: Cloud
+      # Build's npm cannot parse the bun-only "workspace:" protocol
+      # (EUNSUPPORTEDPROTOCOL). Strip devDependencies from the deployed manifest.
+      - run: |
+          jq 'del(.devDependencies)' functions/package.json >functions/package.json.tmp
+          mv functions/package.json.tmp functions/package.json
       - uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ vars.WIF_PROVIDER }}

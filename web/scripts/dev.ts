@@ -13,8 +13,8 @@ execSync("bun run build", { cwd: functionsDir, stdio: "inherit" });
 
 const { result } = concurrently(
 	[
-		"firebase emulators:start --project=demo-project --only auth,firestore,storage,functions,eventarc",
-		"wait-on http-get://127.0.0.1:8080 http-get://127.0.0.1:9099 tcp:9299 tcp:9199 tcp:5001 && bun run scripts/seed.ts && next dev --webpack",
+		"firebase emulators:start --project=demo-project --only hosting,auth,firestore,storage,functions,eventarc",
+		"wait-on http-get://127.0.0.1:8080 http-get://127.0.0.1:9099 tcp:9299 tcp:9199 tcp:5001 tcp:5000 && bun run scripts/seed.ts && next dev --webpack",
 	],
 	{
 		killOthersOn: ["failure", "success"],

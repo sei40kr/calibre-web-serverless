@@ -6,17 +6,26 @@
 	"exports": {
 		"./lib/firebase": "./lib/firebase.ts",
 		"./services/authService": "./services/authService.ts",
+		"./documents/book": "./documents/book.ts",
 		"./repositories/bookRepository": "./repositories/bookRepository.ts",
 		"./repositories/bookCoverRepository": "./repositories/bookCoverRepository.ts",
 		"./repositories/authorRepository": "./repositories/authorRepository.ts",
 		"./repositories/seriesRepository": "./repositories/seriesRepository.ts",
 		"./repositories/tagRepository": "./repositories/tagRepository.ts",
-		"./repositories/publisherRepository": "./repositories/publisherRepository.ts"
+		"./repositories/publisherRepository": "./repositories/publisherRepository.ts",
+		"./admin/repositories/bookRepository": "./admin/repositories/bookRepository.ts",
+		"./admin/repositories/bookCoverRepository": "./admin/repositories/bookCoverRepository.ts",
+		"./admin/repositories/authorRepository": "./admin/repositories/authorRepository.ts",
+		"./admin/repositories/publisherRepository": "./admin/repositories/publisherRepository.ts",
+		"./admin/repositories/tagRepository": "./admin/repositories/tagRepository.ts",
+		"./admin/resizeCover": "./admin/resizeCover.ts"
 	},
 	"dependencies": {
 		"@calibre-web-serverless/domain": "workspace:*",
-		"@calibre-web-serverless/firestore-documents": "workspace:*",
-		"firebase": "^12.8.0"
+		"firebase": "^12.8.0",
+		"firebase-admin": "^13.4.0",
+		"firebase-functions": "^6.3.2",
+		"sharp": "^0.34.1"
 	},
 	"devDependencies": {
 		"@types/node": "^20",

@@ -5,7 +5,10 @@ beforeAll(() => {
 	try {
 		getApp();
 	} catch {
-		initializeApp({ projectId: process.env.GCLOUD_PROJECT });
+		initializeApp({
+			projectId: process.env.GCLOUD_PROJECT,
+			storageBucket: `${process.env.GCLOUD_PROJECT}.appspot.com`,
+		});
 	}
 });
 

@@ -12,15 +12,13 @@ export function parseStoragePath(
 export const extractBookMetadataFn = onObjectFinalized(
 	{ memory: "512MiB", timeoutSeconds: 120 },
 	async (event) => {
-		const { name, bucket: bucketName, metadata } = event.data;
+		const { name, metadata } = event.data;
 		if (!name) return;
 
 		const parsed = parseStoragePath(name);
 		if (!parsed) return;
 
 		await extractBookMetadata({
-			bucketName,
-			storagePath: name,
 			originalName: metadata?.originalName,
 			...parsed,
 		});

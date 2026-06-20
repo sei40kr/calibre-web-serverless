@@ -8,6 +8,8 @@
 			"domain/repositories/**",
 			"infrastructure/repositories/**",
 			"infrastructure/services/**",
+			"infrastructure/admin/**",
+			"infrastructure/documents/**",
 			"functions/src/**",
 			"web/src/**",
 			"!web/src/components/ui"

@@ -93,11 +93,9 @@ describe("extractBookMetadata", () => {
 		);
 
 		await extractBookMetadata({
-			bucketName: BUCKET_NAME,
 			userId: TEST_USER_ID,
 			bookId,
 			format: "epub",
-			storagePath,
 		});
 
 		const db = getFirestore();
@@ -142,11 +140,9 @@ describe("extractBookMetadata", () => {
 		await bucket.file(storagePath).save(Buffer.from("not a valid epub"));
 
 		await extractBookMetadata({
-			bucketName: BUCKET_NAME,
 			userId: TEST_USER_ID,
 			bookId,
 			format: "epub",
-			storagePath,
 		});
 
 		const db = getFirestore();
@@ -168,11 +164,9 @@ describe("extractBookMetadata", () => {
 		await uploadBuffer(storagePath, Buffer.from("plain text content"));
 
 		await extractBookMetadata({
-			bucketName: BUCKET_NAME,
 			userId: TEST_USER_ID,
 			bookId,
 			format: "txt",
-			storagePath,
 			originalName: "my-great-book.txt",
 		});
 
@@ -197,11 +191,9 @@ describe("extractBookMetadata", () => {
 		await uploadBuffer(storagePath, epub);
 
 		await extractBookMetadata({
-			bucketName: BUCKET_NAME,
 			userId: TEST_USER_ID,
 			bookId,
 			format: "epub",
-			storagePath,
 		});
 
 		const db = getFirestore();
@@ -229,11 +221,9 @@ describe("extractBookMetadata", () => {
 		await uploadBuffer(storagePath, epub);
 
 		await extractBookMetadata({
-			bucketName: BUCKET_NAME,
 			userId: TEST_USER_ID,
 			bookId,
 			format: "epub",
-			storagePath,
 		});
 
 		const db = getFirestore();
@@ -267,11 +257,9 @@ describe("extractBookMetadata", () => {
 		await uploadBuffer(storagePath, epub);
 
 		await extractBookMetadata({
-			bucketName: BUCKET_NAME,
 			userId: TEST_USER_ID,
 			bookId,
 			format: "epub",
-			storagePath,
 		});
 
 		const db = getFirestore();
@@ -315,11 +303,9 @@ describe("extractBookMetadata", () => {
 		await uploadBuffer(storagePath, epub);
 
 		await extractBookMetadata({
-			bucketName: BUCKET_NAME,
 			userId: TEST_USER_ID,
 			bookId,
 			format: "epub",
-			storagePath,
 		});
 
 		const bookSnap = await db

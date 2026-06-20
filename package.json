@@ -3,7 +3,6 @@
 	"private": true,
 	"workspaces": [
 		"domain",
-		"firestore-documents",
 		"infrastructure",
 		"functions",
 		"web"

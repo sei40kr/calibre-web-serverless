@@ -8,23 +8,17 @@ import {
 	ISBN13,
 } from "@calibre-web-serverless/domain/models/identifier";
 import { Language } from "@calibre-web-serverless/domain/models/language";
+import { authorRepository } from "@calibre-web-serverless/infrastructure/admin/repositories/authorRepository";
+import { bookCoverRepository } from "@calibre-web-serverless/infrastructure/admin/repositories/bookCoverRepository";
+import { bookRepository } from "@calibre-web-serverless/infrastructure/admin/repositories/bookRepository";
+import { publisherRepository } from "@calibre-web-serverless/infrastructure/admin/repositories/publisherRepository";
 import { logger } from "firebase-functions/v2";
 import { type ExtractedMetadata, extractMetadata } from "./extractors";
-import { findOrCreateAuthor } from "./repositories/authorRepository";
-import { uploadCover } from "./repositories/bookCoverRepository";
-import {
-	downloadBookFile,
-	setBookError,
-	updateBookMetadata,
-} from "./repositories/bookRepository";
-import { findOrCreatePublisher } from "./repositories/publisherRepository";
 
 export interface ExtractBookMetadataParams {
-	bucketName: string;
 	userId: string;
 	bookId: string;
 	format: string;
-	storagePath: string;
 	/** Original upload filename, used as a fallback title source. */
 	originalName?: string;
 }
@@ -68,13 +62,17 @@ async function resolveEntities(
 }> {
 	const authorIds: string[] = [];
 	for (const authorName of metadata.authors) {
-		const authorId = await findOrCreateAuthor(userId, authorName);
-		authorIds.push(authorId);
+		authorIds.push(
+			await authorRepository.findOrCreateAuthor(userId, authorName),
+		);
 	}
 
 	let publisherId: string | null = null;
 	if (metadata.publisher) {
-		publisherId = await findOrCreatePublisher(userId, metadata.publisher);
+		publisherId = await publisherRepository.findOrCreatePublisher(
+			userId,
+			metadata.publisher,
+		);
 	}
 
 	const identifiers = metadata.identifiers
@@ -96,30 +94,37 @@ async function resolveEntities(
 export async function extractBookMetadata(
 	params: ExtractBookMetadataParams,
 ): Promise<void> {
-	const { bucketName, userId, bookId, format, storagePath, originalName } =
-		params;
+	const { userId, bookId, format, originalName } = params;
+
+	const book = await bookRepository.getBook(userId, bookId);
+	if (!book) {
+		logger.warn("Book not found for extraction", { userId, bookId });
+		return;
+	}
 
 	try {
-		const fileBuffer = await downloadBookFile(bucketName, storagePath);
+		const fileBuffer = await bookRepository.downloadBookFile(
+			userId,
+			bookId,
+			format,
+		);
 		const metadata = await extractMetadata(format, fileBuffer);
 
-		// null when neither the file nor the filename yields a title; the
-		// repository stores that as an empty title.
+		// null when neither the file nor the filename yields a title; stored as "".
 		const title = metadata.title ?? titleFromFilename(originalName);
 		const entities = await resolveEntities(userId, metadata);
 
-		let hasCover = false;
-		if (metadata.coverImage) {
-			hasCover = await uploadCover(
-				bucketName,
-				userId,
-				bookId,
-				metadata.coverImage,
-			);
-		}
+		const hasCover = metadata.coverImage
+			? await bookCoverRepository.saveExtractedCover(
+					userId,
+					bookId,
+					metadata.coverImage,
+				)
+			: false;
 
-		await updateBookMetadata(userId, bookId, {
-			title,
+		await bookRepository.updateBook(userId, {
+			...book,
+			title: title ?? "",
 			authorIds: entities.authorIds,
 			publisherId: entities.publisherId,
 			description: metadata.description,
@@ -127,24 +132,32 @@ export async function extractBookMetadata(
 			identifiers: entities.identifiers,
 			hasCover,
 			pubDate: metadata.pubDate,
+			status: "ready",
+			errorMessage: null,
 		});
 
 		logger.info(`Processed book ${bookId} for user ${userId}`, {
 			title,
 			format,
-			hasCovers: !!metadata.coverImage,
+			hasCover,
 			authorCount: entities.authorIds.length,
 		});
 	} catch (error) {
-		logger.error("Failed to extract book metadata", {
-			bookId,
-			userId,
-			error,
-		});
-		await setBookError(
-			userId,
-			bookId,
-			error instanceof Error ? error.message : "Failed to process book",
-		);
+		logger.error("Failed to extract book metadata", { bookId, userId, error });
+		await bookRepository
+			.updateBook(userId, {
+				...book,
+				status: "error",
+				errorMessage:
+					error instanceof Error ? error.message : "Failed to process book",
+			})
+			.catch((err) => {
+				// The book doc may have been deleted before processing finished.
+				logger.warn("Failed to record book error status", {
+					userId,
+					bookId,
+					err,
+				});
+			});
 	}
 }

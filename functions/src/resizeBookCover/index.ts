@@ -20,17 +20,16 @@ export function parseCoverUploadPath(
 export const resizeBookCoverFn = onObjectFinalized(
 	{ memory: "512MiB", timeoutSeconds: 120 },
 	async (event) => {
-		const { name, bucket: bucketName, size } = event.data;
+		const { name, size } = event.data;
 		if (!name) return;
 
 		const parsed = parseCoverUploadPath(name);
 		if (!parsed) return;
 
 		await resizeBookCover({
-			bucketName,
 			userId: parsed.userId,
 			bookId: parsed.bookId,
-			storagePath: name,
+			ext: parsed.ext,
 			size: typeof size === "number" ? size : Number(size) || undefined,
 		});
 	},

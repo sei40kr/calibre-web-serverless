@@ -7,10 +7,6 @@ import {
 } from "@calibre-web-serverless/domain/models/identifier";
 import { Language } from "@calibre-web-serverless/domain/models/language";
 import type { BookRepository } from "@calibre-web-serverless/domain/repositories/bookRepository";
-import type {
-	BookDocument as BaseBookDocument,
-	IdentifierDocument,
-} from "@calibre-web-serverless/firestore-documents/book";
 import { FirebaseError } from "firebase/app";
 import {
 	collection,
@@ -38,6 +34,10 @@ import {
 	ref,
 	uploadBytes,
 } from "firebase/storage";
+import type {
+	BookDocument as BaseBookDocument,
+	IdentifierDocument,
+} from "../documents/book";
 import { db, storage } from "../lib/firebase";
 
 const toIdentifier = (doc: IdentifierDocument): Identifier => {

@@ -58,10 +58,9 @@ describe("resizeBookCover", () => {
 		await uploadRaw(uploadPath, fs.readFileSync(coverFixture));
 
 		await resizeBookCover({
-			bucketName: BUCKET_NAME,
 			userId: TEST_USER_ID,
 			bookId,
-			storagePath: uploadPath,
+			ext: "jpg",
 		});
 
 		expect(
@@ -82,10 +81,9 @@ describe("resizeBookCover", () => {
 		await uploadRaw(uploadPath, fs.readFileSync(coverFixture));
 
 		await resizeBookCover({
-			bucketName: BUCKET_NAME,
 			userId: TEST_USER_ID,
 			bookId,
-			storagePath: uploadPath,
+			ext: "jpg",
 			size: 50 * 1024 * 1024,
 		});
 
@@ -107,10 +105,9 @@ describe("resizeBookCover", () => {
 		await uploadRaw(uploadPath, Buffer.from("not an image"));
 
 		await resizeBookCover({
-			bucketName: BUCKET_NAME,
 			userId: TEST_USER_ID,
 			bookId,
-			storagePath: uploadPath,
+			ext: "jpg",
 		});
 
 		expect(

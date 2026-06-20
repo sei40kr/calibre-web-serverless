@@ -1,17 +1,12 @@
 import { MAX_COVER_UPLOAD_BYTES } from "@calibre-web-serverless/domain/models/bookCover";
+import { bookCoverRepository } from "@calibre-web-serverless/infrastructure/admin/repositories/bookCoverRepository";
 import { logger } from "firebase-functions/v2";
-import {
-	deleteUpload,
-	downloadUpload,
-	saveCustomCover,
-} from "./repositories/bookCoverRepository";
-import { setHasCustomCover } from "./repositories/bookRepository";
 
 export interface ResizeBookCoverParams {
-	bucketName: string;
 	userId: string;
 	bookId: string;
-	storagePath: string;
+	/** Extension of the raw upload object (`cover_upload.{ext}`). */
+	ext: string;
 	/** Object size in bytes, as reported by the Storage event (if known). */
 	size?: number;
 }
@@ -19,13 +14,13 @@ export interface ResizeBookCoverParams {
 /**
  * Resizes a user-uploaded raw cover into the book's custom cover. The raw upload
  * is always removed afterwards (success or failure) so staging objects never
- * linger. An oversized or undecodable upload is dropped without flipping the
- * custom-cover flag.
+ * linger. An oversized or undecodable upload is dropped without activating a
+ * custom cover.
  */
 export async function resizeBookCover(
 	params: ResizeBookCoverParams,
 ): Promise<void> {
-	const { bucketName, userId, bookId, storagePath, size } = params;
+	const { userId, bookId, ext, size } = params;
 
 	try {
 		if (size !== undefined && size > MAX_COVER_UPLOAD_BYTES) {
@@ -38,7 +33,11 @@ export async function resizeBookCover(
 			return;
 		}
 
-		const uploadBuffer = await downloadUpload(bucketName, storagePath);
+		const uploadBuffer = await bookCoverRepository.downloadCoverUpload(
+			userId,
+			bookId,
+			ext,
+		);
 
 		if (uploadBuffer.byteLength > MAX_COVER_UPLOAD_BYTES) {
 			logger.warn("Rejected oversized cover upload", {
@@ -50,13 +49,11 @@ export async function resizeBookCover(
 			return;
 		}
 
-		await saveCustomCover(bucketName, userId, bookId, uploadBuffer);
-		await setHasCustomCover(userId, bookId, true);
-
+		await bookCoverRepository.saveCustomCover(userId, bookId, uploadBuffer);
 		logger.info(`Applied custom cover for book ${bookId}`, { userId });
 	} catch (error) {
 		logger.error("Failed to resize custom cover", { userId, bookId, error });
 	} finally {
-		await deleteUpload(bucketName, storagePath);
+		await bookCoverRepository.deleteCoverUpload(userId, bookId, ext);
 	}
 }

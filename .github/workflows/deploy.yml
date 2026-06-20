@@ -36,18 +36,23 @@ jobs:
       - run: cat web/.env.${{ inputs.environment }} >>"$GITHUB_ENV"
       # Produces the static export in web/out, served as plain Firebase Hosting.
       - run: bun run build
-      # Bundle the Cloud Functions (extractBookMetadata, resizeBookCover) into a
-      # single esbuild bundle.
+      # Bundle the Cloud Functions (extractBookMetadata, resizeBookCover, opds)
+      # into a single esbuild bundle.
       - run: bun run --filter @calibre-web-serverless/functions build
       # esbuild inlines every devDependency (including the bun "workspace:*"
-      # domain/firestore-documents packages) into lib/index.js, so only the
-      # runtime deps need to ship. The workspace deps must stay declared for the
-      # build and tests to resolve them, but they cannot reach the upload: Cloud
+      # domain/infrastructure packages) into lib/index.js, so only the runtime
+      # deps need to ship. The workspace deps must stay declared for the build
+      # and tests to resolve them, but they cannot reach the upload: Cloud
       # Build's npm cannot parse the bun-only "workspace:" protocol
       # (EUNSUPPORTEDPROTOCOL). Strip devDependencies from the deployed manifest.
       - run: |
           jq 'del(.devDependencies)' functions/package.json >functions/package.json.tmp
           mv functions/package.json.tmp functions/package.json
+      # The OPDS function verifies Basic-auth credentials against Identity
+      # Toolkit, which needs the project's (public) web API key at runtime.
+      # Firebase loads functions/.env.<projectId> into the function environment
+      # at deploy; NEXT_PUBLIC_FIREBASE_API_KEY comes from the web env loaded above.
+      - run: echo "OPDS_WEB_API_KEY=$NEXT_PUBLIC_FIREBASE_API_KEY" >"functions/.env.${{ vars.FIREBASE_PROJECT_ID }}"
       - uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ vars.WIF_PROVIDER }}

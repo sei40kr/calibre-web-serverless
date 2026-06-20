@@ -5,6 +5,14 @@
 		"ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
 		"rewrites": [
 			{
+				"source": "/opds",
+				"function": "opds"
+			},
+			{
+				"source": "/opds/**",
+				"function": "opds"
+			},
+			{
 				"regex": "^/dashboard/books/[^/]+/edit/?$",
 				"destination": "/dashboard/books/__shell__/edit.html"
 			}

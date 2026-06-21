@@ -14,6 +14,7 @@ locals {
   deploy_roles = [
     "roles/firebasehosting.admin",
     "roles/datastore.user",
+    "roles/datastore.indexAdmin",
     "roles/firebaserules.admin",
     "roles/storage.admin",
     # Deploying storage rules resolves the project's default bucket, which needs

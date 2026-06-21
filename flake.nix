@@ -45,7 +45,11 @@
         pre-commit-check = git-hooks.lib.${system}.run {
           src = ./.;
           hooks = {
-            biome.enable = true;
+            biome = {
+              enable = true;
+              # Don't fail when every staged file is ignored by biome's own config.
+              args = [ "--no-errors-on-unmatched" ];
+            };
             nil.enable = true;
             statix.enable = true;
             treefmt = {

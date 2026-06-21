@@ -73,6 +73,11 @@
             export PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
             export PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=${pkgs.chromium}/bin/chromium
 
+            # sharp's prebuilt native binary needs libstdc++ at runtime.
+            export LD_LIBRARY_PATH=${
+              pkgs.lib.makeLibraryPath [ pkgs.stdenv.cc.cc.lib ]
+            }''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+
             ${pre-commit-check.shellHook}
           '';
         };

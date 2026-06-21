@@ -12,12 +12,14 @@
 		"build": "bun run --filter @calibre-web-serverless/web build",
 		"test": "vitest",
 		"test:e2e": "bun run --filter @calibre-web-serverless/web test:e2e",
+		"typecheck": "bun run --filter '*' typecheck",
 		"lint": "biome check",
 		"format": "biome format --write",
 		"storybook": "bun run --filter @calibre-web-serverless/web storybook"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.2.0",
+		"@typescript/native-preview": "7.0.0-dev.20260620.1",
 		"typescript": "^5",
 		"vite": "^7.3.1",
 		"vitest": "^4.0.17"

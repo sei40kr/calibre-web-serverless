@@ -3,6 +3,9 @@
 	"version": "0.0.0",
 	"private": true,
 	"type": "module",
+	"scripts": {
+		"typecheck": "tsgo -p tsconfig.json"
+	},
 	"exports": {
 		"./lib/firebase": "./lib/firebase.ts",
 		"./services/authService": "./services/authService.ts",

@@ -5,6 +5,7 @@
 	"scripts": {
 		"dev": "bun run scripts/dev.ts",
 		"build": "NODE_ENV=production next build --webpack",
+		"typecheck": "tsgo -p tsconfig.json",
 		"test": "vitest",
 		"test:e2e": "playwright test",
 		"test:e2e:ui": "playwright test --ui",

@@ -3,6 +3,9 @@
 	"version": "0.0.0",
 	"private": true,
 	"type": "module",
+	"scripts": {
+		"typecheck": "tsgo -p tsconfig.json"
+	},
 	"exports": {
 		"./models/book": "./models/book.ts",
 		"./models/bookCover": "./models/bookCover.ts",

@@ -6,7 +6,8 @@
 	"main": "lib/index.js",
 	"scripts": {
 		"build": "esbuild src/index.ts --bundle --platform=node --target=node22 --format=esm --outfile=lib/index.js --external:firebase-admin --external:firebase-functions --external:sharp",
-		"build:watch": "bun run build --watch"
+		"build:watch": "bun run build --watch",
+		"typecheck": "tsgo -p tsconfig.json"
 	},
 	"dependencies": {
 		"firebase-admin": "^13.4.0",

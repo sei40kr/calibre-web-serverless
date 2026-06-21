@@ -16,9 +16,7 @@ jobs:
           key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
           restore-keys: bun-${{ runner.os }}-
       - run: bun install --frozen-lockfile
-      - run: bun run tsc --noEmit -p domain/tsconfig.json
-      - run: bun run tsc --noEmit -p infrastructure/tsconfig.json
-      - run: bun run tsc --noEmit -p web/tsconfig.json
+      - run: bun run typecheck
 
   lint:
     runs-on: ubuntu-latest

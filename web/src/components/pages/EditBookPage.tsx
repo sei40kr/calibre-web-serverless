@@ -4,6 +4,10 @@ import {
 	COVER_UPLOAD_ACCEPT,
 	MAX_COVER_UPLOAD_BYTES,
 } from "@calibre-web-serverless/domain/models/bookCover";
+import type {
+	BookMetadataSearchResponse,
+	BookMetadataSearchResult,
+} from "@calibre-web-serverless/domain/models/bookMetadataSearch";
 import {
 	type Identifier,
 	IdentifierType,
@@ -49,11 +53,13 @@ import { Controller, FormProvider, useForm } from "react-hook-form";
 import {
 	LuArrowLeft,
 	LuBook,
+	LuGlobe,
 	LuImageUp,
 	LuRotateCcw,
 	LuTrash2,
 	LuUndo2,
 } from "react-icons/lu";
+import { FetchMetadataDialog } from "@/components/FetchMetadataDialog";
 import {
 	IdentifierFieldArray,
 	type IdentifierFormData,
@@ -169,9 +175,26 @@ export interface EditBookPageProps {
 	onUpdateBook: (params: UpdateBookParams) => Promise<void>;
 	onDeleteBook: () => Promise<void>;
 	onCancel: () => void;
+	/** Search e-book stores for metadata. */
+	onSearchMetadata: (query: string) => Promise<BookMetadataSearchResponse>;
+	/** Download a chosen result's cover as a stageable file (null if none). */
+	onFetchCover: (result: BookMetadataSearchResult) => Promise<File | null>;
 }
 
 const ACCEPTED_COVER_EXT_LABEL = "PNG, JPEG, WebP";
+
+/**
+ * Normalise a store's publication date — a full ISO date, `YYYY-MM`, or a bare
+ * `YYYY` — into the `YYYY-MM-DD` value a date input expects. Missing month/day
+ * default to January 1st. Returns "" when unparseable.
+ */
+function metadataPubDateToInput(value: string | null): string {
+	if (!value) return "";
+	const match = value.match(/^(\d{4})(?:-(\d{2}))?(?:-(\d{2}))?/);
+	if (!match) return "";
+	const [, year, month = "01", day = "01"] = match;
+	return `${year}-${month}-${day}`;
+}
 const MAX_COVER_UPLOAD_MB = Math.round(MAX_COVER_UPLOAD_BYTES / (1024 * 1024));
 
 interface CoverEditorProps {
@@ -329,10 +352,14 @@ export function EditBookPage({
 	onUpdateBook,
 	onDeleteBook,
 	onCancel: onBack,
+	onSearchMetadata,
+	onFetchCover,
 }: EditBookPageProps) {
 	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 	const [isDeleting, setIsDeleting] = useState(false);
 	const [coverChange, setCoverChange] = useState<CoverChange>(null);
+	const [isMetadataDialogOpen, setIsMetadataDialogOpen] = useState(false);
+	const [metadataQuery, setMetadataQuery] = useState("");
 
 	// Show a local preview of the pending cover until the form is saved.
 	const [pendingPreviewUrl, setPendingPreviewUrl] = useState<string | null>(
@@ -391,6 +418,7 @@ export function EditBookPage({
 		reset,
 		control,
 		watch,
+		getValues,
 		setValue,
 		setError,
 		formState: { errors, isSubmitting, isDirty },
@@ -553,6 +581,74 @@ export function EditBookPage({
 		return () => window.removeEventListener("beforeunload", handleBeforeUnload);
 	}, [isDirty, coverDirty]);
 
+	const openMetadataDialog = useCallback(() => {
+		// Seed the search box from the current title + first author, mirroring
+		// calibre-web's behaviour of pre-filling a sensible query on open.
+		const title = getValues("title");
+		const firstAuthor = getValues("authorNames")[0];
+		setMetadataQuery([title, firstAuthor].filter(Boolean).join(" ").trim());
+		setIsMetadataDialogOpen(true);
+	}, [getValues]);
+
+	const handleSelectMetadata = useCallback(
+		async (result: BookMetadataSearchResult) => {
+			// Apply the chosen result into the form (not persisted yet — saved with
+			// the rest of the edits). Mark fields dirty so Save enables and the
+			// unsaved-changes guard kicks in.
+			const dirty = { shouldDirty: true } as const;
+
+			setValue("title", result.title, dirty);
+			if (result.authors.length > 0) {
+				setValue("authorNames", result.authors, dirty);
+			}
+			if (result.publisher) {
+				setValue("publisher", result.publisher, dirty);
+				publisherComboboxRef.current.setInputValue(result.publisher);
+			}
+			const pubDate = metadataPubDateToInput(result.publishedDate);
+			if (pubDate) setValue("pubDate", pubDate, dirty);
+			if (result.description) {
+				setValue("description", result.description, dirty);
+			}
+
+			const languageNames = result.languages
+				.map((code) => Language.from(code.slice(0, 2).toLowerCase())?.name)
+				.filter((name): name is string => !!name);
+			if (languageNames.length > 0) {
+				setValue("languages", languageNames, dirty);
+			}
+
+			if (result.tags.length > 0) {
+				setValue("tagNames", result.tags, dirty);
+			}
+
+			// Keep only identifiers whose type we support and whose value is valid,
+			// so an applied result never blocks saving on identifier validation.
+			const identifiers = result.identifiers.filter(({ type, value }) => {
+				const identifierType = IdentifierType.from(type);
+				return identifierType?.validate(value) === true;
+			});
+			if (identifiers.length > 0) {
+				setValue("identifiers", identifiers, dirty);
+			}
+
+			// Cover is downloaded server-side; treat it as best-effort so a cover
+			// failure never discards the metadata the user just applied.
+			if (result.coverUrl) {
+				try {
+					const file = await onFetchCover(result);
+					if (file) setCoverChange({ type: "upload", file });
+				} catch {
+					toaster.error({
+						title: "Couldn't fetch the cover image",
+						description: "The other details were applied.",
+					});
+				}
+			}
+		},
+		[setValue, onFetchCover],
+	);
+
 	const onSubmit = async (data: BookEditFormData) => {
 		const allLangs = Language.all();
 		const languages = data.languages.flatMap((name) => {
@@ -620,6 +716,16 @@ export function EditBookPage({
 
 				<FormProvider {...methods}>
 					<form noValidate onSubmit={handleSubmit(onSubmit)}>
+						<HStack justify="flex-end" mb={4}>
+							<Button
+								variant="outline"
+								onClick={openMetadataDialog}
+								disabled={isSubmitting}
+							>
+								<LuGlobe />
+								Fetch metadata
+							</Button>
+						</HStack>
 						<Grid templateColumns={{ base: "1fr", md: "200px 1fr" }} gap={8}>
 							<CoverEditor
 								previewUrl={coverPreviewUrl}
@@ -991,6 +1097,14 @@ export function EditBookPage({
 						<DialogCloseTrigger disabled={isDeleting} />
 					</DialogContent>
 				</DialogRoot>
+
+				<FetchMetadataDialog
+					open={isMetadataDialogOpen}
+					onOpenChange={setIsMetadataDialogOpen}
+					initialQuery={metadataQuery}
+					onSearch={onSearchMetadata}
+					onSelect={handleSelectMetadata}
+				/>
 			</VStack>
 		</Container>
 	);

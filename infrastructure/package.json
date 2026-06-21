@@ -9,6 +9,7 @@
 	"exports": {
 		"./lib/firebase": "./lib/firebase.ts",
 		"./services/authService": "./services/authService.ts",
+		"./services/bookMetadataSearchService": "./services/bookMetadataSearchService.ts",
 		"./documents/book": "./documents/book.ts",
 		"./repositories/bookRepository": "./repositories/bookRepository.ts",
 		"./repositories/bookCoverRepository": "./repositories/bookCoverRepository.ts",

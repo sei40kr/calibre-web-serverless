@@ -53,11 +53,33 @@ through the function instead, since it does not support signing).
 - Trade-off: a signed URL is accessible without authentication while it is valid.
   Keeping the expiry short limits the exposure.
 
+## Book metadata search (Cloud callables)
+
+`searchBookMetadata` and `fetchBookMetadataCover` both **require auth**
+(`request.auth`, else `unauthenticated`). Each search hits an external,
+quota-limited/billed API (Google Books) and the cover fetch makes a server-side
+download, so an open callable would invite an **API-cost / quota-exhaustion
+attack**. Auth limits callers to signed-in accounts; `fetchBookMetadataCover` also
+only fetches hosts on a Google allowlist (no open proxy).
+
+**Future scraping providers:** a provider that _scrapes_ a site instead of using a
+sanctioned API turns the callable into a request **amplifier** — a burst of
+searches becomes a burst of outbound requests, making us a **DoS stepping-stone**
+against that site (and risking IP bans / ToS violations). Before adding one: add
+per-user + global rate limiting (and App Check), cache by query, back off on
+`429`/`Retry-After`, respect `robots.txt`/ToS, and keep the host allowlist.
+
 ## Secrets and configuration
 
 The **Firebase Web API key** is a public value (it ships in the client config)
 and is not a secret. It is passed to the OPDS function via the
 `OPDS_WEB_API_KEY` environment variable (for the Identity Toolkit call).
+
+The **Google Books API key** (raises the metadata-search quota) _is_ a secret:
+stored in **Secret Manager** (`GOOGLE_BOOKS_API_KEY`, via Terraform) and bound to
+`searchBookMetadata` only when deployed (the emulator runs keyless, using
+`.envrc.local` if present). The runtime service account holds
+`roles/secretmanager.secretAccessor` on it.
 
 ## Planned improvements
 

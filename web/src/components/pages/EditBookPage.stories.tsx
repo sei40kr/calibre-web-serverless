@@ -12,6 +12,25 @@ const mockSeriesSuggestions = ["Alice Series", "The Lord of the Rings"];
 const mockTagSuggestions = ["Fantasy", "Classic", "Children"];
 const mockPublisherNames = ["Penguin Books", "HarperCollins", "Random House"];
 
+const mockSearchResult = {
+	source: "google_play_books",
+	sourceName: "Google Play Books",
+	id: "vol123",
+	title: "The Hobbit",
+	authors: ["J.R.R. Tolkien"],
+	publisher: "George Allen & Unwin",
+	publishedDate: "1937-09-21",
+	description: "A hobbit goes on an unexpected journey.",
+	languages: ["en"],
+	identifiers: [
+		{ type: "isbn13", value: "9780261103283" },
+		{ type: "google", value: "vol123" },
+	],
+	tags: ["Fantasy"],
+	coverUrl: coverPath,
+	infoUrl: "https://play.google.com/store/books/details?id=vol123",
+};
+
 const mockBook: BookEditData = {
 	title: "Alice's Adventures in Wonderland",
 	sortTitle: "Alice's Adventures in Wonderland",
@@ -48,6 +67,16 @@ const meta = {
 		onUpdateBook: fn(async () => {}),
 		onDeleteBook: fn(async () => {}),
 		onCancel: fn(),
+		onSearchMetadata: fn(async () => ({
+			results: [mockSearchResult],
+			errors: [],
+		})),
+		onFetchCover: fn(
+			async () =>
+				new File([new Uint8Array([1, 2, 3])], "cover.jpg", {
+					type: "image/jpeg",
+				}),
+		),
 	},
 } satisfies Meta<typeof EditBookPage>;
 
@@ -602,5 +631,67 @@ export const BeforeUnloadWithChanges: Story = {
 		win.dispatchEvent(event);
 
 		await expect(event.defaultPrevented).toBe(true);
+	},
+};
+
+export const FetchMetadataPrefillsAndSearchesOnOpen: Story = {
+	play: async ({ canvasElement, args }) => {
+		const canvas = within(canvasElement);
+		const body = within(canvasElement.ownerDocument.body);
+
+		await userEvent.click(
+			canvas.getByRole("button", { name: /fetch metadata/i }),
+		);
+
+		// Scope queries to the dialog: the edit form's author combobox also renders
+		// "J.R.R. Tolkien" as a suggestion in a portal.
+		const dialog = within(await body.findByRole("dialog"));
+
+		// The query is pre-filled from title + first author on open.
+		await expect(
+			dialog.getByPlaceholderText(/search by title, author/i),
+		).toHaveValue("Alice's Adventures in Wonderland Lewis Carroll");
+
+		// Opening the dialog runs the search automatically with the seeded query.
+		await expect(args.onSearchMetadata).toHaveBeenCalledWith(
+			"Alice's Adventures in Wonderland Lewis Carroll",
+		);
+		await expect(dialog.findByText("The Hobbit")).resolves.toBeInTheDocument();
+		await expect(dialog.getByText("J.R.R. Tolkien")).toBeInTheDocument();
+	},
+};
+
+export const FetchMetadataAppliesSelection: Story = {
+	play: async ({ canvasElement, args }) => {
+		const canvas = within(canvasElement);
+		const body = within(canvasElement.ownerDocument.body);
+
+		await userEvent.click(
+			canvas.getByRole("button", { name: /fetch metadata/i }),
+		);
+
+		// Results are populated by the automatic search on open.
+		const useButton = await body.findByRole("button", { name: /use this/i });
+		await userEvent.click(useButton);
+
+		// The chosen result is applied to the form (not yet saved) and its cover
+		// is downloaded.
+		await expect(args.onFetchCover).toHaveBeenCalled();
+		await expect(canvas.getByPlaceholderText(/enter book title/i)).toHaveValue(
+			"The Hobbit",
+		);
+		await expect(canvas.getByText("J.R.R. Tolkien")).toBeInTheDocument();
+		await expect(canvas.getByText("Fantasy")).toBeInTheDocument();
+
+		// Saving now persists the applied metadata.
+		await userEvent.click(canvas.getByRole("button", { name: /save/i }));
+		await expect(args.onUpdateBook).toHaveBeenCalled();
+		const call = (args.onUpdateBook as ReturnType<typeof fn>).mock.calls[0][0];
+		await expect(call.title).toBe("The Hobbit");
+		await expect(call.authorNames).toContain("J.R.R. Tolkien");
+		await expect(call.publisherName).toBe("George Allen & Unwin");
+		await expect(call.identifiers).toEqual([
+			expect.objectContaining({ value: "9780261103283" }),
+		]);
 	},
 };

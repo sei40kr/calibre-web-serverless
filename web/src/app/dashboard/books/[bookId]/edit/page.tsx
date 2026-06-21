@@ -1,12 +1,14 @@
 "use client";
 
 import type { Book } from "@calibre-web-serverless/domain/models/book";
+import type { BookMetadataSearchResult } from "@calibre-web-serverless/domain/models/bookMetadataSearch";
 import { authorRepository } from "@calibre-web-serverless/infrastructure/repositories/authorRepository";
 import { bookCoverRepository } from "@calibre-web-serverless/infrastructure/repositories/bookCoverRepository";
 import { bookRepository } from "@calibre-web-serverless/infrastructure/repositories/bookRepository";
 import { publisherRepository } from "@calibre-web-serverless/infrastructure/repositories/publisherRepository";
 import { seriesRepository } from "@calibre-web-serverless/infrastructure/repositories/seriesRepository";
 import { tagRepository } from "@calibre-web-serverless/infrastructure/repositories/tagRepository";
+import { bookMetadataSearchService } from "@calibre-web-serverless/infrastructure/services/bookMetadataSearchService";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useMemo } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
@@ -202,6 +204,17 @@ function EditBookRouteContent({ userId, bookId }: EditBookRouteContentProps) {
 		router.push("/dashboard");
 	}, [router]);
 
+	const handleSearchMetadata = useCallback(
+		(query: string) => bookMetadataSearchService.search(query),
+		[],
+	);
+
+	const handleFetchCover = useCallback(
+		(result: BookMetadataSearchResult) =>
+			bookMetadataSearchService.fetchCover(result),
+		[],
+	);
+
 	if (
 		loading ||
 		authorsLoading ||
@@ -230,6 +243,8 @@ function EditBookRouteContent({ userId, bookId }: EditBookRouteContentProps) {
 			onUpdateBook={handleUpdateBook}
 			onDeleteBook={handleDeleteBook}
 			onCancel={handleCancel}
+			onSearchMetadata={handleSearchMetadata}
+			onFetchCover={handleFetchCover}
 		/>
 	);
 }

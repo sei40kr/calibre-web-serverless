@@ -22,6 +22,11 @@ locals {
     "pubsub.googleapis.com",
     # firebase deploy verifies the project is on a billing plan (2nd gen).
     "cloudbilling.googleapis.com",
+    # Book-metadata search: the Google Books backend, an API key to raise its
+    # quota, and Secret Manager to hold that key for the function at runtime.
+    "books.googleapis.com",
+    "apikeys.googleapis.com",
+    "secretmanager.googleapis.com",
   ]
 }
 

@@ -15,6 +15,7 @@
 		"./models/publisher": "./models/publisher.ts",
 		"./models/language": "./models/language.ts",
 		"./models/identifier": "./models/identifier.ts",
+		"./models/bookMetadataSearch": "./models/bookMetadataSearch.ts",
 		"./repositories/bookRepository": "./repositories/bookRepository.ts",
 		"./repositories/bookCoverRepository": "./repositories/bookCoverRepository.ts",
 		"./repositories/authorRepository": "./repositories/authorRepository.ts",

@@ -40,3 +40,9 @@ output "firebase_app_id" {
   description = "Firebase App ID"
   value       = google_firebase_web_app.this.app_id
 }
+
+output "google_books_api_key" {
+  description = "Google Books API key for the metadata search function"
+  value       = google_apikeys_key.google_books.key_string
+  sensitive   = true
+}

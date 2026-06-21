@@ -30,6 +30,21 @@ Achieve feature parity with Calibre-Web while embracing serverless principles an
 - **Testing**: Vitest, Playwright, Storybook
 - **Linting/Formatting**: Biome
 
+## Development
+
+`bun run dev` starts Next.js together with the Firebase emulators and seed data.
+
+### Stabilizing the metadata search locally
+
+The "fetch metadata from the internet" feature calls the Google Books API. Without an API key it falls back to the public, IP-rate-limited quota and quickly returns `429`, which makes local verification flaky. For stable local testing, set a Google Books API key in `.envrc.local` (gitignored):
+
+```bash
+# .envrc.local
+export GOOGLE_BOOKS_API_KEY=your-google-books-api-key
+```
+
+`.envrc` sources `.envrc.local` automatically — run `direnv allow` after creating it. The key is only needed locally; deployed environments read it from Secret Manager.
+
 ## Roadmap
 
 - [x] Authentication

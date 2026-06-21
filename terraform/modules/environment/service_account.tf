@@ -32,6 +32,7 @@ locals {
     "roles/cloudbuild.builds.editor",
     "roles/pubsub.admin",
     "roles/iam.serviceAccountUser",
+    "roles/secretmanager.admin",
   ]
 }
 

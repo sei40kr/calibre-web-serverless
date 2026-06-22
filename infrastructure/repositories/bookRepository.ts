@@ -11,6 +11,7 @@ import { FirebaseError } from "firebase/app";
 import {
 	collection,
 	type DocumentData,
+	deleteDoc,
 	doc,
 	type FieldValue,
 	type FirestoreDataConverter,
@@ -203,31 +204,12 @@ const uploadBook = async ({ userId, file }: UploadBookParams) => {
 	const format = file.name.split(".").pop()?.toLowerCase() || "unknown";
 	const bookId = crypto.randomUUID();
 
-	// Upload file to Storage first
-	try {
-		const storageRef = ref(
-			storage,
-			`users/${userId}/books/${bookId}/book.${format}`,
-		);
-		// The stored object is always named book.<format>, so preserve the
-		// original filename in custom metadata for the extraction function to
-		// fall back on when the file itself carries no title.
-		await uploadBytes(storageRef, file, {
-			customMetadata: { originalName: file.name },
-		});
-	} catch (error) {
-		if (error instanceof FirebaseError) {
-			const codeMap: Record<string, StorageErrorCode> = {
-				"storage/unauthorized": "unauthorized",
-				"storage/canceled": "canceled",
-				"storage/quota-exceeded": "quota-exceeded",
-			};
-			throw new StorageError(codeMap[error.code] ?? "unknown", error.message);
-		}
-		throw error;
-	}
-
-	// Then create stub Firestore doc with processing status
+	// Create the stub Firestore doc with processing status *before* uploading
+	// the file. The Storage upload is what triggers the extractBookMetadata
+	// Cloud Function, and a warm function instance can read the doc before this
+	// write lands — leaving status stuck on "processing" forever (the function
+	// returns early when the book is not found). Writing the doc first closes
+	// that race.
 	const bookRef = doc(db, "users", userId, "books", bookId);
 	const bookData: Omit<BookDocument, "createdAt" | "updatedAt"> & {
 		createdAt: FieldValue;
@@ -256,6 +238,33 @@ const uploadBook = async ({ userId, file }: UploadBookParams) => {
 	};
 
 	await setDoc(bookRef, bookData);
+
+	// Then upload the file to Storage, which triggers metadata extraction.
+	try {
+		const storageRef = ref(
+			storage,
+			`users/${userId}/books/${bookId}/book.${format}`,
+		);
+		// The stored object is always named book.<format>, so preserve the
+		// original filename in custom metadata for the extraction function to
+		// fall back on when the file itself carries no title.
+		await uploadBytes(storageRef, file, {
+			customMetadata: { originalName: file.name },
+		});
+	} catch (error) {
+		// Roll back the stub doc so a failed upload does not leave an orphaned
+		// book stuck in "processing".
+		await deleteDoc(bookRef).catch(() => {});
+		if (error instanceof FirebaseError) {
+			const codeMap: Record<string, StorageErrorCode> = {
+				"storage/unauthorized": "unauthorized",
+				"storage/canceled": "canceled",
+				"storage/quota-exceeded": "quota-exceeded",
+			};
+			throw new StorageError(codeMap[error.code] ?? "unknown", error.message);
+		}
+		throw error;
+	}
 
 	return { bookId, format };
 };

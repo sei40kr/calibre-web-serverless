@@ -10,9 +10,11 @@ import {
 	Flex,
 	Heading,
 	Input,
+	Link,
 	Stack,
 	Text,
 } from "@chakra-ui/react";
+import NextLink from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -161,6 +163,12 @@ export default function Home() {
 										>
 											Sign In
 										</Button>
+
+										<Link asChild colorPalette="blue" alignSelf="center">
+											<NextLink href="/reset-password">
+												Forgot password?
+											</NextLink>
+										</Link>
 
 										{isDev && (
 											<Button

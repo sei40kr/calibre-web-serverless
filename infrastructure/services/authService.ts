@@ -5,6 +5,7 @@ import type { AuthService } from "@calibre-web-serverless/domain/services/authSe
 import { FirebaseError } from "firebase/app";
 import {
 	onAuthStateChanged as firebaseOnAuthStateChanged,
+	sendPasswordResetEmail as firebaseSendPasswordResetEmail,
 	signOut as firebaseSignOut,
 	signInWithEmailAndPassword,
 } from "firebase/auth";
@@ -20,6 +21,9 @@ const mapAuthErrorCode = (code: string): AuthErrorCode => {
 		case "auth/user-not-found":
 		case "auth/wrong-password":
 			return "invalid-credential";
+		case "auth/invalid-email":
+		case "auth/missing-email":
+			return "invalid-email";
 		case "auth/too-many-requests":
 			return "too-many-requests";
 		case "auth/user-disabled":
@@ -38,6 +42,17 @@ export const authService: AuthService = {
 				password,
 			);
 			return toUser(credential.user);
+		} catch (error) {
+			if (error instanceof FirebaseError) {
+				throw new AuthError(mapAuthErrorCode(error.code), error.message);
+			}
+			throw error;
+		}
+	},
+
+	async sendPasswordResetEmail(email: string): Promise<void> {
+		try {
+			await firebaseSendPasswordResetEmail(auth, email);
 		} catch (error) {
 			if (error instanceof FirebaseError) {
 				throw new AuthError(mapAuthErrorCode(error.code), error.message);

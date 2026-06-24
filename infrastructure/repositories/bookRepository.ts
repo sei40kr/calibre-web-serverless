@@ -1,6 +1,10 @@
 import type { StorageErrorCode } from "@calibre-web-serverless/domain/errors/storageError";
 import { StorageError } from "@calibre-web-serverless/domain/errors/storageError";
 import type { Book } from "@calibre-web-serverless/domain/models/book";
+import type {
+	BookFilter,
+	BookSort,
+} from "@calibre-web-serverless/domain/models/bookQuery";
 import {
 	type Identifier,
 	IdentifierType,
@@ -19,7 +23,6 @@ import {
 	getDocs,
 	increment,
 	onSnapshot,
-	orderBy,
 	type QueryDocumentSnapshot,
 	query,
 	runTransaction,
@@ -40,6 +43,7 @@ import type {
 	IdentifierDocument,
 } from "../documents/book";
 import { db, storage } from "../lib/firebase";
+import { buildBookQueryConstraints } from "./bookQuery";
 
 const toIdentifier = (doc: IdentifierDocument): Identifier => {
 	const type = IdentifierType.from(doc.type);
@@ -135,9 +139,13 @@ const getBook = async (
 const subscribeToBooks = (
 	userId: string,
 	{
+		filter,
+		sort,
 		onData,
 		onError,
 	}: {
+		filter?: BookFilter;
+		sort?: BookSort;
 		onData: (books: Book[]) => void;
 		onError: (error: Error) => void;
 	},
@@ -145,7 +153,7 @@ const subscribeToBooks = (
 	const booksRef = collection(db, "users", userId, "books").withConverter(
 		bookConverter,
 	);
-	const q = query(booksRef, orderBy("createdAt", "desc"));
+	const q = query(booksRef, ...buildBookQueryConstraints(filter, sort));
 
 	return onSnapshot(
 		q,

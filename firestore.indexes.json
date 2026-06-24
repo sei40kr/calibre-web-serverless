@@ -7,6 +7,54 @@
 				{ "fieldPath": "status", "order": "ASCENDING" },
 				{ "fieldPath": "createdAt", "order": "DESCENDING" }
 			]
+		},
+		{
+			"collectionGroup": "books",
+			"queryScope": "COLLECTION",
+			"fields": [
+				{ "fieldPath": "authorIds", "arrayConfig": "CONTAINS" },
+				{ "fieldPath": "createdAt", "order": "DESCENDING" }
+			]
+		},
+		{
+			"collectionGroup": "books",
+			"queryScope": "COLLECTION",
+			"fields": [
+				{ "fieldPath": "tagIds", "arrayConfig": "CONTAINS" },
+				{ "fieldPath": "createdAt", "order": "DESCENDING" }
+			]
+		},
+		{
+			"collectionGroup": "books",
+			"queryScope": "COLLECTION",
+			"fields": [
+				{ "fieldPath": "languages", "arrayConfig": "CONTAINS" },
+				{ "fieldPath": "createdAt", "order": "DESCENDING" }
+			]
+		},
+		{
+			"collectionGroup": "books",
+			"queryScope": "COLLECTION",
+			"fields": [
+				{ "fieldPath": "seriesId", "order": "ASCENDING" },
+				{ "fieldPath": "createdAt", "order": "DESCENDING" }
+			]
+		},
+		{
+			"collectionGroup": "books",
+			"queryScope": "COLLECTION",
+			"fields": [
+				{ "fieldPath": "publisherId", "order": "ASCENDING" },
+				{ "fieldPath": "createdAt", "order": "DESCENDING" }
+			]
+		},
+		{
+			"collectionGroup": "books",
+			"queryScope": "COLLECTION",
+			"fields": [
+				{ "fieldPath": "rating", "order": "ASCENDING" },
+				{ "fieldPath": "createdAt", "order": "DESCENDING" }
+			]
 		}
 	],
 	"fieldOverrides": []

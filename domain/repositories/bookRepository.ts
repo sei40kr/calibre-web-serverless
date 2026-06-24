@@ -1,11 +1,14 @@
 import type { Book } from "../models/book";
+import type { BookFilter, BookSort } from "../models/bookQuery";
 
 export interface BookRepository {
 	hasBooks(userId: string): Promise<boolean>;
 	getBook(userId: string, bookId: string): Promise<Book | null>;
 	subscribeToBooks(
 		userId: string,
-		callbacks: {
+		options: {
+			filter?: BookFilter;
+			sort?: BookSort;
 			onData: (books: Book[]) => void;
 			onError: (error: Error) => void;
 		},

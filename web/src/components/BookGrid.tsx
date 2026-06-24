@@ -1,6 +1,6 @@
 import type { Book } from "@calibre-web-serverless/domain/models/book";
 import { Box, SimpleGrid, Skeleton, VStack } from "@chakra-ui/react";
-import { LuBookOpen } from "react-icons/lu";
+import { LuBookOpen, LuSearchX } from "react-icons/lu";
 import { BookCard } from "./BookCard";
 import { EmptyState } from "./ui/empty-state";
 
@@ -14,6 +14,8 @@ interface BookGridProps {
 	loading: boolean;
 	bookCoverInfos: Record<string, BookCoverInfo>;
 	onDeleteBook: (book: Book) => Promise<void>;
+	/** When true, an empty result is shown as "no matches" rather than "no books". */
+	isFiltering?: boolean;
 }
 
 function BookCardSkeleton() {
@@ -33,6 +35,7 @@ export function BookGrid({
 	loading,
 	bookCoverInfos,
 	onDeleteBook,
+	isFiltering = false,
 }: BookGridProps) {
 	if (loading) {
 		return (
@@ -46,7 +49,13 @@ export function BookGrid({
 	}
 
 	if (books.length === 0) {
-		return (
+		return isFiltering ? (
+			<EmptyState
+				icon={<LuSearchX />}
+				title="No matching books"
+				description="Try adjusting or clearing your filters"
+			/>
+		) : (
 			<EmptyState
 				icon={<LuBookOpen />}
 				title="No books yet"

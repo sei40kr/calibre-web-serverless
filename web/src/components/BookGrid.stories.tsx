@@ -130,3 +130,20 @@ export const CoverLoading: Story = {
 		},
 	},
 };
+
+export const NoMatchingFilters: Story = {
+	args: {
+		books: [],
+		loading: false,
+		bookCoverInfos: {},
+		isFiltering: true,
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+
+		await expect(canvas.getByText("No matching books")).toBeInTheDocument();
+		await expect(
+			canvas.getByText("Try adjusting or clearing your filters"),
+		).toBeInTheDocument();
+	},
+};

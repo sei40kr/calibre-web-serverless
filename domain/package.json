@@ -8,6 +8,7 @@
 	},
 	"exports": {
 		"./models/book": "./models/book.ts",
+		"./models/bookQuery": "./models/bookQuery.ts",
 		"./models/bookCover": "./models/bookCover.ts",
 		"./models/author": "./models/author.ts",
 		"./models/series": "./models/series.ts",

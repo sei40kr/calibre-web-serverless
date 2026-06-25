@@ -27,6 +27,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
+      # `bunx firebase-tools` runs under `node` (its bin has a #!/usr/bin/env
+      # node shebang), so it uses whatever node is on PATH. Pin an exact, fixed
+      # release: Node 24.17.0 (and 22.23.0) shipped an http.Agent keep-alive
+      # regression (nodejs/node#63989) that makes the google-auth-library ADC
+      # token exchange fail with the generic "Failed to authenticate, have you
+      # run firebase login?", breaking Workload Identity Federation deploys.
+      # A bare '24' is not enough — setup-node serves the runner-cached 24.17.0.
+      # Fixed in 24.18.0; relax once newer 24.x are uniformly safe.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24.18.0"
       - uses: actions/cache@v4
         with:
           path: ~/.bun/install/cache

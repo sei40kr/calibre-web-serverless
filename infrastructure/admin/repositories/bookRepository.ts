@@ -28,6 +28,13 @@ type BookDocument = BaseBookDocument<Timestamp>;
 // extracted metadata.
 const READY_STATUS = "ready";
 
+// A book is written with this status at upload, before metadata extraction runs.
+// It only ever moves to "ready" or "error"; a book that stays "processing" is a
+// stub whose extraction never completed (see the race note in the client
+// uploadBook). Such stubs carry no author/series/tag/publisher relations, so
+// deleting one needs no relation-count reconciliation.
+const PROCESSING_STATUS = "processing";
+
 // Download URLs are short-lived; bytes are otherwise served straight from the
 // signed URL without passing through the function.
 const DOWNLOAD_URL_TTL_MS = 15 * 60 * 1000;
@@ -163,6 +170,34 @@ const getBookDownloadUrl = async (
 	return url;
 };
 
+/**
+ * Every book across all users that has been stuck in "processing" since before
+ * `olderThan` (compared on `updatedAt`, which a stub never advances). Uses a
+ * collection-group query, so it needs the COLLECTION_GROUP index on
+ * (status, updatedAt) declared in firestore.indexes.json.
+ */
+const findStaleProcessingBooks = async (olderThan: Date): Promise<Book[]> => {
+	const snapshot = await getFirestore()
+		.collectionGroup("books")
+		.where("status", "==", PROCESSING_STATUS)
+		.where("updatedAt", "<", Timestamp.fromDate(olderThan))
+		.get();
+	return snapshot.docs.map(toBook);
+};
+
+/**
+ * Remove a book's Firestore document and every Storage object under its folder
+ * (book file and any covers). Deleting by prefix keeps this idempotent and
+ * self-healing regardless of which objects actually exist. Intended for
+ * processing stubs, which have no relations to reconcile.
+ */
+const deleteBook = async (userId: string, bookId: string): Promise<void> => {
+	await getFirestore().doc(bookPath(userId, bookId)).delete();
+	await getStorage()
+		.bucket()
+		.deleteFiles({ prefix: `${bookPath(userId, bookId)}/` });
+};
+
 /** The raw book file bytes (used by metadata extraction). */
 const downloadBookFile = async (
 	userId: string,
@@ -181,6 +216,8 @@ export const bookRepository = {
 	searchBooks,
 	getBook,
 	updateBook,
+	findStaleProcessingBooks,
+	deleteBook,
 	getBookDownloadUrl,
 	downloadBookFile,
 };

@@ -1,0 +1,74 @@
+name: Cleanup stale books
+
+# Manually deletes books stuck in "processing" (upload stubs whose metadata
+# extraction never completed) from a chosen environment. Invokes the deployed,
+# IAM-private cleanupStaleProcessingBooks HTTP function; it must already be
+# deployed (via the Deploy workflow) for the target environment.
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+      olderThanMinutes:
+        description: "Delete books stuck in processing longer than this many minutes"
+        required: true
+        default: "60"
+        type: string
+      dryRun:
+        description: "Dry run (report only, no deletion)"
+        required: true
+        default: true
+        type: boolean
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      # Federate into the same service account the Deploy workflow uses. It must
+      # additionally hold roles/run.invoker on the function (to call it) and
+      # roles/iam.serviceAccountTokenCreator on itself (to mint the ID token
+      # below). See docs/cleanup-stale-books.md.
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.FIREBASE_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Resolve function URL
+        id: fn
+        run: |
+          url=$(gcloud functions describe cleanupStaleProcessingBooks \
+            --gen2 --region us-central1 \
+            --project "${{ vars.FIREBASE_PROJECT_ID }}" \
+            --format 'value(serviceConfig.uri)')
+          if [ -z "$url" ]; then
+            echo "::error::Could not resolve cleanupStaleProcessingBooks URL; is it deployed to ${{ inputs.environment }}?"
+            exit 1
+          fi
+          echo "url=$url" >>"$GITHUB_OUTPUT"
+      - name: Invoke cleanup
+        run: |
+          url="${{ steps.fn.outputs.url }}"
+          # Mint a Google-signed ID token whose audience is the function URL, so
+          # Cloud Run's IAM check (invoker: private) accepts the call.
+          token=$(gcloud auth print-identity-token \
+            --impersonate-service-account="${{ vars.FIREBASE_SERVICE_ACCOUNT }}" \
+            --audiences="$url" \
+            --include-email)
+          echo "Invoking cleanup (environment=${{ inputs.environment }}, dryRun=${{ inputs.dryRun }}, olderThanMinutes=${{ inputs.olderThanMinutes }})"
+          http_code=$(curl -sS -w '%{http_code}' -o response.json -X POST \
+            -H "Authorization: Bearer $token" \
+            "$url?dryRun=${{ inputs.dryRun }}&olderThanMinutes=${{ inputs.olderThanMinutes }}")
+          echo "HTTP $http_code"
+          cat response.json
+          echo
+          [ "$http_code" = "200" ]

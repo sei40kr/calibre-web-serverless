@@ -33,7 +33,7 @@ locals {
     "roles/pubsub.admin",
     "roles/iam.serviceAccountUser",
     "roles/secretmanager.admin",
-    # Invoke the IAM-private cleanupStaleProcessingBooks HTTP function.
+    # Invoke the IAM-private reconcileStaleProcessingBooksHttp function.
     "roles/run.invoker",
   ]
 }
@@ -55,8 +55,8 @@ resource "google_service_account_iam_member" "wif_binding" {
   member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github_actions.name}/attribute.repository/${var.github_repo}"
 }
 
-# The Cleanup stale books workflow mints a Google-signed ID token for the
-# private function via `gcloud auth print-identity-token
+# The Reconcile stale processing books workflow mints a Google-signed ID token
+# for the private function via `gcloud auth print-identity-token
 # --impersonate-service-account`, which goes through the IAM signBlob API and so
 # requires the deploy SA to be a token creator on its own identity.
 resource "google_service_account_iam_member" "firebase_deploy_token_creator" {

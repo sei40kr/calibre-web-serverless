@@ -36,7 +36,8 @@ import {
 	deleteObject,
 	getDownloadURL,
 	ref,
-	uploadBytes,
+	type StorageReference,
+	uploadBytesResumable,
 } from "firebase/storage";
 import type {
 	BookDocument as BaseBookDocument,
@@ -203,6 +204,52 @@ const getBookDownloadUrl = async (
 	return getDownloadURL(storageRef);
 };
 
+// If the upload transfers no bytes for this long we treat the connection as
+// dead and abort, instead of letting the promise hang indefinitely — which on
+// mobile (a backgrounded tab or lost signal freezing the page's JS) it
+// otherwise can, leaving the stub doc stranded in "processing".
+const UPLOAD_STALL_TIMEOUT_MS = 60_000;
+const UPLOAD_STALL_CHECK_INTERVAL_MS = 5_000;
+
+// Uploads the file through a resumable task guarded by a stall watchdog.
+// Resolves on success. On a stall it cancels the task (which rejects the
+// awaited task) and signals via onStall so the caller can tell a dead
+// connection apart from other Storage failures.
+const uploadBookFile = async (
+	storageRef: StorageReference,
+	file: File,
+	onStall: () => void,
+): Promise<void> => {
+	// The stored object is always named book.<format>, so preserve the original
+	// filename in custom metadata for the extraction function to fall back on
+	// when the file itself carries no title.
+	const task = uploadBytesResumable(storageRef, file, {
+		customMetadata: { originalName: file.name },
+	});
+
+	let lastTransferred = 0;
+	let lastAdvance = Date.now();
+	const watchdog = setInterval(() => {
+		if (Date.now() - lastAdvance >= UPLOAD_STALL_TIMEOUT_MS) {
+			onStall();
+			task.cancel();
+		}
+	}, UPLOAD_STALL_CHECK_INTERVAL_MS);
+
+	task.on("state_changed", (snapshot) => {
+		if (snapshot.bytesTransferred > lastTransferred) {
+			lastTransferred = snapshot.bytesTransferred;
+			lastAdvance = Date.now();
+		}
+	});
+
+	try {
+		await task;
+	} finally {
+		clearInterval(watchdog);
+	}
+};
+
 interface UploadBookParams {
 	userId: string;
 	file: File;
@@ -218,6 +265,13 @@ const uploadBook = async ({ userId, file }: UploadBookParams) => {
 	// write lands — leaving status stuck on "processing" forever (the function
 	// returns early when the book is not found). Writing the doc first closes
 	// that race.
+	//
+	// The flip side is that a doc now exists before the upload lands, so an
+	// interrupted upload would orphan it in "processing". We roll it back below
+	// on any client-observable failure; the scheduled reconcile
+	// (reconcileStaleProcessingBooks) is the guaranteed net for the cases the
+	// client cannot handle — e.g. the connection dies, so the rollback delete
+	// cannot reach Firestore either.
 	const bookRef = doc(db, "users", userId, "books", bookId);
 	const bookData: Omit<BookDocument, "createdAt" | "updatedAt"> & {
 		createdAt: FieldValue;
@@ -248,21 +302,26 @@ const uploadBook = async ({ userId, file }: UploadBookParams) => {
 	await setDoc(bookRef, bookData);
 
 	// Then upload the file to Storage, which triggers metadata extraction.
+	const storageRef = ref(
+		storage,
+		`users/${userId}/books/${bookId}/book.${format}`,
+	);
+	let stalled = false;
 	try {
-		const storageRef = ref(
-			storage,
-			`users/${userId}/books/${bookId}/book.${format}`,
-		);
-		// The stored object is always named book.<format>, so preserve the
-		// original filename in custom metadata for the extraction function to
-		// fall back on when the file itself carries no title.
-		await uploadBytes(storageRef, file, {
-			customMetadata: { originalName: file.name },
+		await uploadBookFile(storageRef, file, () => {
+			stalled = true;
 		});
 	} catch (error) {
-		// Roll back the stub doc so a failed upload does not leave an orphaned
-		// book stuck in "processing".
+		// Best-effort rollback so a failed upload does not leave an orphaned book
+		// stuck in "processing". If the network is what failed, this delete may
+		// fail too — that is expected; the scheduled reconcile guarantees cleanup.
 		await deleteDoc(bookRef).catch(() => {});
+		if (stalled) {
+			throw new StorageError(
+				"stalled",
+				"Upload stalled and was aborted after no progress",
+			);
+		}
 		if (error instanceof FirebaseError) {
 			const codeMap: Record<string, StorageErrorCode> = {
 				"storage/unauthorized": "unauthorized",

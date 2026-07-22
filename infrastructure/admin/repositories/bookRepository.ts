@@ -198,6 +198,30 @@ const deleteBook = async (userId: string, bookId: string): Promise<void> => {
 		.deleteFiles({ prefix: `${bookPath(userId, bookId)}/` });
 };
 
+/**
+ * The stored book file's metadata, or null when no file exists. The reconcile
+ * uses presence to choose between reprocessing (file uploaded, extraction never
+ * finished) and deleting (upload never landed). `originalName` mirrors the
+ * custom metadata the client sets, so a reprocess keeps the filename title
+ * fallback the original extraction would have had.
+ */
+const getBookFile = async (
+	userId: string,
+	bookId: string,
+	format: string,
+): Promise<{ originalName?: string } | null> => {
+	const file = getStorage()
+		.bucket()
+		.file(bookFilePath(userId, bookId, format));
+	const [exists] = await file.exists();
+	if (!exists) return null;
+	const [metadata] = await file.getMetadata();
+	const originalName = metadata.metadata?.originalName;
+	return {
+		originalName: typeof originalName === "string" ? originalName : undefined,
+	};
+};
+
 /** The raw book file bytes (used by metadata extraction). */
 const downloadBookFile = async (
 	userId: string,
@@ -219,5 +243,6 @@ export const bookRepository = {
 	findStaleProcessingBooks,
 	deleteBook,
 	getBookDownloadUrl,
+	getBookFile,
 	downloadBookFile,
 };

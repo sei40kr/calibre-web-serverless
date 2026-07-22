@@ -139,6 +139,11 @@ export function UploadBookDialog({
 					case "canceled":
 						setUploadError("Upload was cancelled");
 						break;
+					case "stalled":
+						setUploadError(
+							"Upload stalled — check your connection and try again.",
+						);
+						break;
 					case "quota-exceeded":
 						setUploadError("Storage quota exceeded");
 						break;

@@ -28,7 +28,7 @@ async function createStubBook(bookId: string): Promise<void> {
 		hasCover: true,
 		hasCustomCover: false,
 		status: "ready",
-		errorMessage: null,
+		errorCode: null,
 		createdAt: FieldValue.serverTimestamp(),
 		updatedAt: FieldValue.serverTimestamp(),
 	});

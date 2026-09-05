@@ -1,3 +1,4 @@
+import { bookFileRepository } from "@calibre-web-serverless/infrastructure/admin/repositories/bookFileRepository";
 import { bookRepository } from "@calibre-web-serverless/infrastructure/admin/repositories/bookRepository";
 import { logger } from "firebase-functions/v2";
 import {
@@ -20,6 +21,12 @@ export interface StaleBookRef {
 	bookId: string;
 }
 
+export interface StaleFileRef {
+	userId: string;
+	bookId: string;
+	format: string;
+}
+
 export interface ReconcileStaleProcessingBooksResult {
 	dryRun: boolean;
 	olderThan: string;
@@ -28,30 +35,41 @@ export interface ReconcileStaleProcessingBooksResult {
 	deleted: number;
 	failed: number;
 	books: StaleBookRef[];
+	/** Stale processing file entries found on otherwise-ready books. */
+	foundFiles: number;
+	filesMarkedReady: number;
+	fileEntriesRemoved: number;
+	files: StaleFileRef[];
 }
 
 /**
- * Reconcile books stuck in "processing" since before `olderThan`. Each such
- * book is an upload stub whose metadata extraction never completed, handled by
- * whether its file actually made it to Storage:
- *   - file present  → the upload landed but extraction never ran (e.g. the
- *                      trigger fired before the doc existed). Re-run extraction
- *                      to recover the book rather than discard an intact upload.
- *   - file absent    → the upload never landed (an interrupted client upload).
- *                      Nothing to recover, so delete the stub (document and its
- *                      Storage folder).
- * Each book is handled best-effort: one failure is logged and counted, not
- * fatal to the rest.
+ * Reconcile the two shapes of stuck "processing" state, keyed on whether the
+ * file actually made it to Storage:
+ *
+ * | Stuck state                          | file present   | file absent    |
+ * | ------------------------------------ | -------------- | -------------- |
+ * | book "processing" (upload stub)      | re-run extraction | delete stub |
+ * | file entry on a ready book           | mark ready     | remove entry   |
+ *
+ * Best-effort: one failure is logged and counted, not fatal to the rest.
  */
 export async function reconcileStaleProcessingBooks({
 	olderThan,
 	dryRun,
 	reprocess = extractBookMetadata,
 }: ReconcileStaleProcessingBooksParams): Promise<ReconcileStaleProcessingBooksResult> {
-	const stale = await bookRepository.findStaleProcessingBooks(olderThan);
+	const [stale, staleFiles] = await Promise.all([
+		bookRepository.findStaleProcessingBooks(olderThan),
+		bookFileRepository.findStaleProcessingFiles(olderThan),
+	]);
 	const books: StaleBookRef[] = stale.map((book) => ({
 		userId: book.userId,
 		bookId: book.id,
+	}));
+	const files: StaleFileRef[] = staleFiles.map(({ userId, bookId, file }) => ({
+		userId,
+		bookId,
+		format: file.format,
 	}));
 
 	if (dryRun) {
@@ -59,6 +77,8 @@ export async function reconcileStaleProcessingBooks({
 			olderThan: olderThan.toISOString(),
 			found: books.length,
 			books,
+			foundFiles: files.length,
+			files,
 		});
 		return {
 			dryRun: true,
@@ -68,6 +88,10 @@ export async function reconcileStaleProcessingBooks({
 			deleted: 0,
 			failed: 0,
 			books,
+			foundFiles: files.length,
+			filesMarkedReady: 0,
+			fileEntriesRemoved: 0,
+			files,
 		};
 	}
 
@@ -77,16 +101,17 @@ export async function reconcileStaleProcessingBooks({
 	for (const book of stale) {
 		const ref: StaleBookRef = { userId: book.userId, bookId: book.id };
 		try {
-			const file = await bookRepository.getBookFile(
-				book.userId,
-				book.id,
-				book.format,
-			);
-			if (file) {
+			// A stub owns exactly one file entry; without one there is nothing
+			// recoverable.
+			const format = book.files[0]?.format;
+			const file = format
+				? await bookFileRepository.getBookFile(book.userId, book.id, format)
+				: null;
+			if (file && format) {
 				await reprocess({
 					userId: book.userId,
 					bookId: book.id,
-					format: book.format,
+					format,
 					originalName: file.originalName,
 				});
 				reprocessed++;
@@ -103,14 +128,36 @@ export async function reconcileStaleProcessingBooks({
 		}
 	}
 
-	logger.info("reconcileStaleProcessingBooks: complete", {
-		olderThan: olderThan.toISOString(),
-		found: books.length,
-		reprocessed,
-		deleted,
-		failed,
-	});
-	return {
+	let filesMarkedReady = 0;
+	let fileEntriesRemoved = 0;
+	for (const { userId, bookId, file } of staleFiles) {
+		try {
+			const stored = await bookFileRepository.getBookFile(
+				userId,
+				bookId,
+				file.format,
+			);
+			if (stored) {
+				await bookFileRepository.updateBookFile(userId, bookId, {
+					...file,
+					status: "ready",
+					errorCode: null,
+				});
+				filesMarkedReady++;
+			} else {
+				await bookFileRepository.deleteBookFile(userId, bookId, file.format);
+				fileEntriesRemoved++;
+			}
+		} catch (error) {
+			failed++;
+			logger.error(
+				"reconcileStaleProcessingBooks: failed to reconcile file entry",
+				{ userId, bookId, format: file.format, error },
+			);
+		}
+	}
+
+	const result: ReconcileStaleProcessingBooksResult = {
 		dryRun: false,
 		olderThan: olderThan.toISOString(),
 		found: books.length,
@@ -118,5 +165,20 @@ export async function reconcileStaleProcessingBooks({
 		deleted,
 		failed,
 		books,
+		foundFiles: files.length,
+		filesMarkedReady,
+		fileEntriesRemoved,
+		files,
 	};
+	logger.info("reconcileStaleProcessingBooks: complete", {
+		olderThan: result.olderThan,
+		found: result.found,
+		reprocessed,
+		deleted,
+		failed,
+		foundFiles: result.foundFiles,
+		filesMarkedReady,
+		fileEntriesRemoved,
+	});
+	return result;
 }

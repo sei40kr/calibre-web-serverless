@@ -1,3 +1,4 @@
+import type { BookProcessingErrorCode } from "@calibre-web-serverless/domain/models/bookFile";
 import {
 	AMAZON,
 	GOODREADS,
@@ -10,10 +11,15 @@ import {
 import { Language } from "@calibre-web-serverless/domain/models/language";
 import { authorRepository } from "@calibre-web-serverless/infrastructure/admin/repositories/authorRepository";
 import { bookCoverRepository } from "@calibre-web-serverless/infrastructure/admin/repositories/bookCoverRepository";
+import { bookFileRepository } from "@calibre-web-serverless/infrastructure/admin/repositories/bookFileRepository";
 import { bookRepository } from "@calibre-web-serverless/infrastructure/admin/repositories/bookRepository";
 import { publisherRepository } from "@calibre-web-serverless/infrastructure/admin/repositories/publisherRepository";
 import { logger } from "firebase-functions/v2";
-import { type ExtractedMetadata, extractMetadata } from "./extractors";
+import {
+	type ExtractedMetadata,
+	extractMetadata,
+	UnsupportedBookFormatError,
+} from "./extractors";
 
 export interface ExtractBookMetadataParams {
 	userId: string;
@@ -101,9 +107,34 @@ export async function extractBookMetadata(
 		logger.warn("Book not found for extraction", { userId, bookId });
 		return;
 	}
+	// An object written to Storage without a registered entry (outside the
+	// client flow) is ignored.
+	const bookFile = book.files.find((f) => f.format === format);
+	if (!bookFile) {
+		logger.warn("No file entry for uploaded object", {
+			userId,
+			bookId,
+			format,
+		});
+		return;
+	}
+
+	// An additional format on an already-ready book: extraction is skipped so
+	// it can never clobber the (possibly user-edited) existing metadata.
+	if (book.status === "ready") {
+		await bookFileRepository.updateBookFile(userId, bookId, {
+			...bookFile,
+			status: "ready",
+			errorCode: null,
+		});
+		logger.info(`Registered additional ${format} file for book ${bookId}`, {
+			userId,
+		});
+		return;
+	}
 
 	try {
-		const fileBuffer = await bookRepository.downloadBookFile(
+		const fileBuffer = await bookFileRepository.downloadBookFile(
 			userId,
 			bookId,
 			format,
@@ -122,6 +153,14 @@ export async function extractBookMetadata(
 				)
 			: false;
 
+		// Mark the file ready before flipping the book: a crash in between
+		// leaves the book "processing" with its file present, which the
+		// reconcile job resolves by re-running extraction.
+		await bookFileRepository.updateBookFile(userId, bookId, {
+			...bookFile,
+			status: "ready",
+			errorCode: null,
+		});
 		await bookRepository.updateBook(userId, {
 			...book,
 			title: title ?? "",
@@ -133,7 +172,7 @@ export async function extractBookMetadata(
 			hasCover,
 			pubDate: metadata.pubDate,
 			status: "ready",
-			errorMessage: null,
+			errorCode: null,
 		});
 
 		logger.info(`Processed book ${bookId} for user ${userId}`, {
@@ -143,14 +182,25 @@ export async function extractBookMetadata(
 			authorCount: entities.authorIds.length,
 		});
 	} catch (error) {
+		// The raw error stays in the logs; the model only stores a code.
 		logger.error("Failed to extract book metadata", { bookId, userId, error });
-		await bookRepository
-			.updateBook(userId, {
-				...book,
+		const errorCode: BookProcessingErrorCode =
+			error instanceof UnsupportedBookFormatError
+				? "unsupported-format"
+				: "extraction-failed";
+		await bookFileRepository
+			.updateBookFile(userId, bookId, {
+				...bookFile,
 				status: "error",
-				errorMessage:
-					error instanceof Error ? error.message : "Failed to process book",
+				errorCode,
 			})
+			.then(() =>
+				bookRepository.updateBook(userId, {
+					...book,
+					status: "error",
+					errorCode,
+				}),
+			)
 			.catch((err) => {
 				// The book doc may have been deleted before processing finished.
 				logger.warn("Failed to record book error status", {

@@ -14,11 +14,13 @@ export const useBook = (userId: string, bookId: string) => {
 		setLoading(true);
 		setError(null);
 
+		// The subscription never fires for a missing document, so a one-shot get
+		// resolves the not-found case; the subscription then keeps the book live.
 		bookRepository
 			.getBook(userId, bookId)
 			.then((bookData) => {
 				if (!active) return;
-				setBook(bookData);
+				setBook((current) => current ?? bookData);
 				setLoading(false);
 			})
 			.catch((err) => {
@@ -27,8 +29,22 @@ export const useBook = (userId: string, bookId: string) => {
 				setLoading(false);
 			});
 
+		const unsubscribe = bookRepository.subscribeToBook(userId, bookId, {
+			onData: (bookData) => {
+				if (!active) return;
+				setBook(bookData);
+				setLoading(false);
+			},
+			onError: (err) => {
+				if (!active) return;
+				setError(err);
+				setLoading(false);
+			},
+		});
+
 		return () => {
 			active = false;
+			unsubscribe();
 		};
 	}, [userId, bookId]);
 

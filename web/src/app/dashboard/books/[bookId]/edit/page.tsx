@@ -1,9 +1,13 @@
 "use client";
 
+import { BookFileError } from "@calibre-web-serverless/domain/errors/bookFileError";
+import { StorageError } from "@calibre-web-serverless/domain/errors/storageError";
 import type { Book } from "@calibre-web-serverless/domain/models/book";
+import type { BookFileFormat } from "@calibre-web-serverless/domain/models/bookFile";
 import type { BookMetadataSearchResult } from "@calibre-web-serverless/domain/models/bookMetadataSearch";
 import { authorRepository } from "@calibre-web-serverless/infrastructure/repositories/authorRepository";
 import { bookCoverRepository } from "@calibre-web-serverless/infrastructure/repositories/bookCoverRepository";
+import { bookFileRepository } from "@calibre-web-serverless/infrastructure/repositories/bookFileRepository";
 import { bookRepository } from "@calibre-web-serverless/infrastructure/repositories/bookRepository";
 import { publisherRepository } from "@calibre-web-serverless/infrastructure/repositories/publisherRepository";
 import { seriesRepository } from "@calibre-web-serverless/infrastructure/repositories/seriesRepository";
@@ -103,8 +107,7 @@ function EditBookRouteContent({ userId, bookId }: EditBookRouteContentProps) {
 			languages: book.languages,
 			rating: book.rating,
 			identifiers: book.identifiers,
-			format: book.format,
-			fileSize: book.fileSize,
+			files: book.files,
 		};
 	}, [book, authors, series, tags, publishers]);
 
@@ -215,6 +218,50 @@ function EditBookRouteContent({ userId, bookId }: EditBookRouteContentProps) {
 		[],
 	);
 
+	const handleAddFile = useCallback(
+		async (file: File) => {
+			try {
+				const { format } = await bookFileRepository.addBookFile({
+					userId,
+					bookId,
+					file,
+				});
+				toaster.success({
+					title: "File uploaded",
+					description: `The ${format.toUpperCase()} file has been added.`,
+				});
+			} catch (error) {
+				toaster.error({
+					title: "Couldn't add the file",
+					description: addFileErrorMessage(error),
+				});
+			}
+		},
+		[userId, bookId],
+	);
+
+	const handleDeleteFile = useCallback(
+		async (format: BookFileFormat) => {
+			try {
+				await bookFileRepository.deleteBookFile(userId, bookId, format);
+				toaster.success({
+					title: "File deleted",
+					description: `The ${format.toUpperCase()} file has been deleted.`,
+				});
+			} catch (error) {
+				toaster.error({
+					title: "Couldn't delete the file",
+					description:
+						error instanceof BookFileError && error.code === "last-file"
+							? "The last remaining file cannot be deleted."
+							: "Something went wrong. Please try again.",
+				});
+				throw error;
+			}
+		},
+		[userId, bookId],
+	);
+
 	if (
 		loading ||
 		authorsLoading ||
@@ -245,6 +292,36 @@ function EditBookRouteContent({ userId, bookId }: EditBookRouteContentProps) {
 			onCancel={handleCancel}
 			onSearchMetadata={handleSearchMetadata}
 			onFetchCover={handleFetchCover}
+			onAddFile={handleAddFile}
+			onDeleteFile={handleDeleteFile}
 		/>
 	);
+}
+
+function addFileErrorMessage(error: unknown): string {
+	if (error instanceof BookFileError) {
+		switch (error.code) {
+			case "unsupported-format":
+				return "Unsupported file format.";
+			case "duplicate-format":
+				return "This book already has a file in that format.";
+			case "book-not-ready":
+				return "Wait until the book has finished processing.";
+			default:
+				return "Something went wrong. Please try again.";
+		}
+	}
+	if (error instanceof StorageError) {
+		switch (error.code) {
+			case "unauthorized":
+				return "You don't have permission to upload files.";
+			case "stalled":
+				return "Upload stalled — check your connection and try again.";
+			case "quota-exceeded":
+				return "Storage quota exceeded.";
+			default:
+				return "Upload failed. Please try again.";
+		}
+	}
+	return "Something went wrong. Please try again.";
 }

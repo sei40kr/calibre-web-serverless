@@ -1,6 +1,8 @@
 "use client";
 
+import { BookFileError } from "@calibre-web-serverless/domain/errors/bookFileError";
 import { StorageError } from "@calibre-web-serverless/domain/errors/storageError";
+import { BOOK_FILE_FORMATS } from "@calibre-web-serverless/domain/models/bookFile";
 import type { User } from "@calibre-web-serverless/domain/models/user";
 import { bookRepository } from "@calibre-web-serverless/infrastructure/repositories/bookRepository";
 import { Button, Fieldset, Spinner, Stack, Text } from "@chakra-ui/react";
@@ -23,6 +25,7 @@ import {
 	FileUploadRoot,
 } from "@/components/ui/file-upload";
 import { toaster } from "@/components/ui/toaster";
+import { bookProcessingErrorMessage } from "@/lib/bookProcessingError";
 
 interface BookUploadFormData {
 	file: File[];
@@ -35,7 +38,7 @@ interface UploadBookDialogProps {
 	onSuccess?: () => void;
 }
 
-const ACCEPTED_FORMATS = ".epub,.pdf,.mobi,.azw,.azw3,.fb2,.txt";
+const ACCEPTED_FORMATS = BOOK_FILE_FORMATS.map((f) => `.${f}`).join(",");
 const PROCESSING_TIMEOUT_MS = 120_000;
 
 export function UploadBookDialog({
@@ -80,7 +83,7 @@ export function UploadBookDialog({
 		}
 
 		try {
-			const { bookId } = await bookRepository.uploadBook({
+			const { bookId } = await bookRepository.createBook({
 				userId: user.uid,
 				file: data.file[0],
 			});
@@ -112,9 +115,7 @@ export function UploadBookDialog({
 								resolve();
 							} else if (book.status === "error") {
 								cleanup();
-								reject(
-									new Error(book.errorMessage || "Failed to process book"),
-								);
+								reject(new Error(bookProcessingErrorMessage(book.errorCode)));
 							}
 						},
 						onError: (err) => {
@@ -131,7 +132,13 @@ export function UploadBookDialog({
 			onSuccess?.();
 		} catch (error) {
 			setProcessing(false);
-			if (error instanceof StorageError) {
+			if (error instanceof BookFileError) {
+				setUploadError(
+					error.code === "unsupported-format"
+						? "Unsupported file format"
+						: `Upload failed: ${error.code}`,
+				);
+			} else if (error instanceof StorageError) {
 				switch (error.code) {
 					case "unauthorized":
 						setUploadError("You don't have permission to upload files");

@@ -18,6 +18,14 @@
 		},
 		{
 			"collectionGroup": "books",
+			"queryScope": "COLLECTION_GROUP",
+			"fields": [
+				{ "fieldPath": "hasProcessingFile", "order": "ASCENDING" },
+				{ "fieldPath": "updatedAt", "order": "ASCENDING" }
+			]
+		},
+		{
+			"collectionGroup": "books",
 			"queryScope": "COLLECTION",
 			"fields": [
 				{ "fieldPath": "authorIds", "arrayConfig": "CONTAINS" },

@@ -111,6 +111,17 @@ const books: BookSeed[] = [
 	},
 ];
 
+/** Poll until the emulator's extraction function has settled the book. */
+async function waitForProcessed(userId: string, bookId: string): Promise<Book> {
+	const deadline = Date.now() + 120_000;
+	while (Date.now() < deadline) {
+		const book = await bookRepository.getBook(userId, bookId);
+		if (book && book.status !== "processing") return book;
+		await new Promise((resolve) => setTimeout(resolve, 500));
+	}
+	throw new Error(`Timed out waiting for book ${bookId} to finish processing`);
+}
+
 async function main() {
 	const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 
@@ -197,10 +208,14 @@ async function main() {
 			type: "application/epub+zip",
 		});
 
-		const { bookId, format } = await bookRepository.uploadBook({
+		const { bookId } = await bookRepository.createBook({
 			userId,
 			file,
 		});
+
+		// Wait for the extraction triggered by the upload before overwriting the
+		// metadata below, so the two writes cannot race.
+		const processedBook = await waitForProcessed(userId, bookId);
 
 		// Upload cover image
 		const coverPath = path.join(
@@ -236,6 +251,7 @@ async function main() {
 		// Update book with full metadata
 		const now = new Date();
 		const updatedBook: Book = {
+			...processedBook,
 			id: bookId,
 			userId,
 			title: book.title,
@@ -250,12 +266,10 @@ async function main() {
 			languages: book.languages,
 			description: book.description ?? null,
 			rating: book.rating ?? null,
-			format,
-			fileSize: fileBuffer.byteLength,
 			hasCover,
 			hasCustomCover: false,
 			status: "ready",
-			errorMessage: null,
+			errorCode: null,
 			createdAt: now,
 			updatedAt: now,
 		};

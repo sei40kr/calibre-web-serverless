@@ -1,8 +1,23 @@
 import type { BookStatus } from "@calibre-web-serverless/domain/models/book";
+import type {
+	BookFileStatus,
+	BookProcessingErrorCode,
+} from "@calibre-web-serverless/domain/models/bookFile";
 
 export interface IdentifierDocument {
 	type: string;
 	value: string;
+}
+
+/**
+ * One stored file of a book. Keyed by lowercase format in
+ * `BookDocument.files`, so the format is not repeated inside the entry.
+ */
+export interface BookFileDocument<Time> {
+	fileSize: number;
+	status: BookFileStatus;
+	errorCode: BookProcessingErrorCode | null;
+	addedAt: Time | null;
 }
 
 /**
@@ -25,12 +40,18 @@ export interface BookDocument<Time> {
 	languages: string[];
 	description: string | null;
 	rating: number | null;
-	format: string;
-	fileSize: number;
+	/** Stored files, keyed by lowercase format. */
+	files: Record<string, BookFileDocument<Time>>;
+	/**
+	 * True while any entry in `files` is "processing". Firestore cannot query
+	 * into map values, so the reconcile job's collection-group query needs
+	 * this flag.
+	 */
+	hasProcessingFile: boolean;
 	hasCover: boolean;
 	hasCustomCover: boolean;
 	status: BookStatus;
-	errorMessage: string | null;
+	errorCode: BookProcessingErrorCode | null;
 	createdAt: Time | null;
 	updatedAt: Time | null;
 }

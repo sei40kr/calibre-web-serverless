@@ -18,12 +18,19 @@ const baseBook: Book = {
 	languages: [],
 	description: null,
 	rating: null,
-	format: "epub",
-	fileSize: 189000,
+	files: [
+		{
+			format: "epub",
+			fileSize: 189000,
+			status: "ready",
+			errorCode: null,
+			addedAt: new Date("2024-01-01"),
+		},
+	],
 	hasCover: true,
 	hasCustomCover: false,
 	status: "ready",
-	errorMessage: null,
+	errorCode: null,
 	createdAt: new Date("2024-01-01"),
 	updatedAt: new Date("2024-01-01"),
 };

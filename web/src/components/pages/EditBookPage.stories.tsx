@@ -44,8 +44,15 @@ const mockBook: BookEditData = {
 	languages: [Language.EN],
 	description: "A young girl falls through a rabbit hole into a fantasy world.",
 	rating: 4,
-	format: "epub",
-	fileSize: 189000,
+	files: [
+		{
+			format: "epub",
+			fileSize: 189000,
+			status: "ready",
+			errorCode: null,
+			addedAt: new Date("2024-01-01"),
+		},
+	],
 };
 
 const meta = {
@@ -77,6 +84,8 @@ const meta = {
 					type: "image/jpeg",
 				}),
 		),
+		onAddFile: fn(async () => {}),
+		onDeleteFile: fn(async () => {}),
 	},
 } satisfies Meta<typeof EditBookPage>;
 

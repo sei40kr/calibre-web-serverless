@@ -20,12 +20,19 @@ const mockBook: Book = {
 	languages: [],
 	description: null,
 	rating: null,
-	format: "epub",
-	fileSize: 189000,
+	files: [
+		{
+			format: "epub",
+			fileSize: 189000,
+			status: "ready",
+			errorCode: null,
+			addedAt: new Date("2024-01-01"),
+		},
+	],
 	hasCover: false,
 	hasCustomCover: false,
 	status: "ready",
-	errorMessage: null,
+	errorCode: null,
 	createdAt: new Date("2024-01-01"),
 	updatedAt: new Date("2024-01-01"),
 };
@@ -97,7 +104,7 @@ export const ErrorState: Story = {
 		book: {
 			...mockBook,
 			status: "error",
-			errorMessage: "Failed to process book",
+			errorCode: "extraction-failed",
 		},
 	},
 };
@@ -158,7 +165,15 @@ export const PdfFormat: Story = {
 	args: {
 		book: {
 			...mockBook,
-			format: "pdf",
+			files: [
+				{
+					format: "pdf",
+					fileSize: 189000,
+					status: "ready",
+					errorCode: null,
+					addedAt: new Date("2024-01-01"),
+				},
+			],
 		},
 		coverUrl: coverPath,
 		coverLoading: false,
@@ -170,11 +185,34 @@ export const PdfFormat: Story = {
 	},
 };
 
-export const MobiFormat: Story = {
+export const MultipleFormats: Story = {
 	args: {
 		book: {
 			...mockBook,
-			format: "mobi",
+			files: [
+				{
+					format: "epub",
+					fileSize: 189000,
+					status: "ready",
+					errorCode: null,
+					addedAt: new Date("2024-01-01"),
+				},
+				{
+					format: "pdf",
+					fileSize: 240000,
+					status: "ready",
+					errorCode: null,
+					addedAt: new Date("2024-01-02"),
+				},
+				{
+					// Still uploading/processing: not shown as a badge yet.
+					format: "mobi",
+					fileSize: 120000,
+					status: "processing",
+					errorCode: null,
+					addedAt: new Date("2024-01-03"),
+				},
+			],
 		},
 		coverUrl: coverPath,
 		coverLoading: false,
@@ -182,6 +220,8 @@ export const MobiFormat: Story = {
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
 
-		await expect(canvas.getByText("MOBI")).toBeInTheDocument();
+		await expect(canvas.getByText("EPUB")).toBeInTheDocument();
+		await expect(canvas.getByText("PDF")).toBeInTheDocument();
+		await expect(canvas.queryByText("MOBI")).not.toBeInTheDocument();
 	},
 };

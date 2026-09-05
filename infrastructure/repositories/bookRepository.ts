@@ -1,6 +1,8 @@
-import type { StorageErrorCode } from "@calibre-web-serverless/domain/errors/storageError";
-import { StorageError } from "@calibre-web-serverless/domain/errors/storageError";
 import type { Book } from "@calibre-web-serverless/domain/models/book";
+import {
+	type BookFile,
+	BookFileFormat,
+} from "@calibre-web-serverless/domain/models/bookFile";
 import type {
 	BookFilter,
 	BookSort,
@@ -32,18 +34,20 @@ import {
 	type Timestamp,
 	type Transaction,
 } from "firebase/firestore";
-import {
-	deleteObject,
-	getDownloadURL,
-	ref,
-	type StorageReference,
-	uploadBytesResumable,
-} from "firebase/storage";
+import { deleteObject, ref } from "firebase/storage";
 import type {
 	BookDocument as BaseBookDocument,
+	BookFileDocument as BaseBookFileDocument,
 	IdentifierDocument,
 } from "../documents/book";
 import { db, storage } from "../lib/firebase";
+import {
+	bookFileStorageRef,
+	formatFromFileName,
+	processingFileEntry,
+	toUploadError,
+	uploadWithStallGuard,
+} from "./bookFileRepository";
 import { buildBookQueryConstraints } from "./bookQuery";
 
 const toIdentifier = (doc: IdentifierDocument): Identifier => {
@@ -55,7 +59,32 @@ const toIdentifier = (doc: IdentifierDocument): Identifier => {
 };
 
 type BookDocument = BaseBookDocument<Timestamp>;
+type BookFileDocument = BaseBookFileDocument<Timestamp>;
 
+// Entries with an unsupported format key are dropped rather than crashing
+// the whole book.
+const toBookFiles = (
+	files: Record<string, BookFileDocument> | undefined,
+): BookFile[] =>
+	Object.entries(files ?? {})
+		.flatMap(([key, file]): BookFile[] => {
+			const format = BookFileFormat.from(key);
+			if (!format) return [];
+			return [
+				{
+					format,
+					fileSize: file.fileSize ?? 0,
+					status: file.status ?? "ready",
+					errorCode: file.errorCode ?? null,
+					addedAt: file.addedAt?.toDate() ?? null,
+				},
+			];
+		})
+		.sort((a, b) => a.format.localeCompare(b.format));
+
+// toFirestore omits `files`/`hasProcessingFile` so a metadata save can never
+// clobber an in-flight format upload; file state is mutated only through the
+// per-file operations below.
 const bookConverter: FirestoreDataConverter<Book> = {
 	toFirestore(book: Book): DocumentData {
 		return {
@@ -74,14 +103,15 @@ const bookConverter: FirestoreDataConverter<Book> = {
 			languages: book.languages.map((l) => l.code),
 			description: book.description,
 			rating: book.rating,
-			format: book.format,
-			fileSize: book.fileSize,
 			hasCover: book.hasCover,
 			hasCustomCover: book.hasCustomCover,
 			status: book.status,
-			errorMessage: book.errorMessage,
+			errorCode: book.errorCode,
 			updatedAt: serverTimestamp(),
-		} as Omit<BookDocument, "createdAt" | "updatedAt"> & {
+		} as Omit<
+			BookDocument,
+			"createdAt" | "updatedAt" | "files" | "hasProcessingFile"
+		> & {
 			updatedAt: FieldValue;
 		};
 	},
@@ -92,6 +122,7 @@ const bookConverter: FirestoreDataConverter<Book> = {
 		const d = snapshot.data(options) as BookDocument;
 		return {
 			id: snapshot.id,
+			// biome-ignore lint/style/noNonNullAssertion: a book doc always has a parent user
 			userId: snapshot.ref.parent.parent!.id,
 			title: d.title,
 			sortTitle: d.sortTitle,
@@ -108,12 +139,11 @@ const bookConverter: FirestoreDataConverter<Book> = {
 			}),
 			description: d.description,
 			rating: d.rating,
-			format: d.format,
-			fileSize: d.fileSize,
+			files: toBookFiles(d.files),
 			hasCover: d.hasCover ?? false,
 			hasCustomCover: d.hasCustomCover ?? false,
 			status: d.status ?? "ready",
-			errorMessage: d.errorMessage ?? null,
+			errorCode: d.errorCode ?? null,
 			createdAt: d.createdAt?.toDate() ?? null,
 			updatedAt: d.updatedAt?.toDate() ?? null,
 		};
@@ -192,71 +222,13 @@ const subscribeToBook = (
 	);
 };
 
-const getBookDownloadUrl = async (
-	userId: string,
-	bookId: string,
-	format: string,
-): Promise<string> => {
-	const storageRef = ref(
-		storage,
-		`users/${userId}/books/${bookId}/book.${format}`,
-	);
-	return getDownloadURL(storageRef);
-};
-
-// If the upload transfers no bytes for this long we treat the connection as
-// dead and abort, instead of letting the promise hang indefinitely — which on
-// mobile (a backgrounded tab or lost signal freezing the page's JS) it
-// otherwise can, leaving the stub doc stranded in "processing".
-const UPLOAD_STALL_TIMEOUT_MS = 60_000;
-const UPLOAD_STALL_CHECK_INTERVAL_MS = 5_000;
-
-// Uploads the file through a resumable task guarded by a stall watchdog.
-// Resolves on success. On a stall it cancels the task (which rejects the
-// awaited task) and signals via onStall so the caller can tell a dead
-// connection apart from other Storage failures.
-const uploadBookFile = async (
-	storageRef: StorageReference,
-	file: File,
-	onStall: () => void,
-): Promise<void> => {
-	// The stored object is always named book.<format>, so preserve the original
-	// filename in custom metadata for the extraction function to fall back on
-	// when the file itself carries no title.
-	const task = uploadBytesResumable(storageRef, file, {
-		customMetadata: { originalName: file.name },
-	});
-
-	let lastTransferred = 0;
-	let lastAdvance = Date.now();
-	const watchdog = setInterval(() => {
-		if (Date.now() - lastAdvance >= UPLOAD_STALL_TIMEOUT_MS) {
-			onStall();
-			task.cancel();
-		}
-	}, UPLOAD_STALL_CHECK_INTERVAL_MS);
-
-	task.on("state_changed", (snapshot) => {
-		if (snapshot.bytesTransferred > lastTransferred) {
-			lastTransferred = snapshot.bytesTransferred;
-			lastAdvance = Date.now();
-		}
-	});
-
-	try {
-		await task;
-	} finally {
-		clearInterval(watchdog);
-	}
-};
-
-interface UploadBookParams {
+interface CreateBookParams {
 	userId: string;
 	file: File;
 }
 
-const uploadBook = async ({ userId, file }: UploadBookParams) => {
-	const format = file.name.split(".").pop()?.toLowerCase() || "unknown";
+const createBook = async ({ userId, file }: CreateBookParams) => {
+	const format = formatFromFileName(file.name);
 	const bookId = crypto.randomUUID();
 
 	// Create the stub Firestore doc with processing status *before* uploading
@@ -273,9 +245,10 @@ const uploadBook = async ({ userId, file }: UploadBookParams) => {
 	// client cannot handle — e.g. the connection dies, so the rollback delete
 	// cannot reach Firestore either.
 	const bookRef = doc(db, "users", userId, "books", bookId);
-	const bookData: Omit<BookDocument, "createdAt" | "updatedAt"> & {
+	const bookData: Omit<BookDocument, "createdAt" | "updatedAt" | "files"> & {
 		createdAt: FieldValue;
 		updatedAt: FieldValue;
+		files: Record<string, ReturnType<typeof processingFileEntry>>;
 	} = {
 		title: "",
 		sortTitle: null,
@@ -289,12 +262,12 @@ const uploadBook = async ({ userId, file }: UploadBookParams) => {
 		languages: [],
 		description: null,
 		rating: null,
-		format,
-		fileSize: file.size,
+		files: { [format]: processingFileEntry(file.size) },
+		hasProcessingFile: true,
 		hasCover: false,
 		hasCustomCover: false,
 		status: "processing",
-		errorMessage: null,
+		errorCode: null,
 		createdAt: serverTimestamp(),
 		updatedAt: serverTimestamp(),
 	};
@@ -302,35 +275,21 @@ const uploadBook = async ({ userId, file }: UploadBookParams) => {
 	await setDoc(bookRef, bookData);
 
 	// Then upload the file to Storage, which triggers metadata extraction.
-	const storageRef = ref(
-		storage,
-		`users/${userId}/books/${bookId}/book.${format}`,
-	);
 	let stalled = false;
 	try {
-		await uploadBookFile(storageRef, file, () => {
-			stalled = true;
-		});
+		await uploadWithStallGuard(
+			bookFileStorageRef(userId, bookId, format),
+			file,
+			() => {
+				stalled = true;
+			},
+		);
 	} catch (error) {
 		// Best-effort rollback so a failed upload does not leave an orphaned book
 		// stuck in "processing". If the network is what failed, this delete may
 		// fail too — that is expected; the scheduled reconcile guarantees cleanup.
 		await deleteDoc(bookRef).catch(() => {});
-		if (stalled) {
-			throw new StorageError(
-				"stalled",
-				"Upload stalled and was aborted after no progress",
-			);
-		}
-		if (error instanceof FirebaseError) {
-			const codeMap: Record<string, StorageErrorCode> = {
-				"storage/unauthorized": "unauthorized",
-				"storage/canceled": "canceled",
-				"storage/quota-exceeded": "quota-exceeded",
-			};
-			throw new StorageError(codeMap[error.code] ?? "unknown", error.message);
-		}
-		throw error;
+		throw toUploadError(error, stalled);
 	}
 
 	return { bookId, format };
@@ -425,7 +384,7 @@ const updateBook = async (userId: string, book: Book) => {
 const deleteBook = async (userId: string, bookId: string): Promise<void> => {
 	const bookRef = doc(db, "users", userId, "books", bookId);
 
-	let format: string | undefined;
+	let formats: string[] = [];
 	let hasCover = false;
 	let hasCustomCover = false;
 
@@ -436,7 +395,7 @@ const deleteBook = async (userId: string, bookId: string): Promise<void> => {
 			return;
 		}
 
-		format = bookData.format;
+		formats = Object.keys(bookData.files ?? {});
 		hasCover = bookData.hasCover ?? false;
 		hasCustomCover = bookData.hasCustomCover ?? false;
 
@@ -469,14 +428,11 @@ const deleteBook = async (userId: string, bookId: string): Promise<void> => {
 		throw error;
 	};
 
-	const deletions: Promise<void>[] = [];
-	if (format) {
-		deletions.push(
-			deleteObject(
-				ref(storage, `users/${userId}/books/${bookId}/book.${format}`),
-			).catch(ignoreMissing),
-		);
-	}
+	const deletions: Promise<void>[] = formats.map((format) =>
+		deleteObject(
+			ref(storage, `users/${userId}/books/${bookId}/book.${format}`),
+		).catch(ignoreMissing),
+	);
 	if (hasCover) {
 		deletions.push(
 			deleteObject(
@@ -499,8 +455,7 @@ export const bookRepository: BookRepository = {
 	getBook,
 	subscribeToBooks,
 	subscribeToBook,
-	getBookDownloadUrl,
-	uploadBook,
+	createBook,
 	updateBook,
 	deleteBook,
 };

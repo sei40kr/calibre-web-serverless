@@ -4,6 +4,11 @@ import {
 	COVER_UPLOAD_ACCEPT,
 	MAX_COVER_UPLOAD_BYTES,
 } from "@calibre-web-serverless/domain/models/bookCover";
+import {
+	BOOK_FILE_FORMATS,
+	type BookFile,
+	type BookFileFormat,
+} from "@calibre-web-serverless/domain/models/bookFile";
 import type {
 	BookMetadataSearchResponse,
 	BookMetadataSearchResult,
@@ -24,12 +29,14 @@ import {
 	Grid,
 	Heading,
 	HStack,
+	IconButton,
 	Image,
 	Input,
 	Portal,
 	RatingGroup,
 	Skeleton,
 	Span,
+	Spinner,
 	Stack,
 	TagsInput,
 	Text,
@@ -55,8 +62,10 @@ import {
 	LuBook,
 	LuGlobe,
 	LuImageUp,
+	LuPlus,
 	LuRotateCcw,
 	LuTrash2,
+	LuTriangleAlert,
 	LuUndo2,
 } from "react-icons/lu";
 import { FetchMetadataDialog } from "@/components/FetchMetadataDialog";
@@ -100,6 +109,7 @@ import {
 	isNewItemValue,
 	useCreatableCombobox,
 } from "@/hooks/useCreatableCombobox";
+import { bookProcessingErrorMessage } from "@/lib/bookProcessingError";
 
 interface BookEditFormData {
 	title: string;
@@ -155,8 +165,7 @@ export interface BookEditData {
 	languages: Language[];
 	rating: number | null;
 	identifiers: Identifier[];
-	format: string;
-	fileSize: number;
+	files: BookFile[];
 }
 
 export interface EditBookPageProps {
@@ -179,6 +188,10 @@ export interface EditBookPageProps {
 	onSearchMetadata: (query: string) => Promise<BookMetadataSearchResponse>;
 	/** Download a chosen result's cover as a stageable file (null if none). */
 	onFetchCover: (result: BookMetadataSearchResult) => Promise<File | null>;
+	/** Upload an additional format for this book. Must not reject; surface errors itself. */
+	onAddFile: (file: File) => Promise<void>;
+	/** Remove one stored format of this book. */
+	onDeleteFile: (format: BookFileFormat) => Promise<void>;
 }
 
 const ACCEPTED_COVER_EXT_LABEL = "PNG, JPEG, WebP";
@@ -201,8 +214,6 @@ interface CoverEditorProps {
 	previewUrl: string | null;
 	previewLoading: boolean;
 	title: string;
-	format: string;
-	fileSize: number;
 	/** A pending (unsaved) cover change exists. */
 	changed: boolean;
 	/** A saved custom cover can be reverted to the extracted one. */
@@ -217,8 +228,6 @@ function CoverEditor({
 	previewUrl,
 	previewLoading,
 	title,
-	format,
-	fileSize,
 	changed,
 	canResetToOriginal,
 	disabled,
@@ -282,10 +291,6 @@ function CoverEditor({
 					</>
 				)}
 			</Box>
-			<Text color="fg.muted" fontSize="xs" mt={2} textAlign="center">
-				{format.toUpperCase()} &bull; <FormatByte value={fileSize} />
-			</Text>
-
 			<Stack gap={2} mt={3}>
 				<FileUploadRoot
 					maxFiles={1}
@@ -339,6 +344,185 @@ function CoverEditor({
 	);
 }
 
+const BOOK_FILE_ACCEPT = BOOK_FILE_FORMATS.map((f) => `.${f}`).join(",");
+const MAX_BOOK_UPLOAD_BYTES = 100 * 1024 * 1024;
+
+interface BookFilesSectionProps {
+	files: BookFile[];
+	disabled: boolean;
+	onAddFile: (file: File) => Promise<void>;
+	onDeleteFile: (format: BookFileFormat) => Promise<void>;
+}
+
+function BookFilesSection({
+	files,
+	disabled,
+	onAddFile,
+	onDeleteFile,
+}: BookFilesSectionProps) {
+	const [adding, setAdding] = useState(false);
+	const [deleteTarget, setDeleteTarget] = useState<BookFileFormat | null>(null);
+	const [deleting, setDeleting] = useState(false);
+
+	const handleFileChange = useCallback(
+		async (details: {
+			acceptedFiles: File[];
+			rejectedFiles: { file: File; errors: string[] }[];
+		}) => {
+			const rejected = details.rejectedFiles[0];
+			if (rejected) {
+				const tooLarge = rejected.errors.includes("FILE_TOO_LARGE");
+				toaster.error({
+					title: "Couldn't use that file",
+					description: tooLarge
+						? "File must be 100 MB or smaller."
+						: "Use a supported book format (EPUB, PDF, MOBI, ...).",
+				});
+				return;
+			}
+			const file = details.acceptedFiles[0];
+			if (!file) return;
+			setAdding(true);
+			try {
+				await onAddFile(file);
+			} finally {
+				setAdding(false);
+			}
+		},
+		[onAddFile],
+	);
+
+	const handleConfirmDelete = useCallback(async () => {
+		if (!deleteTarget) return;
+		setDeleting(true);
+		try {
+			await onDeleteFile(deleteTarget);
+			setDeleteTarget(null);
+		} catch {
+			// Keep the dialog open so the user can retry; the failure is surfaced
+			// by the caller (e.g. a toast).
+		} finally {
+			setDeleting(false);
+		}
+	}, [deleteTarget, onDeleteFile]);
+
+	// The repository also rejects removing the last remaining file.
+	const canDelete = files.length > 1;
+
+	return (
+		<Box>
+			<Text fontWeight="medium" fontSize="sm" mb={2}>
+				Files
+			</Text>
+			<Stack gap={2}>
+				{files.map((file) => (
+					<HStack
+						key={file.format}
+						justify="space-between"
+						borderWidth="1px"
+						borderRadius="md"
+						px={3}
+						py={2}
+					>
+						<HStack gap={2}>
+							<Badge
+								size="sm"
+								colorPalette={file.status === "error" ? "red" : "blue"}
+							>
+								{file.format.toUpperCase()}
+							</Badge>
+							{file.status === "processing" ? (
+								<Spinner size="xs" />
+							) : file.status === "error" ? (
+								<HStack
+									gap={1}
+									color="fg.error"
+									title={bookProcessingErrorMessage(file.errorCode)}
+								>
+									<LuTriangleAlert size={14} />
+									<Text fontSize="xs">Failed</Text>
+								</HStack>
+							) : (
+								<Text color="fg.muted" fontSize="xs">
+									<FormatByte value={file.fileSize} />
+								</Text>
+							)}
+						</HStack>
+						<IconButton
+							aria-label={`Delete ${file.format.toUpperCase()} file`}
+							variant="ghost"
+							colorPalette="red"
+							size="xs"
+							disabled={disabled || !canDelete || file.status === "processing"}
+							onClick={() => setDeleteTarget(file.format)}
+						>
+							<LuTrash2 />
+						</IconButton>
+					</HStack>
+				))}
+				<FileUploadRoot
+					maxFiles={1}
+					maxFileSize={MAX_BOOK_UPLOAD_BYTES}
+					accept={BOOK_FILE_ACCEPT}
+					disabled={disabled || adding}
+					onFileChange={handleFileChange}
+				>
+					<FileUploadTrigger asChild>
+						<Button
+							variant="outline"
+							size="sm"
+							width="full"
+							loading={adding}
+							disabled={disabled}
+						>
+							<LuPlus />
+							Add format
+						</Button>
+					</FileUploadTrigger>
+				</FileUploadRoot>
+			</Stack>
+
+			<DialogRoot
+				role="alertdialog"
+				open={deleteTarget !== null}
+				onOpenChange={(e) => {
+					if (!deleting && !e.open) setDeleteTarget(null);
+				}}
+			>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>Delete File</DialogTitle>
+					</DialogHeader>
+					<DialogBody>
+						<Text>
+							Are you sure you want to delete the{" "}
+							<Span fontWeight="semibold">{deleteTarget?.toUpperCase()}</Span>{" "}
+							file? This action cannot be undone.
+						</Text>
+					</DialogBody>
+					<DialogFooter>
+						<Button
+							variant="outline"
+							onClick={() => setDeleteTarget(null)}
+							disabled={deleting}
+						>
+							Cancel
+						</Button>
+						<Button
+							colorPalette="red"
+							onClick={handleConfirmDelete}
+							loading={deleting}
+						>
+							Delete
+						</Button>
+					</DialogFooter>
+					<DialogCloseTrigger disabled={deleting} />
+				</DialogContent>
+			</DialogRoot>
+		</Box>
+	);
+}
+
 export function EditBookPage({
 	book,
 	coverUrl,
@@ -354,6 +538,8 @@ export function EditBookPage({
 	onCancel: onBack,
 	onSearchMetadata,
 	onFetchCover,
+	onAddFile,
+	onDeleteFile,
 }: EditBookPageProps) {
 	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 	const [isDeleting, setIsDeleting] = useState(false);
@@ -727,19 +913,25 @@ export function EditBookPage({
 							</Button>
 						</HStack>
 						<Grid templateColumns={{ base: "1fr", md: "200px 1fr" }} gap={8}>
-							<CoverEditor
-								previewUrl={coverPreviewUrl}
-								previewLoading={!coverDirty && coverLoading}
-								title={book.title}
-								format={book.format}
-								fileSize={book.fileSize}
-								changed={coverDirty}
-								canResetToOriginal={!coverPreviewIsOriginal}
-								disabled={isSubmitting}
-								onPickFile={handlePickCover}
-								onResetToOriginal={handleResetCover}
-								onUndo={handleUndoCover}
-							/>
+							<Stack gap={6}>
+								<CoverEditor
+									previewUrl={coverPreviewUrl}
+									previewLoading={!coverDirty && coverLoading}
+									title={book.title}
+									changed={coverDirty}
+									canResetToOriginal={!coverPreviewIsOriginal}
+									disabled={isSubmitting}
+									onPickFile={handlePickCover}
+									onResetToOriginal={handleResetCover}
+									onUndo={handleUndoCover}
+								/>
+								<BookFilesSection
+									files={book.files}
+									disabled={isSubmitting}
+									onAddFile={onAddFile}
+									onDeleteFile={onDeleteFile}
+								/>
+							</Stack>
 
 							<Fieldset.Root disabled={isSubmitting}>
 								<Fieldset.Content>

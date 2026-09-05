@@ -20,7 +20,18 @@ const fixturesDir = path.resolve(
 	"books",
 );
 
-async function createStubBook(userId: string, bookId: string): Promise<void> {
+const fileEntry = (status: string) => ({
+	fileSize: 1,
+	status,
+	errorCode: null,
+	addedAt: FieldValue.serverTimestamp(),
+});
+
+async function createStubBook(
+	userId: string,
+	bookId: string,
+	format = "epub",
+): Promise<void> {
 	const db = getFirestore();
 	await db.doc(`users/${userId}/books/${bookId}`).set({
 		title: "",
@@ -29,9 +40,11 @@ async function createStubBook(userId: string, bookId: string): Promise<void> {
 		description: null,
 		languages: [],
 		identifiers: [],
+		files: { [format]: fileEntry("processing") },
+		hasProcessingFile: true,
 		hasCover: false,
-		status: "uploading",
-		errorMessage: null,
+		status: "processing",
+		errorCode: null,
 		createdAt: FieldValue.serverTimestamp(),
 		updatedAt: FieldValue.serverTimestamp(),
 	});
@@ -105,11 +118,13 @@ describe("extractBookMetadata", () => {
 		const book = bookSnap.data()!;
 
 		expect(book.status).toBe("ready");
-		expect(book.errorMessage).toBeNull();
+		expect(book.errorCode).toBeNull();
 		expect(book.title).toBe("Alice's Adventures in Wonderland");
 		expect(book.languages).toContain("en");
 		expect(book.authorIds).toHaveLength(1);
 		expect(book.hasCover).toBe(true);
+		expect(book.files.epub.status).toBe("ready");
+		expect(book.hasProcessingFile).toBe(false);
 
 		// Verify author doc was created
 		const authorsSnap = await db
@@ -152,15 +167,17 @@ describe("extractBookMetadata", () => {
 		const book = bookSnap.data()!;
 
 		expect(book.status).toBe("error");
-		expect(book.errorMessage).toEqual(expect.any(String));
-		expect(book.errorMessage.length).toBeGreaterThan(0);
+		expect(book.errorCode).toBe("extraction-failed");
+		expect(book.files.epub.status).toBe("error");
+		expect(book.files.epub.errorCode).toBe("extraction-failed");
+		expect(book.hasProcessingFile).toBe(false);
 	});
 
 	it("sets error status for an unsupported format", async () => {
 		const bookId = "test-book-txt";
 		const storagePath = `users/${TEST_USER_ID}/books/${bookId}/book.txt`;
 
-		await createStubBook(TEST_USER_ID, bookId);
+		await createStubBook(TEST_USER_ID, bookId, "txt");
 		await uploadBuffer(storagePath, Buffer.from("plain text content"));
 
 		await extractBookMetadata({
@@ -177,8 +194,7 @@ describe("extractBookMetadata", () => {
 		const book = bookSnap.data()!;
 
 		expect(book.status).toBe("error");
-		expect(book.errorMessage).toEqual(expect.any(String));
-		expect(book.errorMessage.length).toBeGreaterThan(0);
+		expect(book.errorCode).toBe("unsupported-format");
 	});
 
 	it("writes an empty title when the file and filename yield none", async () => {
@@ -276,6 +292,44 @@ describe("extractBookMetadata", () => {
 		expect(publishersSnap.docs).toHaveLength(1);
 		expect(publishersSnap.docs[0].data().name).toBe("Acme Publishing");
 		expect(book.publisherId).toBe(publishersSnap.docs[0].id);
+	});
+
+	it("marks an additional format ready without touching metadata", async () => {
+		const bookId = "test-book-additional-format";
+		const db = getFirestore();
+		await db.doc(`users/${TEST_USER_ID}/books/${bookId}`).set({
+			title: "Existing Title",
+			authorIds: [],
+			publisherId: null,
+			description: "Existing description",
+			languages: ["ja"],
+			identifiers: [],
+			files: { epub: fileEntry("ready"), pdf: fileEntry("processing") },
+			hasProcessingFile: true,
+			hasCover: false,
+			status: "ready",
+			errorCode: null,
+			createdAt: FieldValue.serverTimestamp(),
+			updatedAt: FieldValue.serverTimestamp(),
+		});
+
+		await extractBookMetadata({
+			userId: TEST_USER_ID,
+			bookId,
+			format: "pdf",
+		});
+
+		const bookSnap = await db
+			.doc(`users/${TEST_USER_ID}/books/${bookId}`)
+			.get();
+		const book = bookSnap.data()!;
+
+		expect(book.title).toBe("Existing Title");
+		expect(book.description).toBe("Existing description");
+		expect(book.languages).toEqual(["ja"]);
+		expect(book.files.epub.status).toBe("ready");
+		expect(book.files.pdf.status).toBe("ready");
+		expect(book.hasProcessingFile).toBe(false);
 	});
 
 	it("reuses existing author instead of creating a duplicate", async () => {

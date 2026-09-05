@@ -1,7 +1,12 @@
 import type { Book } from "@calibre-web-serverless/domain/models/book";
+import {
+	type BookFileFormat,
+	readyFiles,
+} from "@calibre-web-serverless/domain/models/bookFile";
 import { hasAnyCover } from "@calibre-web-serverless/domain/repositories/bookCoverRepository";
 import { authorRepository } from "@calibre-web-serverless/infrastructure/admin/repositories/authorRepository";
 import { bookCoverRepository } from "@calibre-web-serverless/infrastructure/admin/repositories/bookCoverRepository";
+import { bookFileRepository } from "@calibre-web-serverless/infrastructure/admin/repositories/bookFileRepository";
 import { bookRepository } from "@calibre-web-serverless/infrastructure/admin/repositories/bookRepository";
 import { publisherRepository } from "@calibre-web-serverless/infrastructure/admin/repositories/publisherRepository";
 import { tagRepository } from "@calibre-web-serverless/infrastructure/admin/repositories/tagRepository";
@@ -35,7 +40,7 @@ const ITEMS_PER_PAGE = 50;
 // bytes never pass through the function.
 const USE_SIGNED_URL_REDIRECT = process.env.FUNCTIONS_EMULATOR !== "true";
 
-const DOWNLOAD_PATH = /^\/download\/([^/]+)\.[^/.]+$/;
+const DOWNLOAD_PATH = /^\/download\/([^/]+)\.([^/.]+)$/;
 const COVER_PATH = /^\/cover\/([^/]+)(?:\/thumbnail)?$/;
 
 function requireAuth(res: Response): void {
@@ -89,8 +94,10 @@ function toFeedEntry(
 		categories: book.tagIds
 			.map((id) => tags.get(id))
 			.filter((name): name is string => name !== undefined),
-		format: book.format,
-		fileSize: book.fileSize,
+		files: readyFiles(book.files).map((file) => ({
+			format: file.format,
+			fileSize: file.fileSize,
+		})),
 		hasCover: hasAnyCover(book),
 	};
 }
@@ -103,20 +110,21 @@ async function deliverBook(
 	res: Response,
 	userId: string,
 	book: Book,
+	format: BookFileFormat,
 ): Promise<void> {
 	if (USE_SIGNED_URL_REDIRECT) {
 		res.redirect(
 			302,
-			await bookRepository.getBookDownloadUrl(userId, book.id, book.format),
+			await bookFileRepository.getBookFileDownloadUrl(userId, book.id, format),
 		);
 		return;
 	}
-	const buffer = await bookRepository.downloadBookFile(
+	const buffer = await bookFileRepository.downloadBookFile(
 		userId,
 		book.id,
-		book.format,
+		format,
 	);
-	res.set("Content-Type", bookMimeType(book.format)).send(buffer);
+	res.set("Content-Type", bookMimeType(format)).send(buffer);
 }
 
 async function deliverCover(
@@ -184,13 +192,21 @@ async function handleDownload(
 	res: Response,
 	userId: string,
 	bookId: string,
+	extension: string,
 ): Promise<void> {
 	const book = await bookRepository.getBook(userId, bookId);
 	if (!book) {
 		res.status(404).end();
 		return;
 	}
-	await deliverBook(res, userId, book);
+	const file = readyFiles(book.files).find(
+		(candidate) => candidate.format === extension.toLowerCase(),
+	);
+	if (!file) {
+		res.status(404).end();
+		return;
+	}
+	await deliverBook(res, userId, book, file.format);
 }
 
 async function handleCover(
@@ -223,7 +239,7 @@ async function route(
 	}
 	const download = path.match(DOWNLOAD_PATH);
 	if (download) {
-		await handleDownload(res, userId, download[1]);
+		await handleDownload(res, userId, download[1], download[2]);
 		return;
 	}
 	const cover = path.match(COVER_PATH);

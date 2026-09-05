@@ -29,8 +29,7 @@ function entry(overrides: Partial<FeedEntry> = {}): FeedEntry {
 		issued: new Date("2020-06-01T00:00:00.000Z"),
 		summary: "A summary",
 		categories: ["fiction"],
-		format: "epub",
-		fileSize: 1234,
+		files: [{ format: "epub", fileSize: 1234 }],
 		hasCover: true,
 		...overrides,
 	};
@@ -84,6 +83,37 @@ describe("buildAcquisitionFeed", () => {
 		expect(
 			findLink(e.link, "http://opds-spec.org/image/thumbnail")["@_href"],
 		).toBe("/opds/cover/book1/thumbnail");
+	});
+
+	it("renders one acquisition link per file", () => {
+		const { feed } = parse(
+			buildAcquisitionFeed({
+				entries: [
+					entry({
+						files: [
+							{ format: "epub", fileSize: 1234 },
+							{ format: "pdf", fileSize: 5678 },
+						],
+					}),
+				],
+				page: 1,
+				itemsPerPage: 50,
+				totalResults: 1,
+				now: NOW,
+			}),
+		);
+		const acquisitions = asArray(feed.entry.link).filter(
+			(l) => l["@_rel"] === "http://opds-spec.org/acquisition",
+		);
+		expect(acquisitions).toHaveLength(2);
+		expect(acquisitions.map((l) => l["@_href"])).toEqual([
+			"/opds/download/book1.epub",
+			"/opds/download/book1.pdf",
+		]);
+		expect(acquisitions.map((l) => l["@_type"])).toEqual([
+			"application/epub+zip",
+			"application/pdf",
+		]);
 	});
 
 	it("omits cover links when there is no cover", () => {

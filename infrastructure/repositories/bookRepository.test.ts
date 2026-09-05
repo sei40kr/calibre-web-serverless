@@ -34,7 +34,7 @@ describe("bookRepository", () => {
 		});
 
 		it("returns true after uploading a book", async () => {
-			await bookRepository.uploadBook({
+			await bookRepository.createBook({
 				userId,
 				file: createTestFile("book.epub"),
 			});
@@ -44,9 +44,9 @@ describe("bookRepository", () => {
 		});
 	});
 
-	describe("uploadBook", () => {
+	describe("createBook", () => {
 		it("returns bookId and format", async () => {
-			const result = await bookRepository.uploadBook({
+			const result = await bookRepository.createBook({
 				userId,
 				file: createTestFile("book.epub"),
 			});
@@ -57,7 +57,7 @@ describe("bookRepository", () => {
 		});
 
 		it("extracts format from file extension", async () => {
-			const result = await bookRepository.uploadBook({
+			const result = await bookRepository.createBook({
 				userId,
 				file: createTestFile("book.pdf"),
 			});
@@ -66,7 +66,7 @@ describe("bookRepository", () => {
 		});
 
 		it("creates a book that can be retrieved with getBook", async () => {
-			const { bookId } = await bookRepository.uploadBook({
+			const { bookId } = await bookRepository.createBook({
 				userId,
 				file: createTestFile("book.epub"),
 			});
@@ -78,9 +78,22 @@ describe("bookRepository", () => {
 			expect(book.id).toBe(bookId);
 			expect(book.userId).toBe(userId);
 			expect(book.title).toBe("");
-			expect(book.format).toBe("epub");
+			expect(book.files).toHaveLength(1);
+			expect(book.files[0]).toMatchObject({
+				format: "epub",
+				status: "processing",
+			});
 			expect(book.createdAt).toBeInstanceOf(Date);
 			expect(book.updatedAt).toBeInstanceOf(Date);
+		});
+
+		it("rejects an unsupported file extension", async () => {
+			await expect(
+				bookRepository.createBook({
+					userId,
+					file: createTestFile("book.xyz"),
+				}),
+			).rejects.toMatchObject({ code: "unsupported-format" });
 		});
 	});
 
@@ -93,7 +106,7 @@ describe("bookRepository", () => {
 
 	describe("updateBook", () => {
 		it("updates book metadata", async () => {
-			const { bookId } = await bookRepository.uploadBook({
+			const { bookId } = await bookRepository.createBook({
 				userId,
 				file: createTestFile("book.epub"),
 			});
@@ -117,7 +130,7 @@ describe("bookRepository", () => {
 		});
 
 		it("round-trips Language values", async () => {
-			const { bookId } = await bookRepository.uploadBook({
+			const { bookId } = await bookRepository.createBook({
 				userId,
 				file: createTestFile("book.epub"),
 			});
@@ -139,7 +152,7 @@ describe("bookRepository", () => {
 		});
 
 		it("round-trips Identifier values", async () => {
-			const { bookId } = await bookRepository.uploadBook({
+			const { bookId } = await bookRepository.createBook({
 				userId,
 				file: createTestFile("book.epub"),
 			});
@@ -166,7 +179,7 @@ describe("bookRepository", () => {
 			const author1 = await authorRepository.create(userId, "Author 1");
 			const author2 = await authorRepository.create(userId, "Author 2");
 
-			const { bookId } = await bookRepository.uploadBook({
+			const { bookId } = await bookRepository.createBook({
 				userId,
 				file: createTestFile("book.epub"),
 			});
@@ -208,7 +221,7 @@ describe("bookRepository", () => {
 
 	describe("deleteBook", () => {
 		it("removes the book so it can no longer be retrieved", async () => {
-			const { bookId } = await bookRepository.uploadBook({
+			const { bookId } = await bookRepository.createBook({
 				userId,
 				file: createTestFile("book.epub"),
 			});
@@ -253,7 +266,7 @@ describe("bookRepository", () => {
 			const tag = await tagRepository.create(userId, "Tag");
 			const publisher = await publisherRepository.create(userId, "Publisher");
 
-			const { bookId } = await bookRepository.uploadBook({
+			const { bookId } = await bookRepository.createBook({
 				userId,
 				file: createTestFile("book.epub"),
 			});
@@ -294,13 +307,13 @@ describe("bookRepository", () => {
 				publisherId: publisher.id,
 			};
 
-			const { bookId: firstId } = await bookRepository.uploadBook({
+			const { bookId: firstId } = await bookRepository.createBook({
 				userId,
 				file: createTestFile("first.epub"),
 			});
 			await assignRelations(firstId, ids);
 
-			const { bookId: secondId } = await bookRepository.uploadBook({
+			const { bookId: secondId } = await bookRepository.createBook({
 				userId,
 				file: createTestFile("second.epub"),
 			});
@@ -352,7 +365,7 @@ describe("bookRepository", () => {
 		});
 
 		it("returns books sorted by createdAt descending", async () => {
-			const { bookId: firstId } = await bookRepository.uploadBook({
+			const { bookId: firstId } = await bookRepository.createBook({
 				userId,
 				file: createTestFile("first.epub"),
 			});
@@ -364,7 +377,7 @@ describe("bookRepository", () => {
 				});
 			}
 
-			const { bookId: secondId } = await bookRepository.uploadBook({
+			const { bookId: secondId } = await bookRepository.createBook({
 				userId,
 				file: createTestFile("second.epub"),
 			});
@@ -391,23 +404,6 @@ describe("bookRepository", () => {
 			expect(books).toHaveLength(2);
 			expect(books[0].title).toBe("Second Book");
 			expect(books[1].title).toBe("First Book");
-		});
-	});
-
-	describe("getBookDownloadUrl", () => {
-		it("returns a download URL for an uploaded book", async () => {
-			const { bookId, format } = await bookRepository.uploadBook({
-				userId,
-				file: createTestFile("book.epub"),
-			});
-
-			const url = await bookRepository.getBookDownloadUrl(
-				userId,
-				bookId,
-				format,
-			);
-			expect(url).toEqual(expect.any(String));
-			expect(url.length).toBeGreaterThan(0);
 		});
 	});
 });

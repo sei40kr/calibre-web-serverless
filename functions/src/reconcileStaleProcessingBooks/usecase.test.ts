@@ -12,15 +12,39 @@ const HOUR_MS = 60 * 60 * 1000;
 
 async function createBook(
 	bookId: string,
-	{ status, updatedAt }: { status: string; updatedAt: Date },
+	{
+		status,
+		updatedAt,
+		files,
+	}: {
+		status: string;
+		updatedAt: Date;
+		/** File entry statuses by format; defaults to one epub mirroring `status`. */
+		files?: Record<string, string>;
+	},
 ): Promise<void> {
+	const fileStatuses = files ?? { epub: status };
+	const fileEntries = Object.fromEntries(
+		Object.entries(fileStatuses).map(([format, fileStatus]) => [
+			format,
+			{
+				fileSize: 1,
+				status: fileStatus,
+				errorCode: null,
+				addedAt: Timestamp.fromDate(updatedAt),
+			},
+		]),
+	);
 	await getFirestore()
 		.doc(`users/${USER_ID}/books/${bookId}`)
 		.set({
 			title: "",
 			status,
-			errorMessage: null,
-			format: "epub",
+			errorCode: null,
+			files: fileEntries,
+			hasProcessingFile: Object.values(fileStatuses).some(
+				(fileStatus) => fileStatus === "processing",
+			),
 			hasCover: false,
 			hasCustomCover: false,
 			createdAt: Timestamp.fromDate(updatedAt),
@@ -68,6 +92,25 @@ async function waitForStaleVisible(
 		await new Promise((resolve) => setTimeout(resolve, 20));
 	}
 	throw new Error(`stale book ${bookId} never became visible to the query`);
+}
+
+// Same emulator-lag guard for the stale-file query (hasProcessingFile flag).
+async function waitForStaleFileVisible(
+	bookId: string,
+	olderThan: Date,
+): Promise<void> {
+	for (let attempt = 0; attempt < 100; attempt++) {
+		const snap = await getFirestore()
+			.collectionGroup("books")
+			.where("hasProcessingFile", "==", true)
+			.where("updatedAt", "<", Timestamp.fromDate(olderThan))
+			.get();
+		if (snap.docs.some((d) => d.id === bookId)) return;
+		await new Promise((resolve) => setTimeout(resolve, 20));
+	}
+	throw new Error(
+		`stale file entry of ${bookId} never became visible to the query`,
+	);
 }
 
 describe("reconcileStaleProcessingBooks", () => {
@@ -186,6 +229,63 @@ describe("reconcileStaleProcessingBooks", () => {
 		expect(await objectExists(`users/${USER_ID}/books/ready/book.epub`)).toBe(
 			true,
 		);
+	});
+
+	it("marks a stale processing file entry ready when its object exists", async () => {
+		const olderThan = new Date(Date.now() - HOUR_MS);
+		await createBook("ready-with-file", {
+			status: "ready",
+			updatedAt: new Date(Date.now() - 2 * HOUR_MS),
+			files: { epub: "ready", pdf: "processing" },
+		});
+		await uploadObject(`users/${USER_ID}/books/ready-with-file/book.pdf`);
+		await waitForStaleFileVisible("ready-with-file", olderThan);
+
+		const reprocess = vi.fn(async () => {});
+		const result = await reconcileStaleProcessingBooks({
+			olderThan,
+			dryRun: false,
+			reprocess,
+		});
+
+		expect(result.foundFiles).toBe(1);
+		expect(result.filesMarkedReady).toBe(1);
+		expect(result.fileEntriesRemoved).toBe(0);
+		expect(result.failed).toBe(0);
+		expect(reprocess).not.toHaveBeenCalled();
+
+		const snap = await getFirestore()
+			.doc(`users/${USER_ID}/books/ready-with-file`)
+			.get();
+		expect(snap.data()?.files.pdf.status).toBe("ready");
+		expect(snap.data()?.hasProcessingFile).toBe(false);
+	});
+
+	it("removes a stale processing file entry whose object never landed", async () => {
+		const olderThan = new Date(Date.now() - HOUR_MS);
+		await createBook("ready-without-file", {
+			status: "ready",
+			updatedAt: new Date(Date.now() - 2 * HOUR_MS),
+			files: { epub: "ready", pdf: "processing" },
+		});
+		await waitForStaleFileVisible("ready-without-file", olderThan);
+
+		const result = await reconcileStaleProcessingBooks({
+			olderThan,
+			dryRun: false,
+			reprocess: vi.fn(async () => {}),
+		});
+
+		expect(result.foundFiles).toBe(1);
+		expect(result.filesMarkedReady).toBe(0);
+		expect(result.fileEntriesRemoved).toBe(1);
+
+		const snap = await getFirestore()
+			.doc(`users/${USER_ID}/books/ready-without-file`)
+			.get();
+		expect(snap.data()?.files.pdf).toBeUndefined();
+		expect(snap.data()?.files.epub.status).toBe("ready");
+		expect(snap.data()?.hasProcessingFile).toBe(false);
 	});
 
 	it("dry run reports matches without acting", async () => {

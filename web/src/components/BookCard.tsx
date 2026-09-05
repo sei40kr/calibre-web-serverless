@@ -1,6 +1,7 @@
 "use client";
 
 import type { Book } from "@calibre-web-serverless/domain/models/book";
+import { readyFiles } from "@calibre-web-serverless/domain/models/bookFile";
 import {
 	Badge,
 	Box,
@@ -13,6 +14,7 @@ import {
 	Span,
 	Text,
 	VStack,
+	Wrap,
 } from "@chakra-ui/react";
 import Link from "next/link";
 import { useState } from "react";
@@ -96,9 +98,13 @@ export function BookCard({
 					<Text fontWeight="medium" lineClamp={2} title={book.title}>
 						{isProcessing ? "Processing..." : book.title || "Untitled"}
 					</Text>
-					<Badge size="sm" colorPalette="blue">
-						{book.format.toUpperCase()}
-					</Badge>
+					<Wrap gap={1}>
+						{readyFiles(book.files).map((file) => (
+							<Badge key={file.format} size="sm" colorPalette="blue">
+								{file.format.toUpperCase()}
+							</Badge>
+						))}
+					</Wrap>
 				</VStack>
 			</Card.Body>
 

@@ -1,4 +1,5 @@
 import type { Book } from "../models/book";
+import type { BookFileFormat } from "../models/bookFile";
 import type { BookFilter, BookSort } from "../models/bookQuery";
 
 export interface BookRepository {
@@ -21,15 +22,11 @@ export interface BookRepository {
 			onError: (error: Error) => void;
 		},
 	): () => void;
-	getBookDownloadUrl(
-		userId: string,
-		bookId: string,
-		format: string,
-	): Promise<string>;
-	uploadBook(params: {
+	/** Create a new book from its first uploaded file. */
+	createBook(params: {
 		userId: string;
 		file: File;
-	}): Promise<{ bookId: string; format: string }>;
+	}): Promise<{ bookId: string; format: BookFileFormat }>;
 	updateBook(userId: string, book: Book): Promise<void>;
 	deleteBook(userId: string, bookId: string): Promise<void>;
 }

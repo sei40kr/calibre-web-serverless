@@ -4,6 +4,13 @@ import type { ExtractedMetadata } from "./types";
 
 export type { ExtractedMetadata };
 
+/** No extractor exists for the file's format. */
+export class UnsupportedBookFormatError extends Error {
+	constructor(format: string) {
+		super(`Unsupported book format: ${format}`);
+	}
+}
+
 /**
  * Extract metadata for a given file format. Rejects for a format we have no
  * extractor for, so the caller can mark the book as failed rather than storing
@@ -19,6 +26,6 @@ export function extractMetadata(
 		case "pdf":
 			return extractPdfMetadata(data);
 		default:
-			return Promise.reject(new Error(`Unsupported book format: ${format}`));
+			return Promise.reject(new UnsupportedBookFormatError(format));
 	}
 }

@@ -50,6 +50,12 @@ function atomDate(date: Date | null): string {
 	return (date ?? new Date(0)).toISOString();
 }
 
+/** One downloadable file of a book, projected for its acquisition link. */
+export interface FeedEntryFile {
+	format: string;
+	fileSize: number;
+}
+
 /** A single book projected into the fields an acquisition entry needs. */
 export interface FeedEntry {
 	id: string;
@@ -61,8 +67,8 @@ export interface FeedEntry {
 	issued: Date | null;
 	summary: string | null;
 	categories: string[];
-	format: string;
-	fileSize: number;
+	/** Ready files; each becomes its own acquisition link. */
+	files: FeedEntryFile[];
 	hasCover: boolean;
 }
 
@@ -127,14 +133,16 @@ function entryNode(entry: FeedEntry): XmlNode {
 			linkNode(REL_THUMBNAIL, `/opds/cover/${entry.id}/thumbnail`, COVER_MIME),
 		);
 	}
-	links.push(
-		linkNode(
-			REL_ACQUISITION,
-			`/opds/download/${entry.id}.${entry.format}`,
-			bookMimeType(entry.format),
-			{ "@_length": String(entry.fileSize) },
-		),
-	);
+	for (const file of entry.files) {
+		links.push(
+			linkNode(
+				REL_ACQUISITION,
+				`/opds/download/${entry.id}.${file.format}`,
+				bookMimeType(file.format),
+				{ "@_length": String(file.fileSize) },
+			),
+		);
+	}
 	node.link = links;
 	return node;
 }

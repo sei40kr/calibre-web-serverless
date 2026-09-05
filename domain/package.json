@@ -8,6 +8,7 @@
 	},
 	"exports": {
 		"./models/book": "./models/book.ts",
+		"./models/bookFile": "./models/bookFile.ts",
 		"./models/bookQuery": "./models/bookQuery.ts",
 		"./models/bookCover": "./models/bookCover.ts",
 		"./models/author": "./models/author.ts",
@@ -18,6 +19,7 @@
 		"./models/identifier": "./models/identifier.ts",
 		"./models/bookMetadataSearch": "./models/bookMetadataSearch.ts",
 		"./repositories/bookRepository": "./repositories/bookRepository.ts",
+		"./repositories/bookFileRepository": "./repositories/bookFileRepository.ts",
 		"./repositories/bookCoverRepository": "./repositories/bookCoverRepository.ts",
 		"./repositories/authorRepository": "./repositories/authorRepository.ts",
 		"./repositories/seriesRepository": "./repositories/seriesRepository.ts",
@@ -25,6 +27,7 @@
 		"./repositories/publisherRepository": "./repositories/publisherRepository.ts",
 		"./models/user": "./models/user.ts",
 		"./errors/authError": "./errors/authError.ts",
+		"./errors/bookFileError": "./errors/bookFileError.ts",
 		"./errors/storageError": "./errors/storageError.ts",
 		"./services/authService": "./services/authService.ts"
 	}

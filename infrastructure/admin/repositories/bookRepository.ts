@@ -1,5 +1,9 @@
 import type { Book } from "@calibre-web-serverless/domain/models/book";
 import {
+	type BookFile,
+	BookFileFormat,
+} from "@calibre-web-serverless/domain/models/bookFile";
+import {
 	type Identifier,
 	IdentifierType,
 } from "@calibre-web-serverless/domain/models/identifier";
@@ -14,15 +18,16 @@ import {
 import { getStorage } from "firebase-admin/storage";
 import type {
 	BookDocument as BaseBookDocument,
+	BookFileDocument as BaseBookFileDocument,
 	IdentifierDocument,
 } from "../../documents/book";
 
-// Admin-side access to books — the Firestore document and the stored file.
-// Model <-> document conversion stays here so the firebase-admin Timestamp type
-// never leaks out. Mirrors the client bookRepository conventions (getBook,
-// getBookDownloadUrl, updateBook).
+// Admin-side access to books. Model <-> document conversion stays here so the
+// firebase-admin Timestamp type never leaks out. File-scoped operations live
+// in bookFileRepository.
 
 type BookDocument = BaseBookDocument<Timestamp>;
+type BookFileDocument = BaseBookFileDocument<Timestamp>;
 
 // Catalog reads are limited to ready books: only they have a stored file and
 // extracted metadata.
@@ -35,14 +40,10 @@ const READY_STATUS = "ready";
 // deleting one needs no relation-count reconciliation.
 const PROCESSING_STATUS = "processing";
 
-// Download URLs are short-lived; bytes are otherwise served straight from the
-// signed URL without passing through the function.
-const DOWNLOAD_URL_TTL_MS = 15 * 60 * 1000;
-
 const booksPath = (userId: string) => `users/${userId}/books`;
-const bookPath = (userId: string, bookId: string) =>
+export const bookPath = (userId: string, bookId: string) =>
 	`${booksPath(userId)}/${bookId}`;
-const bookFilePath = (userId: string, bookId: string, format: string) =>
+export const bookFilePath = (userId: string, bookId: string, format: string) =>
 	`${bookPath(userId, bookId)}/book.${format}`;
 
 const toIdentifier = (doc: IdentifierDocument): Identifier => {
@@ -51,7 +52,28 @@ const toIdentifier = (doc: IdentifierDocument): Identifier => {
 	return { type, value: doc.value };
 };
 
-function toBook(snapshot: DocumentSnapshot): Book {
+// Entries with an unsupported format key are dropped rather than crashing
+// the whole book.
+const toBookFiles = (
+	files: Record<string, BookFileDocument> | undefined,
+): BookFile[] =>
+	Object.entries(files ?? {})
+		.flatMap(([key, file]): BookFile[] => {
+			const format = BookFileFormat.from(key);
+			if (!format) return [];
+			return [
+				{
+					format,
+					fileSize: file.fileSize ?? 0,
+					status: file.status ?? "ready",
+					errorCode: file.errorCode ?? null,
+					addedAt: file.addedAt?.toDate() ?? null,
+				},
+			];
+		})
+		.sort((a, b) => a.format.localeCompare(b.format));
+
+export function toBook(snapshot: DocumentSnapshot): Book {
 	const d = snapshot.data() as BookDocument;
 	return {
 		id: snapshot.id,
@@ -72,19 +94,23 @@ function toBook(snapshot: DocumentSnapshot): Book {
 		}),
 		description: d.description ?? null,
 		rating: d.rating ?? null,
-		format: d.format ?? "",
-		fileSize: d.fileSize ?? 0,
+		files: toBookFiles(d.files),
 		hasCover: d.hasCover ?? false,
 		hasCustomCover: d.hasCustomCover ?? false,
 		status: d.status ?? "ready",
-		errorMessage: d.errorMessage ?? null,
+		errorCode: d.errorCode ?? null,
 		createdAt: d.createdAt?.toDate() ?? null,
 		updatedAt: d.updatedAt?.toDate() ?? null,
 	};
 }
 
+// Omits `files`/`hasProcessingFile` so a metadata write can never clobber
+// concurrent per-file state changes (those go through bookFileRepository).
 function toBookDocument(book: Book): DocumentData {
-	const document: Omit<BookDocument, "createdAt" | "updatedAt"> & {
+	const document: Omit<
+		BookDocument,
+		"createdAt" | "updatedAt" | "files" | "hasProcessingFile"
+	> & {
 		updatedAt: FieldValue;
 	} = {
 		title: book.title,
@@ -102,12 +128,10 @@ function toBookDocument(book: Book): DocumentData {
 		languages: book.languages.map((l) => l.code),
 		description: book.description,
 		rating: book.rating,
-		format: book.format,
-		fileSize: book.fileSize,
 		hasCover: book.hasCover,
 		hasCustomCover: book.hasCustomCover,
 		status: book.status,
-		errorMessage: book.errorMessage,
+		errorCode: book.errorCode,
 		updatedAt: FieldValue.serverTimestamp(),
 	};
 	return document;
@@ -154,22 +178,6 @@ const updateBook = async (userId: string, book: Book): Promise<void> => {
 		.update(toBookDocument(book));
 };
 
-/** A short-lived signed URL to download the book file. */
-const getBookDownloadUrl = async (
-	userId: string,
-	bookId: string,
-	format: string,
-): Promise<string> => {
-	const file = getStorage()
-		.bucket()
-		.file(bookFilePath(userId, bookId, format));
-	const [url] = await file.getSignedUrl({
-		action: "read",
-		expires: Date.now() + DOWNLOAD_URL_TTL_MS,
-	});
-	return url;
-};
-
 /**
  * Every book across all users that has been stuck in "processing" since before
  * `olderThan` (compared on `updatedAt`, which a stub never advances). Uses a
@@ -198,43 +206,6 @@ const deleteBook = async (userId: string, bookId: string): Promise<void> => {
 		.deleteFiles({ prefix: `${bookPath(userId, bookId)}/` });
 };
 
-/**
- * The stored book file's metadata, or null when no file exists. The reconcile
- * uses presence to choose between reprocessing (file uploaded, extraction never
- * finished) and deleting (upload never landed). `originalName` mirrors the
- * custom metadata the client sets, so a reprocess keeps the filename title
- * fallback the original extraction would have had.
- */
-const getBookFile = async (
-	userId: string,
-	bookId: string,
-	format: string,
-): Promise<{ originalName?: string } | null> => {
-	const file = getStorage()
-		.bucket()
-		.file(bookFilePath(userId, bookId, format));
-	const [exists] = await file.exists();
-	if (!exists) return null;
-	const [metadata] = await file.getMetadata();
-	const originalName = metadata.metadata?.originalName;
-	return {
-		originalName: typeof originalName === "string" ? originalName : undefined,
-	};
-};
-
-/** The raw book file bytes (used by metadata extraction). */
-const downloadBookFile = async (
-	userId: string,
-	bookId: string,
-	format: string,
-): Promise<Buffer> => {
-	const [buffer] = await getStorage()
-		.bucket()
-		.file(bookFilePath(userId, bookId, format))
-		.download();
-	return buffer;
-};
-
 export const bookRepository = {
 	countBooks,
 	searchBooks,
@@ -242,7 +213,4 @@ export const bookRepository = {
 	updateBook,
 	findStaleProcessingBooks,
 	deleteBook,
-	getBookDownloadUrl,
-	getBookFile,
-	downloadBookFile,
 };

@@ -12,6 +12,7 @@ const baseBook: Book = {
 	seriesId: null,
 	seriesIndex: 1,
 	tagIds: [],
+	bookshelfIds: [],
 	publisherId: null,
 	pubDate: null,
 	identifiers: [],

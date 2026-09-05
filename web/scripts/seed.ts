@@ -21,9 +21,11 @@ import { Language } from "@calibre-web-serverless/domain/models/language";
 import { createSeededBook } from "@calibre-web-serverless/infrastructure/admin/repositories/bookRepository";
 import { authorRepository } from "@calibre-web-serverless/infrastructure/repositories/authorRepository";
 import { bookRepository } from "@calibre-web-serverless/infrastructure/repositories/bookRepository";
+import { bookshelfRepository } from "@calibre-web-serverless/infrastructure/repositories/bookshelfRepository";
 import { seriesRepository } from "@calibre-web-serverless/infrastructure/repositories/seriesRepository";
 import { tagRepository } from "@calibre-web-serverless/infrastructure/repositories/tagRepository";
 import { authService } from "@calibre-web-serverless/infrastructure/services/authService";
+import { bookshelfMembershipService } from "@calibre-web-serverless/infrastructure/services/bookshelfMembershipService";
 import { initializeApp as initializeAdminApp } from "firebase-admin/app";
 import { getAuth as getAdminAuth } from "firebase-admin/auth";
 
@@ -122,6 +124,15 @@ const books: BookSeed[] = [
 	},
 ];
 
+/** Bookshelves to seed, each listing the titles it holds. */
+const bookshelves: { name: string; titles: string[] }[] = [
+	{
+		name: "Favorites",
+		titles: ["Alice's Adventures in Wonderland", "I Am a Cat"],
+	},
+	{ name: "To Read", titles: [] },
+];
+
 async function main() {
 	const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 
@@ -198,6 +209,7 @@ async function main() {
 	// Seed each book as already "ready" via createSeededBook: the doc (with
 	// metadata and a ready file entry) is written before the epub upload, so
 	// the extraction function short-circuits — no processing to wait for.
+	const bookIdsByTitle = new Map<string, string>();
 	for (const book of books) {
 		const fixtureDir = path.join(
 			import.meta.dirname,
@@ -220,7 +232,7 @@ async function main() {
 			? fs.readFileSync(coverPath)
 			: null;
 
-		await createSeededBook({
+		const { bookId } = await createSeededBook({
 			userId,
 			files,
 			coverPng,
@@ -233,6 +245,7 @@ async function main() {
 					: null,
 				seriesIndex: book.seriesIndex ?? 1,
 				tagIds: book.tagNames.map((name) => tagMap.get(name)!),
+				bookshelfIds: [],
 				publisherId: null,
 				pubDate: book.pubDate ?? null,
 				identifiers: book.identifiers ?? [],
@@ -244,7 +257,21 @@ async function main() {
 			},
 		});
 
+		bookIdsByTitle.set(book.title, bookId);
 		console.log(`[seed] Created book: ${book.title}`);
+	}
+
+	// Bookshelves reference books by id, so they come last.
+	for (const seed of bookshelves) {
+		const bookshelf = await bookshelfRepository.create(userId, seed.name);
+		for (const title of seed.titles) {
+			await bookshelfMembershipService.addBook(
+				userId,
+				bookshelf.id,
+				bookIdsByTitle.get(title)!,
+			);
+		}
+		console.log(`[seed] Created bookshelf: ${seed.name}`);
 	}
 }
 

@@ -34,7 +34,7 @@ service cloud.firestore {
         allow read, write: if isOwner(userId);
       }
 
-      match /shelves/{shelfId} {
+      match /bookshelves/{bookshelfId} {
         allow read, write: if isOwner(userId);
       }
     }

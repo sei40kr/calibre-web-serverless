@@ -1,7 +1,9 @@
 import { XMLParser } from "fast-xml-parser";
 import { describe, expect, it } from "vitest";
 import {
+	bookshelfSource,
 	buildAcquisitionFeed,
+	buildBookshelvesFeed,
 	buildNavigationFeed,
 	type FeedEntry,
 } from "./feed";
@@ -45,8 +47,54 @@ describe("buildNavigationFeed", () => {
 	it("links to the all-books acquisition feed", () => {
 		const { feed } = parse(buildNavigationFeed(NOW));
 		expect(feed.title).toBe("Calibre-Web Serverless");
-		expect(feed.entry.link["@_href"]).toBe("/opds/books");
-		expect(feed.entry.link["@_type"]).toContain("kind=acquisition");
+		const allBooks = asArray(feed.entry).find((e) => e.title === "All Books");
+		expect(allBooks.link["@_href"]).toBe("/opds/books");
+		expect(allBooks.link["@_type"]).toContain("kind=acquisition");
+	});
+
+	// calibre-web offers the Bookshelves section to every authenticated user; it
+	// has no per-bookshelf OPDS toggle, so neither do we.
+	it("always links to the bookshelves navigation feed", () => {
+		const { feed } = parse(buildNavigationFeed(NOW));
+		const bookshelves = asArray(feed.entry).find(
+			(e) => e.title === "Bookshelves",
+		);
+		expect(bookshelves.link["@_href"]).toBe("/opds/bookshelves");
+		expect(bookshelves.link["@_type"]).toContain("kind=navigation");
+	});
+});
+
+describe("buildBookshelvesFeed", () => {
+	it("lists one entry per bookshelf pointing at its acquisition feed", () => {
+		const { feed } = parse(
+			buildBookshelvesFeed(
+				[
+					{ id: "s1", name: "Classics", bookCount: 1, updated: NOW },
+					{ id: "s2", name: "To Read", bookCount: 3, updated: null },
+				],
+				NOW,
+			),
+		);
+		expect(feed.title).toBe("Bookshelves");
+		const entries = asArray(feed.entry);
+		expect(entries.map((e) => e.title)).toEqual(["Classics", "To Read"]);
+		expect(entries.map((e) => e.link["@_href"])).toEqual([
+			"/opds/bookshelves/s1",
+			"/opds/bookshelves/s2",
+		]);
+		expect(entries[0].link["@_type"]).toContain("kind=acquisition");
+		expect(entries.map((e) => e.content["#text"])).toEqual([
+			"1 book",
+			"3 books",
+		]);
+	});
+
+	it("renders an empty feed when there are no bookshelves", () => {
+		const { feed } = parse(buildBookshelvesFeed([], NOW));
+		expect(feed.entry).toBeUndefined();
+		expect(
+			asArray(feed.link).find((l) => l["@_rel"] === "self")["@_href"],
+		).toBe("/opds/bookshelves");
 	});
 });
 
@@ -167,6 +215,30 @@ describe("buildAcquisitionFeed", () => {
 		).feed;
 		expect(findLink(first.link, "next")).toBeUndefined();
 		expect(findLink(first.link, "previous")).toBeUndefined();
+	});
+
+	it("titles and paginates a bookshelf feed under the bookshelf's own path", () => {
+		const { feed } = parse(
+			buildAcquisitionFeed({
+				entries: [entry()],
+				page: 2,
+				itemsPerPage: 50,
+				totalResults: 150,
+				now: NOW,
+				source: bookshelfSource({ id: "s1", name: "To Read" }),
+			}),
+		);
+		expect(feed.title).toBe("To Read");
+		expect(feed.id).toBe("urn:calibre-web-serverless:opds:bookshelf:s1:page:2");
+		expect(findLink(feed.link, "self")["@_href"]).toBe(
+			"/opds/bookshelves/s1?page=2",
+		);
+		expect(findLink(feed.link, "next")["@_href"]).toBe(
+			"/opds/bookshelves/s1?page=3",
+		);
+		expect(findLink(feed.link, "previous")["@_href"]).toBe(
+			"/opds/bookshelves/s1?page=1",
+		);
 	});
 
 	it("escapes XML special characters in titles", () => {

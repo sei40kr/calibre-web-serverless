@@ -10,6 +10,7 @@
 		"./lib/firebase": "./lib/firebase.ts",
 		"./services/authService": "./services/authService.ts",
 		"./services/bookMetadataSearchService": "./services/bookMetadataSearchService.ts",
+		"./services/bookshelfMembershipService": "./services/bookshelfMembershipService.ts",
 		"./documents/book": "./documents/book.ts",
 		"./repositories/bookRepository": "./repositories/bookRepository.ts",
 		"./repositories/bookFileRepository": "./repositories/bookFileRepository.ts",
@@ -18,12 +19,14 @@
 		"./repositories/seriesRepository": "./repositories/seriesRepository.ts",
 		"./repositories/tagRepository": "./repositories/tagRepository.ts",
 		"./repositories/publisherRepository": "./repositories/publisherRepository.ts",
+		"./repositories/bookshelfRepository": "./repositories/bookshelfRepository.ts",
 		"./admin/repositories/bookRepository": "./admin/repositories/bookRepository.ts",
 		"./admin/repositories/bookFileRepository": "./admin/repositories/bookFileRepository.ts",
 		"./admin/repositories/bookCoverRepository": "./admin/repositories/bookCoverRepository.ts",
 		"./admin/repositories/authorRepository": "./admin/repositories/authorRepository.ts",
 		"./admin/repositories/publisherRepository": "./admin/repositories/publisherRepository.ts",
 		"./admin/repositories/tagRepository": "./admin/repositories/tagRepository.ts",
+		"./admin/repositories/bookshelfRepository": "./admin/repositories/bookshelfRepository.ts",
 		"./admin/resizeCover": "./admin/resizeCover.ts"
 	},
 	"dependencies": {

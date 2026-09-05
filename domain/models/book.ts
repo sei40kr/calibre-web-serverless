@@ -18,6 +18,8 @@ export interface Book {
 	seriesId: string | null;
 	seriesIndex: number;
 	tagIds: string[];
+	/** Bookshelves this book has been added to; see `Bookshelf`. */
+	bookshelfIds: string[];
 	publisherId: string | null;
 	pubDate: Date | null;
 	identifiers: Identifier[];

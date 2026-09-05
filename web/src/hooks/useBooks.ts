@@ -16,11 +16,15 @@ import { useEffect, useRef, useState } from "react";
  * filter/sort change — re-subscribing keeps the previous results visible so the
  * surrounding UI (e.g. the filter toolbar/drawer) is not torn down and remounted
  * on every change.
+ *
+ * `bookshelfId` narrows the subscription to one bookshelf's books; it cannot be paired
+ * with a filter that has an active author/tag/language selection.
  */
 export const useBooks = (
 	userId: string,
 	filter?: BookFilter,
 	sort?: BookSort,
+	bookshelfId?: string,
 ) => {
 	const [books, setBooks] = useState<Book[]>([]);
 	const [loading, setLoading] = useState(true);
@@ -43,6 +47,7 @@ export const useBooks = (
 		}
 
 		const unsubscribe = bookRepository.subscribeToBooks(userId, {
+			bookshelfId,
 			filter,
 			sort,
 			onData: (booksData) => {
@@ -56,7 +61,7 @@ export const useBooks = (
 		});
 
 		return () => unsubscribe();
-	}, [userId, filter, sort]);
+	}, [userId, filter, sort, bookshelfId]);
 
 	return { books, loading, error };
 };

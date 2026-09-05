@@ -41,7 +41,7 @@ Bun workspaces with three packages at the repo root:
 
 ```
 domain/                       # @calibre-web-serverless/domain
-└── models/                   # Domain models (book, author, series, tag, publisher, language, identifier)
+└── models/                   # Domain models (book, author, series, tag, publisher, bookshelf, language, identifier)
 
 infrastructure/               # @calibre-web-serverless/infrastructure
 ├── lib/

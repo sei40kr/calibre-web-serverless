@@ -256,6 +256,7 @@ describe("bookRepository", () => {
 				authorIds: [ids.authorId],
 				seriesId: ids.seriesId,
 				tagIds: [ids.tagId],
+				bookshelfIds: [],
 				publisherId: ids.publisherId,
 			});
 		};

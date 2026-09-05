@@ -34,6 +34,8 @@ export interface BookDocument<Time> {
 	seriesId: string | null;
 	seriesIndex: number;
 	tagIds: string[];
+	/** Ids of the bookshelves (`users/{uid}/bookshelves`) this book belongs to. */
+	bookshelfIds: string[];
 	publisherId: string | null;
 	pubDate: Time | null;
 	identifiers: IdentifierDocument[];

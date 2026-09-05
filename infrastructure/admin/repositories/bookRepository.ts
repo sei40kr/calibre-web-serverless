@@ -86,6 +86,7 @@ export function toBook(snapshot: DocumentSnapshot): Book {
 		seriesId: d.seriesId ?? null,
 		seriesIndex: d.seriesIndex ?? 0,
 		tagIds: d.tagIds ?? [],
+		bookshelfIds: d.bookshelfIds ?? [],
 		publisherId: d.publisherId ?? null,
 		pubDate: d.pubDate?.toDate() ?? null,
 		identifiers: (d.identifiers ?? []).map(toIdentifier),
@@ -106,11 +107,12 @@ export function toBook(snapshot: DocumentSnapshot): Book {
 }
 
 // Omits `files`/`hasProcessingFile` so a metadata write can never clobber
-// concurrent per-file state changes (those go through bookFileRepository).
+// concurrent per-file state changes (those go through bookFileRepository), and
+// `bookshelfIds` for the same reason (membership is owned by the bookshelf repository).
 function toBookDocument(book: Book): DocumentData {
 	const document: Omit<
 		BookDocument,
-		"createdAt" | "updatedAt" | "files" | "hasProcessingFile"
+		"createdAt" | "updatedAt" | "files" | "hasProcessingFile" | "bookshelfIds"
 	> & {
 		updatedAt: FieldValue;
 	} = {
@@ -138,24 +140,39 @@ function toBookDocument(book: Book): DocumentData {
 	return document;
 }
 
-/** Total ready books for a user. */
-const countBooks = async (userId: string): Promise<number> => {
-	const snapshot = await getFirestore()
+/** Optional narrowing of a catalog read to the books on one bookshelf. */
+interface BookScope {
+	bookshelfId?: string;
+}
+
+// Ready books, optionally restricted to a bookshelf. Combining the bookshelf
+// membership filter with the status filter (and the createdAt ordering below)
+// needs the matching composite index in firestore.indexes.json.
+const readyBooksQuery = (userId: string, { bookshelfId }: BookScope) => {
+	let q = getFirestore()
 		.collection(booksPath(userId))
-		.where("status", "==", READY_STATUS)
-		.count()
-		.get();
+		.where("status", "==", READY_STATUS);
+	if (bookshelfId !== undefined) {
+		q = q.where("bookshelfIds", "array-contains", bookshelfId);
+	}
+	return q;
+};
+
+/** Total ready books for a user (on one bookshelf, if given). */
+const countBooks = async (
+	userId: string,
+	scope: BookScope = {},
+): Promise<number> => {
+	const snapshot = await readyBooksQuery(userId, scope).count().get();
 	return snapshot.data().count;
 };
 
 /** A window of ready books, newest first. Callers own pagination. */
 const searchBooks = async (
 	userId: string,
-	{ offset, limit }: { offset: number; limit: number },
+	{ offset, limit, ...scope }: { offset: number; limit: number } & BookScope,
 ): Promise<Book[]> => {
-	const snapshot = await getFirestore()
-		.collection(booksPath(userId))
-		.where("status", "==", READY_STATUS)
+	const snapshot = await readyBooksQuery(userId, scope)
 		.orderBy("createdAt", "desc")
 		.offset(offset)
 		.limit(limit)

@@ -58,7 +58,7 @@ export GOOGLE_BOOKS_API_KEY=your-google-books-api-key
 - [ ] Browse books by series
 - [ ] Browse books by publisher
 - [ ] Browse books by tag
-- [ ] Bookshelves (user-created collections)
+- [x] Bookshelves (user-created collections)
 - [ ] Fetch metadata from external sources by title or identifier
 - [ ] Send-to-Kindle
 - [ ] OPDS catalog

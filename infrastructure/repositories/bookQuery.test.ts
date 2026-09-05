@@ -23,6 +23,27 @@ describe("buildBookQueryConstraints", () => {
 		expect(types(constraints)).toEqual(["orderBy"]);
 	});
 
+	it("scopes to a bookshelf with an array-contains clause", () => {
+		const constraints = buildBookQueryConstraints(
+			emptyBookFilter,
+			defaultBookSort,
+			"bookshelf1",
+		);
+		expect(types(constraints)).toEqual(["where", "orderBy"]);
+	});
+
+	it("refuses a bookshelf scope combined with an array dimension", () => {
+		expect(() =>
+			buildBookQueryConstraints(
+				filterWith({
+					arrayFilter: { dimension: "tagIds", values: ["t1"] },
+				}),
+				defaultBookSort,
+				"bookshelf1",
+			),
+		).toThrow();
+	});
+
 	it("uses array-contains-any for the active array dimension", () => {
 		const constraints = buildBookQueryConstraints(
 			filterWith({

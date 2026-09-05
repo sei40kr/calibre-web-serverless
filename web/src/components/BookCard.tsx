@@ -3,6 +3,10 @@
 import type { Book } from "@calibre-web-serverless/domain/models/book";
 import { readyFiles } from "@calibre-web-serverless/domain/models/bookFile";
 import {
+	type Bookshelf,
+	isBookInBookshelf,
+} from "@calibre-web-serverless/domain/models/bookshelf";
+import {
 	Badge,
 	Box,
 	Button,
@@ -10,6 +14,8 @@ import {
 	HStack,
 	IconButton,
 	Image,
+	Menu,
+	Portal,
 	Skeleton,
 	Span,
 	Text,
@@ -18,7 +24,14 @@ import {
 } from "@chakra-ui/react";
 import Link from "next/link";
 import { useState } from "react";
-import { LuBook, LuPencil, LuTrash2, LuTriangleAlert } from "react-icons/lu";
+import {
+	LuBook,
+	LuBookmark,
+	LuBookmarkMinus,
+	LuPencil,
+	LuTrash2,
+	LuTriangleAlert,
+} from "react-icons/lu";
 import {
 	DialogBody,
 	DialogCloseTrigger,
@@ -33,7 +46,17 @@ interface BookCardProps {
 	book: Book;
 	coverUrl: string | null;
 	coverLoading: boolean;
-	onDelete: () => Promise<void>;
+	/** Offers to delete the book from the library. Omit to hide the action. */
+	onDelete?: () => Promise<void>;
+	/**
+	 * The user's bookshelves, offered in an "add to bookshelf" menu that reflects the
+	 * book's current membership. Omit (with `onToggleBookshelf`) to hide the menu.
+	 */
+	bookshelves?: Bookshelf[];
+	/** `member` is the desired state: true to add, false to remove. */
+	onToggleBookshelf?: (bookshelf: Bookshelf, member: boolean) => Promise<void>;
+	/** Offers to take the book off the bookshelf being viewed. */
+	onRemoveFromBookshelf?: () => Promise<void>;
 }
 
 export function BookCard({
@@ -41,13 +64,18 @@ export function BookCard({
 	coverUrl,
 	coverLoading,
 	onDelete,
+	bookshelves,
+	onToggleBookshelf,
+	onRemoveFromBookshelf,
 }: BookCardProps) {
 	const isProcessing = book.status === "processing";
 	const isError = book.status === "error";
 	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 	const [isDeleting, setIsDeleting] = useState(false);
+	const [isRemoving, setIsRemoving] = useState(false);
 
 	const handleDelete = async () => {
+		if (!onDelete) return;
 		setIsDeleting(true);
 		try {
 			await onDelete();
@@ -57,6 +85,18 @@ export function BookCard({
 			// by the caller (e.g. a toast).
 		} finally {
 			setIsDeleting(false);
+		}
+	};
+
+	const handleRemoveFromBookshelf = async () => {
+		if (!onRemoveFromBookshelf) return;
+		setIsRemoving(true);
+		try {
+			await onRemoveFromBookshelf();
+		} catch {
+			// Surfaced by the caller.
+		} finally {
+			setIsRemoving(false);
 		}
 	};
 
@@ -122,59 +162,126 @@ export function BookCard({
 								<LuPencil />
 							</Link>
 						</IconButton>
-						<IconButton
-							aria-label="Delete book"
-							variant="surface"
-							colorPalette="red"
-							size="sm"
-							rounded="full"
-							onClick={() => setIsDeleteDialogOpen(true)}
-						>
-							<LuTrash2 />
-						</IconButton>
+						{bookshelves && onToggleBookshelf && (
+							<Menu.Root
+								closeOnSelect={false}
+								positioning={{ placement: "bottom-end" }}
+							>
+								<Menu.Trigger asChild>
+									<IconButton
+										aria-label="Add to bookshelf"
+										variant="surface"
+										size="sm"
+										rounded="full"
+									>
+										<LuBookmark />
+									</IconButton>
+								</Menu.Trigger>
+								<Portal>
+									<Menu.Positioner>
+										<Menu.Content>
+											<Menu.ItemGroup>
+												<Menu.ItemGroupLabel>Bookshelves</Menu.ItemGroupLabel>
+												{bookshelves.length === 0 ? (
+													<Menu.Item value="none" disabled>
+														No bookshelves yet
+													</Menu.Item>
+												) : (
+													bookshelves.map((bookshelf) => {
+														const member = isBookInBookshelf(
+															book,
+															bookshelf.id,
+														);
+														return (
+															<Menu.CheckboxItem
+																key={bookshelf.id}
+																value={bookshelf.id}
+																checked={member}
+																onCheckedChange={() =>
+																	onToggleBookshelf(bookshelf, !member)
+																}
+															>
+																{bookshelf.name}
+																<Menu.ItemIndicator />
+															</Menu.CheckboxItem>
+														);
+													})
+												)}
+											</Menu.ItemGroup>
+										</Menu.Content>
+									</Menu.Positioner>
+								</Portal>
+							</Menu.Root>
+						)}
+						{onRemoveFromBookshelf && (
+							<IconButton
+								aria-label="Remove from bookshelf"
+								variant="surface"
+								size="sm"
+								rounded="full"
+								loading={isRemoving}
+								onClick={handleRemoveFromBookshelf}
+							>
+								<LuBookmarkMinus />
+							</IconButton>
+						)}
+						{onDelete && (
+							<IconButton
+								aria-label="Delete book"
+								variant="surface"
+								colorPalette="red"
+								size="sm"
+								rounded="full"
+								onClick={() => setIsDeleteDialogOpen(true)}
+							>
+								<LuTrash2 />
+							</IconButton>
+						)}
 					</HStack>
 				</Box>
 			)}
 
-			<DialogRoot
-				role="alertdialog"
-				open={isDeleteDialogOpen}
-				onOpenChange={(e) => {
-					if (!isDeleting) {
-						setIsDeleteDialogOpen(e.open);
-					}
-				}}
-			>
-				<DialogContent>
-					<DialogHeader>
-						<DialogTitle>Delete Book</DialogTitle>
-					</DialogHeader>
-					<DialogBody>
-						<Text>
-							Are you sure you want to delete{" "}
-							<Span fontWeight="semibold">{book.title || "this book"}</Span>?
-							This action cannot be undone.
-						</Text>
-					</DialogBody>
-					<DialogFooter>
-						<Button
-							variant="outline"
-							onClick={() => setIsDeleteDialogOpen(false)}
-							disabled={isDeleting}
-						>
-							Cancel
-						</Button>
-						<Button
-							colorPalette="red"
-							onClick={handleDelete}
-							loading={isDeleting}
-						>
-							Delete
-						</Button>
-					</DialogFooter>
-					<DialogCloseTrigger disabled={isDeleting} />
-				</DialogContent>
-			</DialogRoot>
+			{onDelete && (
+				<DialogRoot
+					role="alertdialog"
+					open={isDeleteDialogOpen}
+					onOpenChange={(e) => {
+						if (!isDeleting) {
+							setIsDeleteDialogOpen(e.open);
+						}
+					}}
+				>
+					<DialogContent>
+						<DialogHeader>
+							<DialogTitle>Delete Book</DialogTitle>
+						</DialogHeader>
+						<DialogBody>
+							<Text>
+								Are you sure you want to delete{" "}
+								<Span fontWeight="semibold">{book.title || "this book"}</Span>?
+								This action cannot be undone.
+							</Text>
+						</DialogBody>
+						<DialogFooter>
+							<Button
+								variant="outline"
+								onClick={() => setIsDeleteDialogOpen(false)}
+								disabled={isDeleting}
+							>
+								Cancel
+							</Button>
+							<Button
+								colorPalette="red"
+								onClick={handleDelete}
+								loading={isDeleting}
+							>
+								Delete
+							</Button>
+						</DialogFooter>
+						<DialogCloseTrigger disabled={isDeleting} />
+					</DialogContent>
+				</DialogRoot>
+			)}
 		</Card.Root>
 	);
 }

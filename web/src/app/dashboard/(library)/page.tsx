@@ -1,6 +1,7 @@
 "use client";
 
 import type { Book } from "@calibre-web-serverless/domain/models/book";
+import type { Bookshelf } from "@calibre-web-serverless/domain/models/bookshelf";
 import type { User } from "@calibre-web-serverless/domain/models/user";
 import { bookRepository } from "@calibre-web-serverless/infrastructure/repositories/bookRepository";
 import { Button, Container, Heading, HStack, VStack } from "@chakra-ui/react";
@@ -15,6 +16,8 @@ import { useAuthors } from "@/hooks/useAuthors";
 import { useBookCoverUrls } from "@/hooks/useBookCoverUrls";
 import { useBookFilter } from "@/hooks/useBookFilter";
 import { useBooks } from "@/hooks/useBooks";
+import { useBookshelfMembership } from "@/hooks/useBookshelfMembership";
+import { useBookshelves } from "@/hooks/useBookshelves";
 import { usePublishers } from "@/hooks/usePublishers";
 import { useSeries } from "@/hooks/useSeries";
 import { useTags } from "@/hooks/useTags";
@@ -50,6 +53,14 @@ function DashboardContent({
 	const facets = useMemo(
 		() => buildBookFacets({ authors, series, tags, publishers }),
 		[authors, series, tags, publishers],
+	);
+
+	const { bookshelves } = useBookshelves(user.uid);
+	const { setBookOnBookshelf } = useBookshelfMembership(user.uid);
+	const handleToggleBookshelf = useCallback(
+		(book: Book, bookshelf: Bookshelf, member: boolean) =>
+			setBookOnBookshelf(book, bookshelf, member),
+		[setBookOnBookshelf],
 	);
 
 	const filtering = isFilterActive(filter);
@@ -114,6 +125,8 @@ function DashboardContent({
 						bookCoverInfos={bookCoverInfos}
 						onDeleteBook={handleDeleteBook}
 						isFiltering={filtering}
+						bookshelves={bookshelves}
+						onToggleBookshelf={handleToggleBookshelf}
 					/>
 				</VStack>
 			</Container>

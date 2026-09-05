@@ -12,10 +12,7 @@ import {
 import { useState } from "react";
 import { LuFilterX, LuSlidersHorizontal } from "react-icons/lu";
 import { BookFilterDrawer } from "@/components/BookFilterDrawer";
-import {
-	NativeSelectField,
-	NativeSelectRoot,
-} from "@/components/ui/native-select";
+import { BookSortSelect } from "@/components/BookSortSelect";
 import { Tag } from "@/components/ui/tag";
 import {
 	type ActiveFilterChip,
@@ -26,60 +23,11 @@ import {
 	arrayValues,
 	type BookFilter,
 	type BookSort,
-	type BookSortKey,
 	countActiveFilters,
 	emptyBookFilter,
 	isFilterActive,
-	type SortDirection,
 	withArrayDimension,
 } from "@/lib/bookFilter";
-
-interface SortOption {
-	value: string;
-	label: string;
-	key: BookSortKey;
-	direction: SortDirection;
-}
-
-const SORT_OPTIONS: SortOption[] = [
-	{
-		value: "createdAt:desc",
-		label: "Recently added",
-		key: "createdAt",
-		direction: "desc",
-	},
-	{
-		value: "createdAt:asc",
-		label: "Oldest added",
-		key: "createdAt",
-		direction: "asc",
-	},
-	{ value: "title:asc", label: "Title (A–Z)", key: "title", direction: "asc" },
-	{
-		value: "title:desc",
-		label: "Title (Z–A)",
-		key: "title",
-		direction: "desc",
-	},
-	{
-		value: "pubDate:desc",
-		label: "Newest published",
-		key: "pubDate",
-		direction: "desc",
-	},
-	{
-		value: "pubDate:asc",
-		label: "Oldest published",
-		key: "pubDate",
-		direction: "asc",
-	},
-	{
-		value: "rating:desc",
-		label: "Highest rated",
-		key: "rating",
-		direction: "desc",
-	},
-];
 
 interface BookFilterToolbarProps {
 	filter: BookFilter;
@@ -100,13 +48,6 @@ export function BookFilterToolbar({
 
 	const activeCount = countActiveFilters(filter);
 	const chips = describeActiveFilters(filter, facets);
-
-	const handleSortChange = (value: string) => {
-		const option = SORT_OPTIONS.find((item) => item.value === value);
-		if (option) {
-			onSortChange({ key: option.key, direction: option.direction });
-		}
-	};
 
 	const removeChip = (chip: ActiveFilterChip) => {
 		switch (chip.dimension) {
@@ -141,8 +82,6 @@ export function BookFilterToolbar({
 	const clearAll = () => {
 		onFilterChange(emptyBookFilter);
 	};
-
-	const currentSortValue = `${sort.key}:${sort.direction}`;
 
 	return (
 		<>
@@ -188,18 +127,7 @@ export function BookFilterToolbar({
 				</Wrap>
 
 				<HStack gap={3} order={{ base: 0, sm: 1 }} flexShrink={0}>
-					<NativeSelectRoot
-						flex={{ base: "1", sm: "initial" }}
-						minW="0"
-						width={{ sm: "auto" }}
-					>
-						<NativeSelectField
-							value={currentSortValue}
-							onChange={(event) => handleSortChange(event.target.value)}
-							aria-label="Sort books"
-							items={SORT_OPTIONS}
-						/>
-					</NativeSelectRoot>
+					<BookSortSelect sort={sort} onSortChange={onSortChange} />
 
 					<Button
 						variant="outline"

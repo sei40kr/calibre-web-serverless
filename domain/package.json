@@ -15,6 +15,7 @@
 		"./models/series": "./models/series.ts",
 		"./models/tag": "./models/tag.ts",
 		"./models/publisher": "./models/publisher.ts",
+		"./models/bookshelf": "./models/bookshelf.ts",
 		"./models/language": "./models/language.ts",
 		"./models/identifier": "./models/identifier.ts",
 		"./models/bookMetadataSearch": "./models/bookMetadataSearch.ts",
@@ -25,9 +26,11 @@
 		"./repositories/seriesRepository": "./repositories/seriesRepository.ts",
 		"./repositories/tagRepository": "./repositories/tagRepository.ts",
 		"./repositories/publisherRepository": "./repositories/publisherRepository.ts",
+		"./repositories/bookshelfRepository": "./repositories/bookshelfRepository.ts",
 		"./models/user": "./models/user.ts",
 		"./errors/authError": "./errors/authError.ts",
 		"./errors/bookFileError": "./errors/bookFileError.ts",
+		"./errors/bookshelfError": "./errors/bookshelfError.ts",
 		"./errors/storageError": "./errors/storageError.ts",
 		"./services/authService": "./services/authService.ts"
 	}

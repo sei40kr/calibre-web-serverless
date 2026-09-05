@@ -1,4 +1,5 @@
 import type { Book } from "@calibre-web-serverless/domain/models/book";
+import type { Bookshelf } from "@calibre-web-serverless/domain/models/bookshelf";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, fn, userEvent, within } from "storybook/test";
 import { BookCard } from "./BookCard";
@@ -14,6 +15,7 @@ const mockBook: Book = {
 	seriesId: null,
 	seriesIndex: 1,
 	tagIds: [],
+	bookshelfIds: [],
 	publisherId: null,
 	pubDate: null,
 	identifiers: [],
@@ -36,6 +38,23 @@ const mockBook: Book = {
 	createdAt: new Date("2024-01-01"),
 	updatedAt: new Date("2024-01-01"),
 };
+
+const bookshelves: Bookshelf[] = [
+	{
+		id: "bookshelf-001",
+		name: "Favorites",
+		bookCount: 1,
+		createdAt: new Date("2024-01-01"),
+		updatedAt: new Date("2024-01-01"),
+	},
+	{
+		id: "bookshelf-002",
+		name: "To Read",
+		bookCount: 0,
+		createdAt: new Date("2024-01-02"),
+		updatedAt: new Date("2024-01-02"),
+	},
+];
 
 const meta = {
 	title: "Components/BookCard",
@@ -223,5 +242,79 @@ export const MultipleFormats: Story = {
 		await expect(canvas.getByText("EPUB")).toBeInTheDocument();
 		await expect(canvas.getByText("PDF")).toBeInTheDocument();
 		await expect(canvas.queryByText("MOBI")).not.toBeInTheDocument();
+	},
+};
+
+export const AddToBookshelf: Story = {
+	args: {
+		book: { ...mockBook, bookshelfIds: ["bookshelf-001"] },
+		bookshelves,
+		onToggleBookshelf: fn(async () => {}),
+	},
+	play: async ({ canvasElement, args }) => {
+		const canvas = within(canvasElement);
+		const body = within(canvasElement.ownerDocument.body);
+
+		await userEvent.click(
+			canvas.getByRole("button", { name: /add to bookshelf/i }),
+		);
+
+		// Membership is reflected as checked items.
+		const favorites = await body.findByRole("menuitemcheckbox", {
+			name: /favorites/i,
+		});
+		await expect(favorites).toHaveAttribute("aria-checked", "true");
+		const toRead = body.getByRole("menuitemcheckbox", { name: /to read/i });
+		await expect(toRead).toHaveAttribute("aria-checked", "false");
+
+		await userEvent.click(toRead);
+		await expect(args.onToggleBookshelf).toHaveBeenCalledWith(
+			bookshelves[1],
+			true,
+		);
+
+		await userEvent.click(favorites);
+		await expect(args.onToggleBookshelf).toHaveBeenCalledWith(
+			bookshelves[0],
+			false,
+		);
+	},
+};
+
+export const NoBookshelvesYet: Story = {
+	args: {
+		bookshelves: [],
+		onToggleBookshelf: fn(async () => {}),
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		const body = within(canvasElement.ownerDocument.body);
+
+		await userEvent.click(
+			canvas.getByRole("button", { name: /add to bookshelf/i }),
+		);
+
+		await expect(
+			await body.findByText("No bookshelves yet"),
+		).toBeInTheDocument();
+	},
+};
+
+export const OnBookshelf: Story = {
+	args: {
+		onDelete: undefined,
+		onRemoveFromBookshelf: fn(async () => {}),
+	},
+	play: async ({ canvasElement, args }) => {
+		const canvas = within(canvasElement);
+
+		await expect(
+			canvas.queryByRole("button", { name: /delete book/i }),
+		).not.toBeInTheDocument();
+
+		await userEvent.click(
+			canvas.getByRole("button", { name: /remove from bookshelf/i }),
+		);
+		await expect(args.onRemoveFromBookshelf).toHaveBeenCalled();
 	},
 };

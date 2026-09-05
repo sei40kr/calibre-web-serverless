@@ -84,7 +84,9 @@ const toBookFiles = (
 
 // toFirestore omits `files`/`hasProcessingFile` so a metadata save can never
 // clobber an in-flight format upload; file state is mutated only through the
-// per-file operations below.
+// per-file operations below. `bookshelfIds` is omitted for the same reason: bookshelf
+// membership is owned by bookshelfRepository, which keeps it in step with each
+// bookshelf's bookCount.
 const bookConverter: FirestoreDataConverter<Book> = {
 	toFirestore(book: Book): DocumentData {
 		return {
@@ -110,7 +112,7 @@ const bookConverter: FirestoreDataConverter<Book> = {
 			updatedAt: serverTimestamp(),
 		} as Omit<
 			BookDocument,
-			"createdAt" | "updatedAt" | "files" | "hasProcessingFile"
+			"createdAt" | "updatedAt" | "files" | "hasProcessingFile" | "bookshelfIds"
 		> & {
 			updatedAt: FieldValue;
 		};
@@ -130,6 +132,7 @@ const bookConverter: FirestoreDataConverter<Book> = {
 			seriesId: d.seriesId,
 			seriesIndex: d.seriesIndex,
 			tagIds: d.tagIds,
+			bookshelfIds: d.bookshelfIds ?? [],
 			publisherId: d.publisherId,
 			pubDate: d.pubDate?.toDate() ?? null,
 			identifiers: (d.identifiers ?? []).map(toIdentifier),
@@ -170,11 +173,13 @@ const getBook = async (
 const subscribeToBooks = (
 	userId: string,
 	{
+		bookshelfId,
 		filter,
 		sort,
 		onData,
 		onError,
 	}: {
+		bookshelfId?: string;
 		filter?: BookFilter;
 		sort?: BookSort;
 		onData: (books: Book[]) => void;
@@ -184,7 +189,10 @@ const subscribeToBooks = (
 	const booksRef = collection(db, "users", userId, "books").withConverter(
 		bookConverter,
 	);
-	const q = query(booksRef, ...buildBookQueryConstraints(filter, sort));
+	const q = query(
+		booksRef,
+		...buildBookQueryConstraints(filter, sort, bookshelfId),
+	);
 
 	return onSnapshot(
 		q,
@@ -256,6 +264,7 @@ const createBook = async ({ userId, file }: CreateBookParams) => {
 		seriesId: null,
 		seriesIndex: 1.0,
 		tagIds: [],
+		bookshelfIds: [],
 		publisherId: null,
 		pubDate: null,
 		identifiers: [],
@@ -404,6 +413,15 @@ const deleteBook = async (userId: string, bookId: string): Promise<void> => {
 		const oldTagIds = bookData.tagIds ?? [];
 		const oldPublisherIds = bookData.publisherId ? [bookData.publisherId] : [];
 
+		// Bookshelves outlive their books, so unlike the relations above they are
+		// only decremented, never deleted. Their reads must precede every write
+		// in the transaction, including syncBookCounts' own.
+		const bookshelfSnapshots = await Promise.all(
+			(bookData.bookshelfIds ?? []).map((bookshelfId) =>
+				transaction.get(doc(db, "users", userId, "bookshelves", bookshelfId)),
+			),
+		);
+
 		// syncBookCounts does reads then writes internally, so call before the
 		// delete. Empty newIds decrements (and removes orphaned) related docs.
 		await syncBookCounts(transaction, userId, {
@@ -412,6 +430,13 @@ const deleteBook = async (userId: string, bookId: string): Promise<void> => {
 			tags: { oldIds: oldTagIds, newIds: [] },
 			publishers: { oldIds: oldPublisherIds, newIds: [] },
 		});
+
+		for (const bookshelfSnapshot of bookshelfSnapshots) {
+			if (!bookshelfSnapshot.exists()) continue;
+			transaction.update(bookshelfSnapshot.ref, {
+				bookCount: Math.max(0, (bookshelfSnapshot.data().bookCount ?? 0) - 1),
+			});
+		}
 
 		transaction.delete(bookRef);
 	});

@@ -18,7 +18,9 @@ const SORT_FIELD: Record<BookSortKey, string> = {
  * constraints, staying within Firestore's query model:
  *
  * - At most one array-membership clause, so only the single active array
- *   dimension (author/tag/language) becomes an `array-contains-any`.
+ *   dimension (author/tag/language) becomes an `array-contains-any`. A bookshelf
+ *   scope is an `array-contains` on `bookshelfIds` and therefore excludes any
+ *   active array dimension: the two cannot be requested together.
  * - Scalar dimensions become `in` filters and `minRating` a `>=` range filter.
  * - A range filter requires its field to be the first `orderBy`, so when a
  *   rating bound is present and the chosen sort is not rating, an explicit
@@ -30,8 +32,18 @@ const SORT_FIELD: Record<BookSortKey, string> = {
 export const buildBookQueryConstraints = (
 	filter?: BookFilter,
 	sort: BookSort = defaultBookSort,
+	bookshelfId?: string,
 ): QueryConstraint[] => {
 	const constraints: QueryConstraint[] = [];
+
+	if (bookshelfId !== undefined) {
+		if (filter?.arrayFilter) {
+			throw new Error(
+				"A bookshelf scope cannot be combined with an author/tag/language filter",
+			);
+		}
+		constraints.push(where("bookshelfIds", "array-contains", bookshelfId));
+	}
 
 	if (filter) {
 		if (filter.arrayFilter) {

@@ -5,9 +5,16 @@ import type { BookFilter, BookSort } from "../models/bookQuery";
 export interface BookRepository {
 	hasBooks(userId: string): Promise<boolean>;
 	getBook(userId: string, bookId: string): Promise<Book | null>;
+	/**
+	 * Live, server-filtered view of the user's books. `bookshelfId` restricts the
+	 * result to one bookshelf's contents; it may not be combined with a filter that
+	 * has an active array dimension (Firestore allows one array-membership
+	 * clause per query).
+	 */
 	subscribeToBooks(
 		userId: string,
 		options: {
+			bookshelfId?: string;
 			filter?: BookFilter;
 			sort?: BookSort;
 			onData: (books: Book[]) => void;

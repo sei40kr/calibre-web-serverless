@@ -8,6 +8,7 @@ import { authorRepository } from "@calibre-web-serverless/infrastructure/admin/r
 import { bookCoverRepository } from "@calibre-web-serverless/infrastructure/admin/repositories/bookCoverRepository";
 import { bookFileRepository } from "@calibre-web-serverless/infrastructure/admin/repositories/bookFileRepository";
 import { bookRepository } from "@calibre-web-serverless/infrastructure/admin/repositories/bookRepository";
+import { bookshelfRepository } from "@calibre-web-serverless/infrastructure/admin/repositories/bookshelfRepository";
 import { publisherRepository } from "@calibre-web-serverless/infrastructure/admin/repositories/publisherRepository";
 import { tagRepository } from "@calibre-web-serverless/infrastructure/admin/repositories/tagRepository";
 import { logger } from "firebase-functions/v2";
@@ -19,7 +20,11 @@ import {
 import { parseBasicAuth, verifyCredentials } from "./auth";
 import {
 	ACQUISITION_TYPE,
+	type AcquisitionSource,
+	ALL_BOOKS_SOURCE,
+	bookshelfSource,
 	buildAcquisitionFeed,
+	buildBookshelvesFeed,
 	buildNavigationFeed,
 	type FeedEntry,
 	NAVIGATION_TYPE,
@@ -42,6 +47,7 @@ const USE_SIGNED_URL_REDIRECT = process.env.FUNCTIONS_EMULATOR !== "true";
 
 const DOWNLOAD_PATH = /^\/download\/([^/]+)\.([^/.]+)$/;
 const COVER_PATH = /^\/cover\/([^/]+)(?:\/thumbnail)?$/;
+const BOOKSHELF_PATH = /^\/bookshelves\/([^/]+)$/;
 
 function requireAuth(res: Response): void {
 	res
@@ -143,15 +149,23 @@ async function deliverCover(
 	res.set("Content-Type", COVER_MIME).send(buffer);
 }
 
+// One page of the library — or of one bookshelf, when `bookshelfId` is given — as an
+// acquisition feed.
 async function handleBooks(
 	res: Response,
 	userId: string,
 	page: number,
+	source: AcquisitionSource = ALL_BOOKS_SOURCE,
+	bookshelfId?: string,
 ): Promise<void> {
 	const offset = (page - 1) * ITEMS_PER_PAGE;
 	const [total, books] = await Promise.all([
-		bookRepository.countBooks(userId),
-		bookRepository.searchBooks(userId, { offset, limit: ITEMS_PER_PAGE }),
+		bookRepository.countBooks(userId, { bookshelfId }),
+		bookRepository.searchBooks(userId, {
+			offset,
+			limit: ITEMS_PER_PAGE,
+			bookshelfId,
+		}),
 	]);
 
 	// Resolve only the authors/publishers/tags referenced on this page.
@@ -184,7 +198,45 @@ async function handleBooks(
 			itemsPerPage: ITEMS_PER_PAGE,
 			totalResults: total,
 			now: new Date(),
+			source,
 		}),
+	);
+}
+
+async function handleBookshelves(res: Response, userId: string): Promise<void> {
+	const bookshelves = await bookshelfRepository.listBookshelves(userId);
+	sendFeed(
+		res,
+		NAVIGATION_TYPE,
+		buildBookshelvesFeed(
+			bookshelves.map((bookshelf) => ({
+				id: bookshelf.id,
+				name: bookshelf.name,
+				bookCount: bookshelf.bookCount,
+				updated: bookshelf.updatedAt,
+			})),
+			new Date(),
+		),
+	);
+}
+
+async function handleBookshelf(
+	res: Response,
+	userId: string,
+	bookshelfId: string,
+	page: number,
+): Promise<void> {
+	const bookshelf = await bookshelfRepository.getBookshelf(userId, bookshelfId);
+	if (!bookshelf) {
+		res.status(404).end();
+		return;
+	}
+	await handleBooks(
+		res,
+		userId,
+		page,
+		bookshelfSource(bookshelf),
+		bookshelf.id,
 	);
 }
 
@@ -235,6 +287,15 @@ async function route(
 	}
 	if (path === "/books") {
 		await handleBooks(res, userId, parsePage(req.query.page));
+		return;
+	}
+	if (path === "/bookshelves") {
+		await handleBookshelves(res, userId);
+		return;
+	}
+	const bookshelf = path.match(BOOKSHELF_PATH);
+	if (bookshelf) {
+		await handleBookshelf(res, userId, bookshelf[1], parsePage(req.query.page));
 		return;
 	}
 	const download = path.match(DOWNLOAD_PATH);

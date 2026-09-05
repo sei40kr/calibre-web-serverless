@@ -72,6 +72,35 @@ export interface FeedEntry {
 	hasCover: boolean;
 }
 
+/**
+ * Which listing an acquisition feed presents: the whole library or one bookshelf.
+ * Determines the feed's title, its id and the path its pagination links use.
+ */
+export interface AcquisitionSource {
+	/** Stable id fragment, unique per listing. */
+	id: string;
+	title: string;
+	/** Root-relative path of the feed, without query string. */
+	path: string;
+}
+
+export const ALL_BOOKS_SOURCE: AcquisitionSource = {
+	id: "books",
+	title: "All Books",
+	path: "/opds/books",
+};
+
+export const BOOKSHELVES_PATH = "/opds/bookshelves";
+
+export const bookshelfSource = (bookshelf: {
+	id: string;
+	name: string;
+}): AcquisitionSource => ({
+	id: `bookshelf:${bookshelf.id}`,
+	title: bookshelf.name,
+	path: `${BOOKSHELVES_PATH}/${bookshelf.id}`,
+});
+
 export interface AcquisitionFeedParams {
 	entries: FeedEntry[];
 	/** 1-based page number. */
@@ -79,9 +108,23 @@ export interface AcquisitionFeedParams {
 	itemsPerPage: number;
 	totalResults: number;
 	now: Date;
+	/** Defaults to the whole library. */
+	source?: AcquisitionSource;
 }
 
-/** Root navigation feed: a single entry pointing at the full book catalog. */
+/** A bookshelf projected into the fields its navigation entry needs. */
+export interface BookshelfEntry {
+	id: string;
+	name: string;
+	bookCount: number;
+	updated: Date | null;
+}
+
+/**
+ * Root navigation feed. Mirrors calibre-web's index feed, where the "Bookshelves"
+ * section is offered to every authenticated user (there is no per-bookshelf OPDS
+ * visibility switch) — and OPDS here is always authenticated.
+ */
 export function buildNavigationFeed(now: Date): string {
 	const updated = now.toISOString();
 	return builder.build({
@@ -96,13 +139,61 @@ export function buildNavigationFeed(now: Date): string {
 				linkNode("self", "/opds", NAVIGATION_TYPE),
 				linkNode("start", "/opds", NAVIGATION_TYPE),
 			],
-			entry: {
-				title: "All Books",
-				id: "urn:calibre-web-serverless:opds:all-books",
-				updated,
-				content: { "@_type": "text", "#text": "Browse all books" },
-				link: linkNode("subsection", "/opds/books", ACQUISITION_TYPE),
-			},
+			entry: [
+				{
+					title: ALL_BOOKS_SOURCE.title,
+					id: "urn:calibre-web-serverless:opds:all-books",
+					updated,
+					content: { "@_type": "text", "#text": "Browse all books" },
+					link: linkNode("subsection", ALL_BOOKS_SOURCE.path, ACQUISITION_TYPE),
+				},
+				{
+					title: "Bookshelves",
+					id: "urn:calibre-web-serverless:opds:bookshelves",
+					updated,
+					content: {
+						"@_type": "text",
+						"#text": "Books organized in bookshelves",
+					},
+					link: linkNode("subsection", BOOKSHELVES_PATH, NAVIGATION_TYPE),
+				},
+			],
+		},
+	});
+}
+
+/** Navigation feed listing every bookshelf, each pointing at its own book feed. */
+export function buildBookshelvesFeed(
+	bookshelves: BookshelfEntry[],
+	now: Date,
+): string {
+	return builder.build({
+		"?xml": XML_DECLARATION,
+		feed: {
+			"@_xmlns": ATOM_NS,
+			"@_xmlns:opds": OPDS_NS,
+			id: "urn:calibre-web-serverless:opds:bookshelves",
+			title: "Bookshelves",
+			updated: now.toISOString(),
+			link: [
+				linkNode("self", BOOKSHELVES_PATH, NAVIGATION_TYPE),
+				linkNode("start", "/opds", NAVIGATION_TYPE),
+				linkNode("up", "/opds", NAVIGATION_TYPE),
+			],
+			entry: bookshelves.map((bookshelf) => ({
+				title: bookshelf.name,
+				id: `urn:calibre-web-serverless:opds:bookshelf:${bookshelf.id}`,
+				updated: atomDate(bookshelf.updated),
+				content: {
+					"@_type": "text",
+					"#text": `${bookshelf.bookCount} ${bookshelf.bookCount === 1 ? "book" : "books"}`,
+				},
+				link: linkNode(
+					"subsection",
+					bookshelfSource(bookshelf).path,
+					ACQUISITION_TYPE,
+				),
+			})),
 		},
 	});
 }
@@ -149,25 +240,29 @@ function entryNode(entry: FeedEntry): XmlNode {
 
 /** Paginated acquisition feed listing books with download and cover links. */
 export function buildAcquisitionFeed(params: AcquisitionFeedParams): string {
-	const { entries, page, itemsPerPage, totalResults, now } = params;
+	const {
+		entries,
+		page,
+		itemsPerPage,
+		totalResults,
+		now,
+		source = ALL_BOOKS_SOURCE,
+	} = params;
 	const totalPages = Math.max(1, Math.ceil(totalResults / itemsPerPage));
 	const startIndex = (page - 1) * itemsPerPage + 1;
+	const pageHref = (n: number) => `${source.path}?page=${n}`;
 
 	const links = [
-		linkNode("self", `/opds/books?page=${page}`, ACQUISITION_TYPE),
+		linkNode("self", pageHref(page), ACQUISITION_TYPE),
 		linkNode("start", "/opds", NAVIGATION_TYPE),
-		linkNode("first", "/opds/books?page=1", ACQUISITION_TYPE),
-		linkNode("last", `/opds/books?page=${totalPages}`, ACQUISITION_TYPE),
+		linkNode("first", pageHref(1), ACQUISITION_TYPE),
+		linkNode("last", pageHref(totalPages), ACQUISITION_TYPE),
 	];
 	if (page < totalPages) {
-		links.push(
-			linkNode("next", `/opds/books?page=${page + 1}`, ACQUISITION_TYPE),
-		);
+		links.push(linkNode("next", pageHref(page + 1), ACQUISITION_TYPE));
 	}
 	if (page > 1) {
-		links.push(
-			linkNode("previous", `/opds/books?page=${page - 1}`, ACQUISITION_TYPE),
-		);
+		links.push(linkNode("previous", pageHref(page - 1), ACQUISITION_TYPE));
 	}
 
 	return builder.build({
@@ -177,8 +272,8 @@ export function buildAcquisitionFeed(params: AcquisitionFeedParams): string {
 			"@_xmlns:opds": OPDS_NS,
 			"@_xmlns:dc": DC_NS,
 			"@_xmlns:opensearch": OS_NS,
-			id: `urn:calibre-web-serverless:opds:books:page:${page}`,
-			title: "All Books",
+			id: `urn:calibre-web-serverless:opds:${source.id}:page:${page}`,
+			title: source.title,
 			updated: now.toISOString(),
 			"opensearch:totalResults": totalResults,
 			"opensearch:itemsPerPage": itemsPerPage,

@@ -1,5 +1,7 @@
 import type { Book } from "@calibre-web-serverless/domain/models/book";
+import type { Bookshelf } from "@calibre-web-serverless/domain/models/bookshelf";
 import { Box, SimpleGrid, Skeleton, VStack } from "@chakra-ui/react";
+import type { ReactNode } from "react";
 import { LuBookOpen, LuSearchX } from "react-icons/lu";
 import { BookCard } from "./BookCard";
 import { EmptyState } from "./ui/empty-state";
@@ -13,9 +15,21 @@ interface BookGridProps {
 	books: Book[];
 	loading: boolean;
 	bookCoverInfos: Record<string, BookCoverInfo>;
-	onDeleteBook: (book: Book) => Promise<void>;
+	/** Offers to delete books from the library. Omit to hide the action. */
+	onDeleteBook?: (book: Book) => Promise<void>;
 	/** When true, an empty result is shown as "no matches" rather than "no books". */
 	isFiltering?: boolean;
+	/** Bookshelves offered in each card's "add to bookshelf" menu. */
+	bookshelves?: Bookshelf[];
+	onToggleBookshelf?: (
+		book: Book,
+		bookshelf: Bookshelf,
+		member: boolean,
+	) => Promise<void>;
+	/** Offers to take each book off the bookshelf being viewed. */
+	onRemoveFromBookshelf?: (book: Book) => Promise<void>;
+	/** Replaces the default "no books" state (e.g. for an empty bookshelf). */
+	emptyState?: ReactNode;
 }
 
 function BookCardSkeleton() {
@@ -36,6 +50,10 @@ export function BookGrid({
 	bookCoverInfos,
 	onDeleteBook,
 	isFiltering = false,
+	bookshelves,
+	onToggleBookshelf,
+	onRemoveFromBookshelf,
+	emptyState,
 }: BookGridProps) {
 	if (loading) {
 		return (
@@ -49,18 +67,23 @@ export function BookGrid({
 	}
 
 	if (books.length === 0) {
-		return isFiltering ? (
-			<EmptyState
-				icon={<LuSearchX />}
-				title="No matching books"
-				description="Try adjusting or clearing your filters"
-			/>
-		) : (
-			<EmptyState
-				icon={<LuBookOpen />}
-				title="No books yet"
-				description="Upload your first book to get started"
-			/>
+		if (isFiltering) {
+			return (
+				<EmptyState
+					icon={<LuSearchX />}
+					title="No matching books"
+					description="Try adjusting or clearing your filters"
+				/>
+			);
+		}
+		return (
+			emptyState ?? (
+				<EmptyState
+					icon={<LuBookOpen />}
+					title="No books yet"
+					description="Upload your first book to get started"
+				/>
+			)
 		);
 	}
 
@@ -74,7 +97,19 @@ export function BookGrid({
 						book={book}
 						coverUrl={coverInfo?.coverUrl ?? null}
 						coverLoading={coverInfo?.loading ?? false}
-						onDelete={() => onDeleteBook(book)}
+						onDelete={onDeleteBook ? () => onDeleteBook(book) : undefined}
+						bookshelves={bookshelves}
+						onToggleBookshelf={
+							onToggleBookshelf
+								? (bookshelf, member) =>
+										onToggleBookshelf(book, bookshelf, member)
+								: undefined
+						}
+						onRemoveFromBookshelf={
+							onRemoveFromBookshelf
+								? () => onRemoveFromBookshelf(book)
+								: undefined
+						}
 					/>
 				);
 			})}

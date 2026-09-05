@@ -20,6 +20,9 @@ locals {
     "run.googleapis.com",
     "eventarc.googleapis.com",
     "pubsub.googleapis.com",
+    # Cloud Scheduler backs the scheduled reconcileStaleProcessingBooks
+    # function (onSchedule).
+    "cloudscheduler.googleapis.com",
     # firebase deploy verifies the project is on a billing plan (2nd gen).
     "cloudbilling.googleapis.com",
     # Book-metadata search: the Google Books backend, an API key to raise its

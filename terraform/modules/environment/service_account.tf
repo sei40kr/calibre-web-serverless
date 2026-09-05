@@ -33,6 +33,9 @@ locals {
     "roles/pubsub.admin",
     "roles/iam.serviceAccountUser",
     "roles/secretmanager.admin",
+    # Create the Cloud Scheduler job behind the scheduled
+    # reconcileStaleProcessingBooks function.
+    "roles/cloudscheduler.admin",
     # Invoke the IAM-private reconcileStaleProcessingBooksHttp function.
     "roles/run.invoker",
   ]

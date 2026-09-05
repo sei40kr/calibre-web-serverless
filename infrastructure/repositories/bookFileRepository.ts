@@ -85,11 +85,13 @@ const UPLOAD_STALL_CHECK_INTERVAL_MS = 5_000;
 // Uploads the file through a resumable task guarded by a stall watchdog.
 // Resolves on success. On a stall it cancels the task (which rejects the
 // awaited task) and signals via onStall so the caller can tell a dead
-// connection apart from other Storage failures.
+// connection apart from other Storage failures. onProgress relays the bytes
+// transferred so far.
 export const uploadWithStallGuard = async (
 	storageRef: StorageReference,
 	file: File,
 	onStall: () => void,
+	onProgress?: (bytesTransferred: number, totalBytes: number) => void,
 ): Promise<void> => {
 	// The stored object is always named book.<format>, so preserve the original
 	// filename in custom metadata for the extraction function to fall back on
@@ -111,6 +113,7 @@ export const uploadWithStallGuard = async (
 		if (snapshot.bytesTransferred > lastTransferred) {
 			lastTransferred = snapshot.bytesTransferred;
 			lastAdvance = Date.now();
+			onProgress?.(snapshot.bytesTransferred, snapshot.totalBytes);
 		}
 	});
 

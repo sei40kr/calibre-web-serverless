@@ -29,10 +29,15 @@ export interface BookRepository {
 			onError: (error: Error) => void;
 		},
 	): () => void;
-	/** Create a new book from its first uploaded file. */
+	/**
+	 * Create a new book from its first uploaded file. `onProgress` reports the
+	 * Storage transfer as it advances; it never fires after the returned
+	 * promise settles.
+	 */
 	createBook(params: {
 		userId: string;
 		file: File;
+		onProgress?: (bytesTransferred: number, totalBytes: number) => void;
 	}): Promise<{ bookId: string; format: BookFileFormat }>;
 	updateBook(userId: string, book: Book): Promise<void>;
 	deleteBook(userId: string, bookId: string): Promise<void>;

@@ -57,7 +57,8 @@ web/                          # @calibre-web-serverless/web
 │   │   ├── ui/               # Chakra UI wrapper components
 │   │   └── AuthGuard.tsx     # Route protection component
 │   ├── contexts/
-│   │   └── AuthContext.tsx    # Firebase auth state management
+│   │   ├── AuthContext.tsx    # Firebase auth state management
+│   │   └── BookUploadContext.tsx  # App-wide background upload queue
 │   └── hooks/                # Data subscription hooks
 ├── scripts/                  # Seed scripts
 ├── e2e/                      # Playwright E2E tests

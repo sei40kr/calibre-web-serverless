@@ -225,9 +225,10 @@ const subscribeToBook = (
 interface CreateBookParams {
 	userId: string;
 	file: File;
+	onProgress?: (bytesTransferred: number, totalBytes: number) => void;
 }
 
-const createBook = async ({ userId, file }: CreateBookParams) => {
+const createBook = async ({ userId, file, onProgress }: CreateBookParams) => {
 	const format = formatFromFileName(file.name);
 	const bookId = crypto.randomUUID();
 
@@ -283,6 +284,7 @@ const createBook = async ({ userId, file }: CreateBookParams) => {
 			() => {
 				stalled = true;
 			},
+			onProgress,
 		);
 	} catch (error) {
 		// Best-effort rollback so a failed upload does not leave an orphaned book

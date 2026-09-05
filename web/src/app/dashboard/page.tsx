@@ -11,6 +11,7 @@ import { BookFilterToolbar } from "@/components/BookFilterToolbar";
 import { BookGrid } from "@/components/BookGrid";
 import { UploadBookDialog } from "@/components/UploadBookDialog";
 import { toaster } from "@/components/ui/toaster";
+import { useBookUploads } from "@/contexts/BookUploadContext";
 import { useAuthors } from "@/hooks/useAuthors";
 import { useBookCoverUrls } from "@/hooks/useBookCoverUrls";
 import { useBookFilter } from "@/hooks/useBookFilter";
@@ -35,6 +36,7 @@ function DashboardContent({
 	setIsUploadDialogOpen,
 }: DashboardContentProps) {
 	const { filter, sort, setFilter, setSort } = useBookFilter();
+	const { enqueue } = useBookUploads();
 
 	// Books are filtered and sorted server-side via the Firestore query.
 	const { books, loading } = useBooks(user.uid, filter, sort);
@@ -53,6 +55,13 @@ function DashboardContent({
 	);
 
 	const filtering = isFilterActive(filter);
+
+	// Uploads run in the app-wide queue so the dialog can close immediately and
+	// the progress overlay takes over.
+	const handleUpload = useCallback(
+		(files: File[]) => enqueue(user.uid, files),
+		[enqueue, user.uid],
+	);
 
 	const handleDeleteBook = useCallback(
 		async (book: Book) => {
@@ -90,7 +99,7 @@ function DashboardContent({
 								onClick={() => setIsUploadDialogOpen(true)}
 							>
 								<LuPlus />
-								Upload Book
+								Upload Books
 							</Button>
 							<Button variant="outline" onClick={signOut}>
 								Logout
@@ -119,9 +128,9 @@ function DashboardContent({
 			</Container>
 
 			<UploadBookDialog
-				user={user}
 				open={isUploadDialogOpen}
 				onOpenChange={setIsUploadDialogOpen}
+				onUpload={handleUpload}
 			/>
 		</>
 	);

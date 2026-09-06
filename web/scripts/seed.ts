@@ -1,29 +1,30 @@
 /**
  * Script to seed the Firebase emulator with test user and sample books.
- * - Auth: Admin SDK (to create user with emailVerified: true)
- * - Firestore/Storage: Client SDK via bookService (as authenticated user)
+ * - Auth + books: Admin SDK (verified user; ready books that skip extraction)
+ * - Authors/series/tags: Client SDK (as the authenticated user)
  * Automatically runs during `bun run dev` after emulators start.
+ *
+ * See docs/seeding.md for how seeding works and how to add a seeded book.
+ * Metadata in the `books` array below is authoritative — nothing is extracted
+ * from the epub.
  */
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import type { Book } from "@calibre-web-serverless/domain/models/book";
-import { MAX_COVER_WIDTH } from "@calibre-web-serverless/domain/models/bookCover";
 import {
 	AMAZON,
 	ISBN,
 	ISBN13,
 } from "@calibre-web-serverless/domain/models/identifier";
 import { Language } from "@calibre-web-serverless/domain/models/language";
+import { createSeededBook } from "@calibre-web-serverless/infrastructure/admin/repositories/bookRepository";
 import { authorRepository } from "@calibre-web-serverless/infrastructure/repositories/authorRepository";
-import { uploadExtractedCover } from "@calibre-web-serverless/infrastructure/repositories/bookCoverRepository";
 import { bookRepository } from "@calibre-web-serverless/infrastructure/repositories/bookRepository";
 import { seriesRepository } from "@calibre-web-serverless/infrastructure/repositories/seriesRepository";
 import { tagRepository } from "@calibre-web-serverless/infrastructure/repositories/tagRepository";
 import { authService } from "@calibre-web-serverless/infrastructure/services/authService";
 import { initializeApp as initializeAdminApp } from "firebase-admin/app";
 import { getAuth as getAdminAuth } from "firebase-admin/auth";
-import sharp from "sharp";
 
 const TEST_USER = {
 	email: "test@example.com",
@@ -111,21 +112,13 @@ const books: BookSeed[] = [
 	},
 ];
 
-/** Poll until the emulator's extraction function has settled the book. */
-async function waitForProcessed(userId: string, bookId: string): Promise<Book> {
-	const deadline = Date.now() + 120_000;
-	while (Date.now() < deadline) {
-		const book = await bookRepository.getBook(userId, bookId);
-		if (book && book.status !== "processing") return book;
-		await new Promise((resolve) => setTimeout(resolve, 500));
-	}
-	throw new Error(`Timed out waiting for book ${bookId} to finish processing`);
-}
-
 async function main() {
 	const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 
-	const adminApp = initializeAdminApp({ projectId });
+	const adminApp = initializeAdminApp({
+		projectId,
+		storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+	});
 	const adminAuth = getAdminAuth(adminApp);
 
 	// Create user with Admin SDK (emailVerified: true)
@@ -192,7 +185,9 @@ async function main() {
 		console.log(`[seed] Created tag: ${name}`);
 	}
 
-	// Upload books and update with metadata
+	// Seed each book as already "ready" via createSeededBook: the doc (with
+	// metadata and a ready file entry) is written before the epub upload, so
+	// the extraction function short-circuits — no processing to wait for.
 	for (const book of books) {
 		const filePath = path.join(
 			import.meta.dirname,
@@ -204,20 +199,9 @@ async function main() {
 			"book.epub",
 		);
 		const fileBuffer = fs.readFileSync(filePath);
-		const file = new File([fileBuffer], "book.epub", {
-			type: "application/epub+zip",
-		});
 
-		const { bookId } = await bookRepository.createBook({
-			userId,
-			file,
-		});
-
-		// Wait for the extraction triggered by the upload before overwriting the
-		// metadata below, so the two writes cannot race.
-		const processedBook = await waitForProcessed(userId, bookId);
-
-		// Upload cover image
+		// cover.png is pre-normalised by scripts/prepareCoverFixture.ts to what
+		// the extractBookMetadata function would produce, so it uploads as-is.
 		const coverPath = path.join(
 			import.meta.dirname,
 			"..",
@@ -225,55 +209,39 @@ async function main() {
 			"fixtures",
 			"books",
 			book.fixtureName,
-			"cover.jpg",
+			"cover.png",
 		);
-		let hasCover = false;
-		if (fs.existsSync(coverPath)) {
-			const coverBuffer = fs.readFileSync(coverPath);
-			// Mirror the extractBookMetadata function: normalise to a size-bounded
-			// PNG so the seeded cover matches what the function would produce.
-			const pngData = await sharp(coverBuffer)
-				.resize({ width: MAX_COVER_WIDTH, withoutEnlargement: true })
-				.png()
-				.toBuffer();
-			await uploadExtractedCover({ userId, bookId, pngData });
-			hasCover = true;
-			console.log(`[seed] Uploaded cover for: ${book.fixtureName}`);
-		}
+		const coverPng: Buffer | null = fs.existsSync(coverPath)
+			? fs.readFileSync(coverPath)
+			: null;
 
-		// Convert names to IDs
-		const authorIds = book.authorNames.map((name) => authorMap.get(name)!);
-		const seriesId = book.seriesName
-			? seriesMap.get(book.seriesName)
-			: undefined;
-		const tagIds = book.tagNames.map((name) => tagMap.get(name)!);
-
-		// Update book with full metadata
-		const now = new Date();
-		const updatedBook: Book = {
-			...processedBook,
-			id: bookId,
+		await createSeededBook({
 			userId,
-			title: book.title,
-			sortTitle: book.sortTitle ?? null,
-			authorIds,
-			seriesId: seriesId ?? null,
-			seriesIndex: book.seriesIndex ?? 1,
-			tagIds,
-			publisherId: null,
-			pubDate: book.pubDate ?? null,
-			identifiers: book.identifiers ?? [],
-			languages: book.languages,
-			description: book.description ?? null,
-			rating: book.rating ?? null,
-			hasCover,
-			hasCustomCover: false,
-			status: "ready",
-			errorCode: null,
-			createdAt: now,
-			updatedAt: now,
-		};
-		await bookRepository.updateBook(userId, updatedBook);
+			file: {
+				data: fileBuffer,
+				format: "epub",
+				contentType: "application/epub+zip",
+			},
+			coverPng,
+			book: {
+				title: book.title,
+				sortTitle: book.sortTitle ?? null,
+				authorIds: book.authorNames.map((name) => authorMap.get(name)!),
+				seriesId: book.seriesName
+					? (seriesMap.get(book.seriesName) ?? null)
+					: null,
+				seriesIndex: book.seriesIndex ?? 1,
+				tagIds: book.tagNames.map((name) => tagMap.get(name)!),
+				publisherId: null,
+				pubDate: book.pubDate ?? null,
+				identifiers: book.identifiers ?? [],
+				languages: book.languages,
+				description: book.description ?? null,
+				rating: book.rating ?? null,
+				hasCover: coverPng !== null,
+				hasCustomCover: false,
+			},
+		});
 
 		console.log(`[seed] Created book: ${book.title}`);
 	}

@@ -16,7 +16,7 @@ const DOWNLOAD_URL_TTL_MS = 15 * 60 * 1000;
 
 const bookPath = (userId: string, bookId: string) =>
 	`users/${userId}/books/${bookId}`;
-const extractedCoverPath = (userId: string, bookId: string) =>
+export const extractedCoverPath = (userId: string, bookId: string) =>
 	`${bookPath(userId, bookId)}/cover.png`;
 const customCoverPath = (userId: string, bookId: string) =>
 	`${bookPath(userId, bookId)}/custom_cover.png`;

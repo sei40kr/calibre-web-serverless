@@ -21,6 +21,7 @@ import type {
 	BookFileDocument as BaseBookFileDocument,
 	IdentifierDocument,
 } from "../../documents/book";
+import { extractedCoverPath } from "./bookCoverRepository";
 
 // Admin-side access to books. Model <-> document conversion stays here so the
 // firebase-admin Timestamp type never leaks out. File-scoped operations live
@@ -176,6 +177,87 @@ const updateBook = async (userId: string, book: Book): Promise<void> => {
 	await getFirestore()
 		.doc(bookPath(userId, book.id))
 		.update(toBookDocument(book));
+};
+
+interface CreateSeededBookParams {
+	userId: string;
+	book: Omit<
+		Book,
+		| "id"
+		| "userId"
+		| "files"
+		| "status"
+		| "errorCode"
+		| "createdAt"
+		| "updatedAt"
+	>;
+	file: { data: Buffer; format: BookFileFormat; contentType: string };
+	/** Already-normalized PNG (see web/scripts/prepareCoverFixture.ts). */
+	coverPng: Buffer | null;
+}
+
+// Dev/test seeding only: creates a fully-described book that never goes
+// through metadata extraction. The doc lands as "ready" (with its file entry
+// already ready and entity counts incremented) *before* the Storage uploads,
+// so the extraction trigger sees a ready book and short-circuits instead of
+// parsing the file. No rollback on failure — a failed seed aborts the run.
+export const createSeededBook = async ({
+	userId,
+	book,
+	file,
+	coverPng,
+}: CreateSeededBookParams): Promise<{ bookId: string }> => {
+	const bookId = crypto.randomUUID();
+	const db = getFirestore();
+
+	const batch = db.batch();
+	batch.set(db.doc(bookPath(userId, bookId)), {
+		...toBookDocument({
+			...book,
+			id: bookId,
+			userId,
+			files: [],
+			status: "ready",
+			errorCode: null,
+			createdAt: null,
+			updatedAt: null,
+		}),
+		files: {
+			[file.format]: {
+				fileSize: file.data.byteLength,
+				status: "ready",
+				errorCode: null,
+				addedAt: FieldValue.serverTimestamp(),
+			},
+		},
+		hasProcessingFile: false,
+		createdAt: FieldValue.serverTimestamp(),
+	});
+	const increment = { bookCount: FieldValue.increment(1) };
+	const entityRefs = [
+		...book.authorIds.map((id) => `users/${userId}/authors/${id}`),
+		...book.tagIds.map((id) => `users/${userId}/tags/${id}`),
+		...(book.seriesId ? [`users/${userId}/series/${book.seriesId}`] : []),
+		...(book.publisherId
+			? [`users/${userId}/publishers/${book.publisherId}`]
+			: []),
+	];
+	for (const path of entityRefs) {
+		batch.update(db.doc(path), increment);
+	}
+	await batch.commit();
+
+	const bucket = getStorage().bucket();
+	await bucket.file(bookFilePath(userId, bookId, file.format)).save(file.data, {
+		metadata: { contentType: file.contentType },
+	});
+	if (coverPng) {
+		await bucket.file(extractedCoverPath(userId, bookId)).save(coverPng, {
+			metadata: { contentType: "image/png" },
+		});
+	}
+
+	return { bookId };
 };
 
 /**

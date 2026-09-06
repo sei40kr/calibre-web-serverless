@@ -98,25 +98,3 @@ export const bookCoverRepository: BookCoverRepository = {
 	uploadCustomCover,
 	resetCustomCover,
 };
-
-/**
- * Seed/test helper: writes an already-conditioned PNG directly at the
- * metadata-extracted cover path (cover.png), mimicking what the
- * extractBookMetadata function produces. The buffer must already be a
- * size-bounded PNG.
- */
-export const uploadExtractedCover = async ({
-	userId,
-	bookId,
-	pngData,
-}: {
-	userId: string;
-	bookId: string;
-	pngData: Uint8Array;
-}): Promise<void> => {
-	await uploadBytes(
-		ref(storage, `users/${userId}/books/${bookId}/cover.png`),
-		pngData,
-		{ contentType: "image/png" },
-	);
-};

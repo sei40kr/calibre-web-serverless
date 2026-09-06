@@ -1,8 +1,15 @@
 # Book fixtures
 
 Public-domain books used as test fixtures for the metadata extractors and the
-`extractBookMetadata` usecase. Each book lives in its own directory as
-`book.epub` (+ `cover.jpg`, and `book.pdf` where a PDF fixture is needed).
+`extractBookMetadata` usecase, and as the data the dev seed loads into the
+emulators. Each book lives in its own directory as:
+
+- `book.epub` — the book file (+ `book.pdf` where a PDF fixture is needed)
+- `cover.jpg` — the original cover, served to Storybook stories
+- `cover.png` — the cover pre-normalised to what `extractBookMetadata` would
+  produce; the dev seed uploads it as-is
+
+See `docs/seeding.md` for how seeding works and how to add a seeded book.
 
 ## alice-in-wonderland
 

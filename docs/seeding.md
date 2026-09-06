@@ -35,4 +35,6 @@ So the seed precomputes everything instead:
 
    Rerun this whenever `cover.jpg` changes.
 
-3. Add an entry to the `books` array in `web/scripts/seed.ts`.
+3. Add an entry to the `books` array in `web/scripts/seed.ts`. To seed
+   additional formats, place `book.<format>` files in the fixture directory
+   and list them in the entry's `formats` field.

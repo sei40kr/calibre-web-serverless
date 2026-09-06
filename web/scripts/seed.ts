@@ -11,6 +11,7 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
+import type { BookFileFormat } from "@calibre-web-serverless/domain/models/bookFile";
 import {
 	AMAZON,
 	ISBN,
@@ -32,10 +33,18 @@ const TEST_USER = {
 	displayName: "Test User",
 };
 
+const CONTENT_TYPES: Partial<Record<BookFileFormat, string>> = {
+	epub: "application/epub+zip",
+	pdf: "application/pdf",
+	txt: "text/plain",
+};
+
 interface BookSeed {
 	title: string;
 	sortTitle?: string;
 	fixtureName: string;
+	/** Formats to upload from the fixture (book.<format>). Default: epub only. */
+	formats?: BookFileFormat[];
 	authorNames: string[];
 	seriesName?: string;
 	seriesIndex?: number;
@@ -55,6 +64,7 @@ const books: BookSeed[] = [
 	{
 		title: "Alice's Adventures in Wonderland",
 		fixtureName: "alice-in-wonderland",
+		formats: ["epub", "txt", "pdf"],
 		authorNames: ["Lewis Carroll"],
 		tagNames: ["Fantasy", "Classic", "Children"],
 		publisher: "Macmillan",
@@ -189,39 +199,30 @@ async function main() {
 	// metadata and a ready file entry) is written before the epub upload, so
 	// the extraction function short-circuits — no processing to wait for.
 	for (const book of books) {
-		const filePath = path.join(
+		const fixtureDir = path.join(
 			import.meta.dirname,
 			"..",
 			"..",
 			"fixtures",
 			"books",
 			book.fixtureName,
-			"book.epub",
 		);
-		const fileBuffer = fs.readFileSync(filePath);
+		const files = (book.formats ?? ["epub"]).map((format) => ({
+			data: fs.readFileSync(path.join(fixtureDir, `book.${format}`)),
+			format,
+			contentType: CONTENT_TYPES[format] ?? "application/octet-stream",
+		}));
 
 		// cover.png is pre-normalised by scripts/prepareCoverFixture.ts to what
 		// the extractBookMetadata function would produce, so it uploads as-is.
-		const coverPath = path.join(
-			import.meta.dirname,
-			"..",
-			"..",
-			"fixtures",
-			"books",
-			book.fixtureName,
-			"cover.png",
-		);
+		const coverPath = path.join(fixtureDir, "cover.png");
 		const coverPng: Buffer | null = fs.existsSync(coverPath)
 			? fs.readFileSync(coverPath)
 			: null;
 
 		await createSeededBook({
 			userId,
-			file: {
-				data: fileBuffer,
-				format: "epub",
-				contentType: "application/epub+zip",
-			},
+			files,
 			coverPng,
 			book: {
 				title: book.title,

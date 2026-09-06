@@ -191,20 +191,21 @@ interface CreateSeededBookParams {
 		| "createdAt"
 		| "updatedAt"
 	>;
-	file: { data: Buffer; format: BookFileFormat; contentType: string };
+	files: { data: Buffer; format: BookFileFormat; contentType: string }[];
 	/** Already-normalized PNG (see web/scripts/prepareCoverFixture.ts). */
 	coverPng: Buffer | null;
 }
 
 // Dev/test seeding only: creates a fully-described book that never goes
-// through metadata extraction. The doc lands as "ready" (with its file entry
-// already ready and entity counts incremented) *before* the Storage uploads,
-// so the extraction trigger sees a ready book and short-circuits instead of
-// parsing the file. No rollback on failure — a failed seed aborts the run.
+// through metadata extraction. The doc lands as "ready" (with its file
+// entries already ready and entity counts incremented) *before* the Storage
+// uploads, so the extraction trigger sees a ready book and short-circuits
+// instead of parsing the files. No rollback on failure — a failed seed
+// aborts the run.
 export const createSeededBook = async ({
 	userId,
 	book,
-	file,
+	files,
 	coverPng,
 }: CreateSeededBookParams): Promise<{ bookId: string }> => {
 	const bookId = crypto.randomUUID();
@@ -222,14 +223,17 @@ export const createSeededBook = async ({
 			createdAt: null,
 			updatedAt: null,
 		}),
-		files: {
-			[file.format]: {
-				fileSize: file.data.byteLength,
-				status: "ready",
-				errorCode: null,
-				addedAt: FieldValue.serverTimestamp(),
-			},
-		},
+		files: Object.fromEntries(
+			files.map((file) => [
+				file.format,
+				{
+					fileSize: file.data.byteLength,
+					status: "ready",
+					errorCode: null,
+					addedAt: FieldValue.serverTimestamp(),
+				},
+			]),
+		),
 		hasProcessingFile: false,
 		createdAt: FieldValue.serverTimestamp(),
 	});
@@ -248,9 +252,11 @@ export const createSeededBook = async ({
 	await batch.commit();
 
 	const bucket = getStorage().bucket();
-	await bucket.file(bookFilePath(userId, bookId, file.format)).save(file.data, {
-		metadata: { contentType: file.contentType },
-	});
+	for (const file of files) {
+		await bucket
+			.file(bookFilePath(userId, bookId, file.format))
+			.save(file.data, { metadata: { contentType: file.contentType } });
+	}
 	if (coverPng) {
 		await bucket.file(extractedCoverPath(userId, bookId)).save(coverPng, {
 			metadata: { contentType: "image/png" },

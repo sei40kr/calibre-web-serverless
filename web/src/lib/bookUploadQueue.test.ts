@@ -36,6 +36,7 @@ const makeBook = (overrides: Partial<Book>): Book => ({
 	seriesId: null,
 	seriesIndex: 1,
 	tagIds: [],
+	bookshelfIds: [],
 	publisherId: null,
 	pubDate: null,
 	identifiers: [],

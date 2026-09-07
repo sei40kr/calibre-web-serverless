@@ -26,6 +26,10 @@ const nextConfig: NextConfig = {
 							source: "/dashboard/bookshelves/:bookshelfId",
 							destination: "/dashboard/bookshelves/__shell__",
 						},
+						{
+							source: "/books/:bookId/pages/:pageNo",
+							destination: "/books/__shell__/pages/__shell__",
+						},
 					];
 				},
 			}),

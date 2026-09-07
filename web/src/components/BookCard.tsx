@@ -70,6 +70,10 @@ export function BookCard({
 }: BookCardProps) {
 	const isProcessing = book.status === "processing";
 	const isError = book.status === "error";
+	// Only PDF has an in-browser reader so far.
+	const isReadable = readyFiles(book.files).some(
+		(file) => file.format === "pdf",
+	);
 	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 	const [isDeleting, setIsDeleting] = useState(false);
 	const [isRemoving, setIsRemoving] = useState(false);
@@ -100,6 +104,35 @@ export function BookCard({
 		}
 	};
 
+	const cover = (
+		<Box
+			bg="bg.muted"
+			aspectRatio={2 / 3}
+			display="flex"
+			alignItems="center"
+			justifyContent="center"
+			overflow="hidden"
+		>
+			{isProcessing ? (
+				<Skeleton width="100%" height="100%" />
+			) : isError ? (
+				<LuTriangleAlert size={48} color="var(--chakra-colors-fg-muted)" />
+			) : coverLoading ? (
+				<Skeleton width="100%" height="100%" />
+			) : coverUrl ? (
+				<Image
+					src={coverUrl}
+					alt={book.title || "Book cover"}
+					width="100%"
+					height="100%"
+					objectFit="cover"
+				/>
+			) : (
+				<LuBook size={48} color="var(--chakra-colors-fg-muted)" />
+			)}
+		</Box>
+	);
+
 	return (
 		<Card.Root
 			overflow="hidden"
@@ -107,32 +140,16 @@ export function BookCard({
 			transition="all 0.2s"
 			position="relative"
 		>
-			<Box
-				bg="bg.muted"
-				aspectRatio={2 / 3}
-				display="flex"
-				alignItems="center"
-				justifyContent="center"
-				overflow="hidden"
-			>
-				{isProcessing ? (
-					<Skeleton width="100%" height="100%" />
-				) : isError ? (
-					<LuTriangleAlert size={48} color="var(--chakra-colors-fg-muted)" />
-				) : coverLoading ? (
-					<Skeleton width="100%" height="100%" />
-				) : coverUrl ? (
-					<Image
-						src={coverUrl}
-						alt={book.title || "Book cover"}
-						width="100%"
-						height="100%"
-						objectFit="cover"
-					/>
-				) : (
-					<LuBook size={48} color="var(--chakra-colors-fg-muted)" />
-				)}
-			</Box>
+			{/* The cover doubles as the link into the reader; the action row is
+			    at capacity — more icons overflow the card and land under the
+			    neighboring card, unclickable. */}
+			{isReadable ? (
+				<Link href={`/books/${book.id}/pages/1`} aria-label="Read book">
+					{cover}
+				</Link>
+			) : (
+				cover
+			)}
 			<Card.Body p={3}>
 				<VStack align="start" gap={1}>
 					<Text fontWeight="medium" lineClamp={2} title={book.title}>

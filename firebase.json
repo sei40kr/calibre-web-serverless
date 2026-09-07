@@ -19,6 +19,10 @@
 			{
 				"regex": "^/dashboard/bookshelves/[^/]+/?$",
 				"destination": "/dashboard/bookshelves/__shell__.html"
+			},
+			{
+				"regex": "^/books/[^/]+/pages/[^/]+/?$",
+				"destination": "/books/__shell__/pages/__shell__.html"
 			}
 		]
 	},

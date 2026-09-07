@@ -91,6 +91,11 @@ export const Default: Story = {
 		await expect(
 			canvas.getByRole("img", { name: "Alice's Adventures in Wonderland" }),
 		).toBeInTheDocument();
+
+		// EPUB-only books have no in-browser reader yet.
+		await expect(
+			canvas.queryByRole("link", { name: /read book/i }),
+		).not.toBeInTheDocument();
 	},
 };
 
@@ -201,6 +206,9 @@ export const PdfFormat: Story = {
 		const canvas = within(canvasElement);
 
 		await expect(canvas.getByText("PDF")).toBeInTheDocument();
+
+		const readLink = canvas.getByRole("link", { name: /read book/i });
+		await expect(readLink).toHaveAttribute("href", "/books/book-001/pages/1");
 	},
 };
 

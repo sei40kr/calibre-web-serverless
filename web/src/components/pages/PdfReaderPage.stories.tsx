@@ -1,13 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, fn, userEvent, waitFor, within } from "storybook/test";
-import { BookReaderPage } from "./BookReaderPage";
+import { PdfReaderPage } from "./PdfReaderPage";
 
 // Served from the fixtures directory (see .storybook/main.ts staticDirs).
 const pdfPath = "/books/alice-in-wonderland/book.pdf";
 
 const meta = {
-	title: "Pages/BookReaderPage",
-	component: BookReaderPage,
+	title: "Pages/PdfReaderPage",
+	component: PdfReaderPage,
 	parameters: {
 		layout: "fullscreen",
 	},
@@ -20,7 +20,7 @@ const meta = {
 		onPageNoChange: fn(),
 		onBack: fn(),
 	},
-} satisfies Meta<typeof BookReaderPage>;
+} satisfies Meta<typeof PdfReaderPage>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -80,16 +80,20 @@ export const FileLoading: Story = {
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
 
-		// The cover stands in while the PDF loads, with a progress bar.
+		// The cover stands in while the PDF loads, with a progress bar and
+		// no page-turn controls — there is nothing to page through yet.
 		await expect(
 			canvasElement.querySelector("img[src$='cover.jpg']"),
 		).toBeInTheDocument();
 		await expect(canvas.getByText("Loading…")).toBeInTheDocument();
 		await expect(canvas.getByRole("progressbar")).toBeInTheDocument();
+		await expect(
+			canvas.queryByRole("button", { name: /next page/i }),
+		).not.toBeInTheDocument();
 	},
 };
 
-export const NoPdfFile: Story = {
+export const NoReadableFile: Story = {
 	args: {
 		fileUrl: null,
 		fileLoading: false,
@@ -97,7 +101,7 @@ export const NoPdfFile: Story = {
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
 
-		await expect(canvas.getByText("No PDF file")).toBeInTheDocument();
+		await expect(canvas.getByText("No readable file")).toBeInTheDocument();
 	},
 };
 

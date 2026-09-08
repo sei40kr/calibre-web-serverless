@@ -1,15 +1,16 @@
 "use client";
 
-import { readyFiles } from "@calibre-web-serverless/domain/models/bookFile";
 import { Center, Spinner } from "@chakra-ui/react";
-import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
 import { BookNotFoundPage } from "@/components/pages/BookNotFoundPage";
-import { BookReaderPage } from "@/components/pages/BookReaderPage";
+import { EpubReaderPage } from "@/components/pages/EpubReaderPage";
+import { PdfReaderPage } from "@/components/pages/PdfReaderPage";
 import { useBook } from "@/hooks/useBook";
 import { useBookCoverUrl } from "@/hooks/useBookCoverUrl";
 import { useBookFileUrl } from "@/hooks/useBookFileUrl";
+import { readableBookFormats } from "@/lib/readableBookFormats";
 
 export default function BookReaderRoute() {
 	// This route is served as a static shell (rewritten from any book id and
@@ -25,11 +26,13 @@ export default function BookReaderRoute() {
 	return (
 		<AuthGuard>
 			{({ user }) => (
-				<BookReaderRouteContent
-					userId={user.uid}
-					bookId={bookId}
-					pageNo={pageNo}
-				/>
+				<Suspense fallback={null}>
+					<BookReaderRouteContent
+						userId={user.uid}
+						bookId={bookId}
+						pageNo={pageNo}
+					/>
+				</Suspense>
 			)}
 		</AuthGuard>
 	);
@@ -47,15 +50,20 @@ function BookReaderRouteContent({
 	pageNo,
 }: BookReaderRouteContentProps) {
 	const router = useRouter();
+	const searchParams = useSearchParams();
 	const { book, loading, error } = useBook(userId, bookId);
-	const hasPdfFile = book
-		? readyFiles(book.files).some((file) => file.format === "pdf")
-		: false;
+	// The ?format= param (set by the card's format chooser) picks the reader;
+	// without one, the first readable format wins (EPUB before PDF). For an
+	// EPUB, pageNo addresses a spine chapter.
+	const formats = readableBookFormats(book?.files ?? []);
+	const requestedFormat =
+		formats.find((format) => format === searchParams?.get("format")) ?? null;
+	const format = requestedFormat ?? formats[0] ?? "pdf";
 	const { fileUrl, loading: fileLoading } = useBookFileUrl(
 		userId,
 		bookId,
-		"pdf",
-		hasPdfFile,
+		format,
+		formats.includes(format),
 	);
 	const { coverUrl } = useBookCoverUrl(
 		userId,
@@ -69,9 +77,10 @@ function BookReaderRouteContent({
 	// stepping through every visited page.
 	const goToPage = useCallback(
 		(nextPageNo: number) => {
-			router.replace(`/books/${bookId}/pages/${nextPageNo}`);
+			const query = requestedFormat ? `?format=${requestedFormat}` : "";
+			router.replace(`/books/${bookId}/pages/${nextPageNo}${query}`);
 		},
-		[router, bookId],
+		[router, bookId, requestedFormat],
 	);
 
 	const validPageNo = Number.isInteger(pageNo) && pageNo >= 1;
@@ -95,15 +104,24 @@ function BookReaderRouteContent({
 		return <BookNotFoundPage onBack={() => router.push("/dashboard")} />;
 	}
 
-	return (
-		<BookReaderPage
-			title={book.title}
-			coverUrl={coverUrl}
-			fileUrl={fileUrl}
-			fileLoading={fileLoading}
+	const readerProps = {
+		title: book.title,
+		coverUrl,
+		fileUrl,
+		fileLoading,
+		onBack: () => router.push("/dashboard"),
+	};
+	return format === "epub" ? (
+		<EpubReaderPage
+			{...readerProps}
+			chapterNo={validPageNo ? pageNo : 1}
+			onChapterNoChange={goToPage}
+		/>
+	) : (
+		<PdfReaderPage
+			{...readerProps}
 			pageNo={validPageNo ? pageNo : 1}
 			onPageNoChange={goToPage}
-			onBack={() => router.push("/dashboard")}
 		/>
 	);
 }

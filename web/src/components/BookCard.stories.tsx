@@ -92,10 +92,9 @@ export const Default: Story = {
 			canvas.getByRole("img", { name: "Alice's Adventures in Wonderland" }),
 		).toBeInTheDocument();
 
-		// EPUB-only books have no in-browser reader yet.
-		await expect(
-			canvas.queryByRole("link", { name: /read book/i }),
-		).not.toBeInTheDocument();
+		// A single readable format links straight into the reader.
+		const readLink = canvas.getByRole("link", { name: /read book/i });
+		await expect(readLink).toHaveAttribute("href", "/books/book-001/pages/1");
 	},
 };
 
@@ -246,10 +245,22 @@ export const MultipleFormats: Story = {
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
+		const body = within(canvasElement.ownerDocument.body);
 
 		await expect(canvas.getByText("EPUB")).toBeInTheDocument();
 		await expect(canvas.getByText("PDF")).toBeInTheDocument();
 		await expect(canvas.queryByText("MOBI")).not.toBeInTheDocument();
+
+		// Several readable formats: the cover opens a format chooser instead
+		// of linking directly.
+		await userEvent.click(canvas.getByRole("button", { name: /read book/i }));
+		const dialog = await body.findByRole("dialog");
+		await expect(
+			within(dialog).getByRole("link", { name: "EPUB" }),
+		).toHaveAttribute("href", "/books/book-001/pages/1?format=epub");
+		await expect(
+			within(dialog).getByRole("link", { name: "PDF" }),
+		).toHaveAttribute("href", "/books/book-001/pages/1?format=pdf");
 	},
 };
 

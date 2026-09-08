@@ -1,22 +1,14 @@
 "use client";
 
-import {
-	Box,
-	Center,
-	HStack,
-	IconButton,
-	Image,
-	Progress,
-	Text,
-	VStack,
-} from "@chakra-ui/react";
+import { Box, Center } from "@chakra-ui/react";
 import type { PDFDocumentProxy, RenderTask } from "pdfjs-dist";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { LuArrowLeft, LuChevronLeft, LuChevronRight } from "react-icons/lu";
+import { BookReaderLoading } from "@/components/BookReaderLoading";
+import { BookReaderShell } from "@/components/BookReaderShell";
 import { EmptyState } from "@/components/ui/empty-state";
 import { usePdfDocument } from "@/hooks/usePdfDocument";
 
-export interface BookReaderPageProps {
+export interface PdfReaderPageProps {
 	title: string;
 	/** Cover image shown while the PDF loads, or null when the book has none. */
 	coverUrl: string | null;
@@ -31,7 +23,7 @@ export interface BookReaderPageProps {
 	onBack: () => void;
 }
 
-export function BookReaderPage({
+export function PdfReaderPage({
 	title,
 	coverUrl,
 	fileUrl,
@@ -39,7 +31,7 @@ export function BookReaderPage({
 	pageNo,
 	onPageNoChange,
 	onBack,
-}: BookReaderPageProps) {
+}: PdfReaderPageProps) {
 	const {
 		pdfDocument,
 		loading: pdfLoading,
@@ -76,100 +68,47 @@ export function BookReaderPage({
 		pageCount === null ? pageNo : Math.min(pageNo, pageCount);
 
 	return (
-		<Box display="flex" flexDirection="column" height="100dvh">
-			<HStack px={4} py={2} gap={3} borderBottomWidth="1px">
-				<IconButton
-					aria-label="Back to library"
-					variant="ghost"
-					size="sm"
-					onClick={onBack}
-				>
-					<LuArrowLeft />
-				</IconButton>
-				<Text fontWeight="medium" truncate flex="1" title={title}>
-					{title}
-				</Text>
-				<HStack gap={1}>
-					<IconButton
-						aria-label="Previous page"
-						variant="ghost"
-						size="sm"
-						disabled={pageCount === null || displayedPageNo <= 1}
-						onClick={() => goToPage(displayedPageNo - 1)}
-					>
-						<LuChevronLeft />
-					</IconButton>
-					<Text
-						textStyle="sm"
-						color="fg.muted"
-						fontVariantNumeric="tabular-nums"
-						minW="16"
-						textAlign="center"
-					>
-						{pageCount === null ? "– / –" : `${displayedPageNo} / ${pageCount}`}
-					</Text>
-					<IconButton
-						aria-label="Next page"
-						variant="ghost"
-						size="sm"
-						disabled={pageCount === null || displayedPageNo >= pageCount}
-						onClick={() => goToPage(displayedPageNo + 1)}
-					>
-						<LuChevronRight />
-					</IconButton>
-				</HStack>
-			</HStack>
-
-			<Box flex="1" minH={0} bg="bg.muted">
-				{loading ? (
-					<Center height="100%">
-						<VStack gap={4}>
-							{/* Fixed-size stand-in so the layout doesn't shift while
-							    the cover (and then the PDF) loads. */}
-							<Box w="60" h="90" bg="bg.subtle" shadow="md" overflow="hidden">
-								{coverUrl && (
-									<Image
-										src={coverUrl}
-										alt=""
-										width="100%"
-										height="100%"
-										objectFit="cover"
-									/>
-								)}
-							</Box>
-							<Progress.Root
-								value={progress === null ? null : progress * 100}
-								size="xs"
-								w="60"
-							>
-								<Progress.Track>
-									<Progress.Range />
-								</Progress.Track>
-							</Progress.Root>
-							<Text textStyle="sm" color="fg.muted">
-								Loading…
-							</Text>
-						</VStack>
-					</Center>
-				) : error ? (
-					<Center height="100%">
-						<EmptyState
-							title="Couldn't open the PDF"
-							description="The file may be corrupted or the download failed. Try again later."
-						/>
-					</Center>
-				) : !fileUrl ? (
-					<Center height="100%">
-						<EmptyState
-							title="No PDF file"
-							description="This book doesn't have a PDF file to read."
-						/>
-					</Center>
-				) : pdfDocument ? (
-					<PdfPageView pdfDocument={pdfDocument} pageNo={displayedPageNo} />
-				) : null}
-			</Box>
-		</Box>
+		<BookReaderShell
+			title={title}
+			onBack={onBack}
+			pageTurn={
+				pageCount === null
+					? undefined
+					: {
+							indicator: `${displayedPageNo} / ${pageCount}`,
+							leftButton: {
+								label: "Previous page",
+								disabled: displayedPageNo <= 1,
+								onClick: () => goToPage(displayedPageNo - 1),
+							},
+							rightButton: {
+								label: "Next page",
+								disabled: displayedPageNo >= pageCount,
+								onClick: () => goToPage(displayedPageNo + 1),
+							},
+						}
+			}
+		>
+			{loading ? (
+				<BookReaderLoading coverUrl={coverUrl} progress={progress} />
+			) : error ? (
+				<Center height="100%">
+					<EmptyState
+						title="Couldn't open the PDF"
+						description="The file may be corrupted or the download failed. Try again later."
+					/>
+				</Center>
+			) : !fileUrl ? (
+				<Center height="100%">
+					<EmptyState
+						title="No readable file"
+						description="This book has no EPUB or PDF file to read."
+					/>
+				</Center>
+			) : pdfDocument ? (
+				<PdfPageView pdfDocument={pdfDocument} pageNo={displayedPageNo} />
+			) : null}
+		</BookReaderShell>
 	);
 }
 

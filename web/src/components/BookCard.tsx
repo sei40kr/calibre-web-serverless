@@ -41,6 +41,7 @@ import {
 	DialogRoot,
 	DialogTitle,
 } from "@/components/ui/dialog";
+import { readableBookFormats } from "@/lib/readableBookFormats";
 
 interface BookCardProps {
 	book: Book;
@@ -70,10 +71,8 @@ export function BookCard({
 }: BookCardProps) {
 	const isProcessing = book.status === "processing";
 	const isError = book.status === "error";
-	// Only PDF has an in-browser reader so far.
-	const isReadable = readyFiles(book.files).some(
-		(file) => file.format === "pdf",
-	);
+	const readableFormats = readableBookFormats(book.files);
+	const [isFormatDialogOpen, setIsFormatDialogOpen] = useState(false);
 	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 	const [isDeleting, setIsDeleting] = useState(false);
 	const [isRemoving, setIsRemoving] = useState(false);
@@ -140,13 +139,24 @@ export function BookCard({
 			transition="all 0.2s"
 			position="relative"
 		>
-			{/* The cover doubles as the link into the reader; the action row is
+			{/* The cover doubles as the entry into the reader; the action row is
 			    at capacity — more icons overflow the card and land under the
-			    neighboring card, unclickable. */}
-			{isReadable ? (
+			    neighboring card, unclickable. With several readable formats it
+			    opens a chooser dialog instead of linking directly. */}
+			{readableFormats.length === 1 ? (
 				<Link href={`/books/${book.id}/pages/1`} aria-label="Read book">
 					{cover}
 				</Link>
+			) : readableFormats.length > 1 ? (
+				<Box asChild cursor="pointer" width="100%">
+					<button
+						type="button"
+						aria-label="Read book"
+						onClick={() => setIsFormatDialogOpen(true)}
+					>
+						{cover}
+					</button>
+				</Box>
 			) : (
 				cover
 			)}
@@ -256,6 +266,32 @@ export function BookCard({
 						)}
 					</HStack>
 				</Box>
+			)}
+
+			{readableFormats.length > 1 && (
+				<DialogRoot
+					open={isFormatDialogOpen}
+					onOpenChange={(e) => setIsFormatDialogOpen(e.open)}
+				>
+					<DialogContent>
+						<DialogHeader>
+							<DialogTitle>Read Book</DialogTitle>
+						</DialogHeader>
+						<DialogBody>
+							<Text mb={4}>Choose a format to read.</Text>
+							<VStack gap={2} align="stretch">
+								{readableFormats.map((format) => (
+									<Button key={format} asChild variant="outline">
+										<Link href={`/books/${book.id}/pages/1?format=${format}`}>
+											{format.toUpperCase()}
+										</Link>
+									</Button>
+								))}
+							</VStack>
+						</DialogBody>
+						<DialogCloseTrigger />
+					</DialogContent>
+				</DialogRoot>
 			)}
 
 			{onDelete && (

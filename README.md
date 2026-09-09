@@ -5,6 +5,16 @@
 
 A modern, serverless reimplementation of [Calibre-Web](https://github.com/janeczku/calibre-web) built with Next.js and TypeScript.
 
+## Screenshots
+
+<img src="docs/images/library.png" alt="The library dashboard: a grid of book covers with a bookshelf sidebar" width="860">
+
+<img src="docs/images/edit-metadata.png" alt="The metadata editor for a book, with its cover and fields for title, authors and series" width="860">
+
+<img src="docs/images/fetch-metadata.png" alt="The fetch-metadata dialog listing candidate editions from Google Play Books, each with a cover, author, year and a Use this button" width="860">
+
+<img src="docs/images/reader.png" alt="The built-in reader showing a page of The Metamorphosis" width="860">
+
 ## Why Not Calibre-Web?
 
 Calibre-Web does the job well. This project exists because of what running it costs and demands, not because of what it does:

@@ -88,8 +88,33 @@ only fetches hosts on a Google allowlist (no open proxy).
 sanctioned API turns the callable into a request **amplifier** — a burst of
 searches becomes a burst of outbound requests, making us a **DoS stepping-stone**
 against that site (and risking IP bans / ToS violations). Before adding one: add
-per-user + global rate limiting (and App Check), cache by query, back off on
-`429`/`Retry-After`, respect `robots.txt`/ToS, and keep the host allowlist.
+per-user + global rate limiting, cache by query, back off on `429`/`Retry-After`,
+respect `robots.txt`/ToS, and keep the host allowlist.
+
+## App Check
+
+Auth answers _which account_ a request carries. App Check answers _which app_:
+requests to Firestore, Cloud Storage and the metadata-search callables must
+also present a token proving they came from this web app running in a real
+browser. Without it, anything holding an ID token — a script, a copied session,
+a stolen refresh token — is indistinguishable from the app itself.
+
+- Attestation uses **reCAPTCHA Enterprise** (score-based, no interaction). The
+  site key is provisioned by Terraform and reaches the client as
+  `NEXT_PUBLIC_FIREBASE_APP_CHECK_SITE_KEY`.
+- Enforced on `firestore.googleapis.com` and `firebasestorage.googleapis.com`;
+  the two callables enforce it themselves via `enforceAppCheck`.
+- **Not** enforced on `identitytoolkit.googleapis.com`: the OPDS function
+  verifies Basic-auth credentials against it server-side and has no App Check
+  token to send, so enforcing there would lock out every OPDS client.
+- Local development and the E2E run talk to the emulators, which have no App
+  Check backend, so the client skips initialisation when the site key is absent
+  and the callables skip enforcement under `FUNCTIONS_EMULATOR`.
+
+**Deploy before you enforce.** Enforcement is immediate and all-or-nothing: a
+deployed client without the site key stops working the moment it lands. In a
+new project, create the key first (`terraform apply` targeted at the reCAPTCHA
+key), deploy a web build carrying it, then apply the rest.
 
 ## Secrets and configuration
 

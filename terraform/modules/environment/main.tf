@@ -30,6 +30,10 @@ locals {
     "books.googleapis.com",
     "apikeys.googleapis.com",
     "secretmanager.googleapis.com",
+    # App Check: the attestation backend and the reCAPTCHA Enterprise provider
+    # the web app attests with.
+    "firebaseappcheck.googleapis.com",
+    "recaptchaenterprise.googleapis.com",
   ]
 }
 

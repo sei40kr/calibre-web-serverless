@@ -77,5 +77,6 @@ resource "local_file" "dotenv" {
     NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=${module.environment[each.key].firebase_storage_bucket}
     NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=${module.environment[each.key].firebase_messaging_sender_id}
     NEXT_PUBLIC_FIREBASE_APP_ID=${module.environment[each.key].firebase_app_id}
+    NEXT_PUBLIC_FIREBASE_APP_CHECK_SITE_KEY=${module.environment[each.key].app_check_site_key}
   EOT
 }

@@ -46,3 +46,8 @@ output "google_books_api_key" {
   value       = google_apikeys_key.google_books.key_string
   sensitive   = true
 }
+
+output "app_check_site_key" {
+  description = "reCAPTCHA Enterprise site key the web app attests with"
+  value       = google_recaptcha_enterprise_key.app_check.name
+}

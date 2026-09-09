@@ -14,6 +14,11 @@ const googleBooksApiKey = defineSecret("GOOGLE_BOOKS_API_KEY");
 const searchSecrets =
 	process.env.FUNCTIONS_EMULATOR === "true" ? [] : [googleBooksApiKey];
 
+// Reject callers that cannot prove they are the web app. Same emulator caveat
+// as the secret above: there is no App Check backend to mint a token locally,
+// so enforcement is deployed-only.
+const enforceAppCheck = process.env.FUNCTIONS_EMULATOR !== "true";
+
 /**
  * Validate the client-supplied source filter against the known source keys, so
  * only real sources reach the search and the value narrows to `MetadataSource`.
@@ -33,7 +38,12 @@ function parseSources(raw: unknown): MetadataSource[] | undefined {
  * client; returns aggregated results plus per-source errors.
  */
 export const searchBookMetadataFn = onCall(
-	{ memory: "256MiB", timeoutSeconds: 30, secrets: searchSecrets },
+	{
+		memory: "256MiB",
+		timeoutSeconds: 30,
+		secrets: searchSecrets,
+		enforceAppCheck,
+	},
 	async (request) => {
 		// Require an authenticated caller. Each search fans out to an external,
 		// quota-limited/billed API (Google Books); an open callable would let
@@ -59,7 +69,7 @@ export const searchBookMetadataFn = onCall(
  * browser can stage it as a custom cover without cross-origin restrictions.
  */
 export const fetchBookMetadataCoverFn = onCall(
-	{ memory: "256MiB", timeoutSeconds: 30 },
+	{ memory: "256MiB", timeoutSeconds: 30, enforceAppCheck },
 	async (request) => {
 		// Same rationale as searchBookMetadata: this performs a server-side
 		// outbound fetch, so it must not be open to unauthenticated callers.

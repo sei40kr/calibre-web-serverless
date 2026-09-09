@@ -20,5 +20,11 @@ service cloud.firestore {
         allow read, write: if isOwner(userId);
       }
     }
+
+    // Collection group queries are not covered by the match above: they are
+    // evaluated against `match /{path=**}/books/{bookId}`, which nothing here
+    // provides, so they are denied. The COLLECTION_GROUP indexes exist for the
+    // admin SDK, which bypasses rules. Such a rule could not be written today
+    // anyway: a book's owner is in its path, not in a field.
   }
 }

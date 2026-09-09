@@ -5,12 +5,13 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
 import { BookNotFoundPage } from "@/components/pages/BookNotFoundPage";
-import { EpubReaderPage } from "@/components/pages/EpubReaderPage";
-import { PdfReaderPage } from "@/components/pages/PdfReaderPage";
+import {
+	READER_PAGES_BY_FORMAT,
+	readableBookFormats,
+} from "@/components/pages/bookReaderPages";
 import { useBook } from "@/hooks/useBook";
 import { useBookCoverUrl } from "@/hooks/useBookCoverUrl";
 import { useBookFileUrl } from "@/hooks/useBookFileUrl";
-import { readableBookFormats } from "@/lib/readableBookFormats";
 
 export default function BookReaderRoute() {
 	// This route is served as a static shell (rewritten from any book id and
@@ -53,8 +54,8 @@ function BookReaderRouteContent({
 	const searchParams = useSearchParams();
 	const { book, loading, error } = useBook(userId, bookId);
 	// The ?format= param (set by the card's format chooser) picks the reader;
-	// without one, the first readable format wins (EPUB before PDF). For an
-	// EPUB, pageNo addresses a spine chapter.
+	// without one, the first readable format wins (READER_PAGES_BY_FORMAT is
+	// in preference order).
 	const formats = readableBookFormats(book?.files ?? []);
 	const requestedFormat =
 		formats.find((format) => format === searchParams?.get("format")) ?? null;
@@ -104,24 +105,16 @@ function BookReaderRouteContent({
 		return <BookNotFoundPage onBack={() => router.push("/dashboard")} />;
 	}
 
-	const readerProps = {
-		title: book.title,
-		coverUrl,
-		fileUrl,
-		fileLoading,
-		onBack: () => router.push("/dashboard"),
-	};
-	return format === "epub" ? (
-		<EpubReaderPage
-			{...readerProps}
-			chapterNo={validPageNo ? pageNo : 1}
-			onChapterNoChange={goToPage}
-		/>
-	) : (
-		<PdfReaderPage
-			{...readerProps}
+	const ReaderPage = READER_PAGES_BY_FORMAT[format];
+	return (
+		<ReaderPage
+			title={book.title}
+			coverUrl={coverUrl}
+			fileUrl={fileUrl}
+			fileLoading={fileLoading}
 			pageNo={validPageNo ? pageNo : 1}
 			onPageNoChange={goToPage}
+			onBack={() => router.push("/dashboard")}
 		/>
 	);
 }

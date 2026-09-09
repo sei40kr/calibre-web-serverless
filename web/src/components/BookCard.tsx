@@ -32,6 +32,7 @@ import {
 	LuTrash2,
 	LuTriangleAlert,
 } from "react-icons/lu";
+import { readableBookFormats } from "@/components/pages/bookReaderPages";
 import {
 	DialogBody,
 	DialogCloseTrigger,
@@ -41,7 +42,6 @@ import {
 	DialogRoot,
 	DialogTitle,
 } from "@/components/ui/dialog";
-import { readableBookFormats } from "@/lib/readableBookFormats";
 
 interface BookCardProps {
 	book: Book;

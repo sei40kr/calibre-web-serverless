@@ -11,20 +11,32 @@ service firebase.storage {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
-    // Custom cover uploads are capped tighter than book files. The resized
-    // cover.* / custom_cover.png are written server-side by Cloud Functions
-    // (admin SDK), which bypass these rules; clients only write book.* and
-    // cover_upload.* objects.
-    function coverUploadWithinLimit(fileName) {
-      return fileName.matches('cover_upload\\..*')
-        ? request.resource.size < 10 * 1024 * 1024
-        : request.resource.size < 100 * 1024 * 1024;
+    // The format list must stay in sync with the domain's book formats.
+    function isBookFileUpload(fileName) {
+      return fileName.matches('book\\.(epub|pdf|mobi|azw|azw3|fb2|txt)')
+        && request.resource.size < 100 * 1024 * 1024;
+    }
+
+    // The cap and the image types mirror the domain's cover constants, which
+    // the upload form and resizeBookCover check against as well.
+    function isCoverUpload(fileName) {
+      return fileName.matches('cover_upload\\.(png|jpg|webp)')
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType in ['image/png', 'image/jpeg', 'image/webp'];
     }
 
     match /users/{userId}/books/{bookId}/{fileName} {
       allow read: if isOwner(userId);
+
+      // The served covers (cover.png, custom_cover.png) are written by Cloud
+      // Functions through the admin SDK, which bypasses these rules, so a
+      // client write to those names could only be an attempt to place
+      // unresized, arbitrarily typed bytes where a cover is served from.
       allow create, update: if isOwner(userId)
-        && coverUploadWithinLimit(fileName);
+        && (isBookFileUpload(fileName) || isCoverUpload(fileName));
+
+      // Deletes are not name-restricted: removing a book deletes its covers
+      // too, and resetting a custom cover deletes custom_cover.png.
       allow delete: if isOwner(userId);
     }
   }

@@ -1,10 +1,11 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { doc, getDoc, setDoc } from "firebase/firestore";
-import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import { getDownloadURL, ref } from "firebase/storage";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { db, storage } from "../lib/firebase";
 import { clearFirestore } from "../testing/clearFirestore";
+import { putServerObject } from "../testing/putServerObject";
 import { signInTestUser } from "../testing/testUser";
 import { bookCoverRepository } from "./bookCoverRepository";
 
@@ -20,9 +21,7 @@ function loadCover(type = "image/jpeg", name = "cover.jpg"): File {
 
 async function putObject(storagePath: string): Promise<void> {
 	const buffer = fs.readFileSync(coverPath);
-	await uploadBytes(ref(storage, storagePath), buffer, {
-		contentType: "image/png",
-	});
+	await putServerObject(storagePath, buffer, "image/png");
 }
 
 let userId: string;

@@ -24,6 +24,7 @@ export const useBookFileUrl = (
 			return;
 		}
 
+		let objectUrl: string | null = null;
 		let active = true;
 		setLoading(true);
 		setError(null);
@@ -31,7 +32,11 @@ export const useBookFileUrl = (
 		bookFileRepository
 			.getBookFileDownloadUrl(userId, bookId, format)
 			.then((url) => {
-				if (!active) return;
+				if (!active) {
+					URL.revokeObjectURL(url);
+					return;
+				}
+				objectUrl = url;
 				setFileUrl(url);
 				setLoading(false);
 			})
@@ -43,6 +48,7 @@ export const useBookFileUrl = (
 
 		return () => {
 			active = false;
+			if (objectUrl) URL.revokeObjectURL(objectUrl);
 		};
 	}, [userId, bookId, format, enabled]);
 

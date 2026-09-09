@@ -1,3 +1,4 @@
+import { resolveObjectURL } from "node:buffer";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { doc, getDoc, setDoc } from "firebase/firestore";
@@ -19,9 +20,18 @@ function loadCover(type = "image/jpeg", name = "cover.jpg"): File {
 	return new File([buffer], name, { type });
 }
 
-async function putObject(storagePath: string): Promise<void> {
-	const buffer = fs.readFileSync(coverPath);
-	await putServerObject(storagePath, buffer, "image/png");
+async function putObject(
+	storagePath: string,
+	body: Uint8Array = fs.readFileSync(coverPath),
+): Promise<void> {
+	await putServerObject(storagePath, body, "image/png");
+}
+
+/** The bytes behind an object URL the repository returned. */
+async function objectUrlText(url: string): Promise<string> {
+	const blob = resolveObjectURL(url);
+	if (!blob) throw new Error(`Not an object URL: ${url}`);
+	return blob.text();
 }
 
 let userId: string;
@@ -72,15 +82,22 @@ describe("bookCoverRepository", () => {
 		});
 
 		it("prefers the custom cover when one is active", async () => {
-			await putObject(`users/${userId}/books/book-2/cover.png`);
-			await putObject(`users/${userId}/books/book-2/custom_cover.png`);
+			const encode = (text: string) => new TextEncoder().encode(text);
+			await putObject(
+				`users/${userId}/books/book-2/cover.png`,
+				encode("plain"),
+			);
+			await putObject(
+				`users/${userId}/books/book-2/custom_cover.png`,
+				encode("custom"),
+			);
 
 			const url = await bookCoverRepository.getCoverUrl(userId, "book-2", {
 				hasCover: true,
 				hasCustomCover: true,
 			});
-			// The custom cover lives at custom_cover.png, not cover.png.
-			expect(url).toContain("custom_cover.png");
+			// An object URL carries no path, so identify the cover by its bytes.
+			expect(await objectUrlText(url)).toBe("custom");
 		});
 
 		it("rejects when the book has no cover", async () => {

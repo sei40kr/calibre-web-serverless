@@ -25,17 +25,31 @@ export const useBookCoverUrl = (
 			return;
 		}
 
+		let objectUrl: string | null = null;
+		let active = true;
+
 		setLoading(true);
 		bookCoverRepository
 			.getCoverUrl(userId, bookId, { hasCover, hasCustomCover })
 			.then((url) => {
+				if (!active) {
+					URL.revokeObjectURL(url);
+					return;
+				}
+				objectUrl = url;
 				setCoverUrl(url);
 				setLoading(false);
 			})
 			.catch(() => {
+				if (!active) return;
 				setCoverUrl(null);
 				setLoading(false);
 			});
+
+		return () => {
+			active = false;
+			if (objectUrl) URL.revokeObjectURL(objectUrl);
+		};
 	}, [userId, bookId, hasCover, hasCustomCover, version]);
 
 	return { coverUrl, loading };

@@ -14,7 +14,7 @@ import {
 } from "firebase/firestore";
 import {
 	deleteObject,
-	getDownloadURL,
+	getBytes,
 	ref,
 	type StorageReference,
 	uploadBytesResumable,
@@ -249,12 +249,16 @@ const deleteBookFile = async (
 	);
 };
 
+// An object URL for the same reason as the cover repository's. No MIME type is
+// set: every reader parses the bytes itself.
 const getBookFileDownloadUrl = async (
 	userId: string,
 	bookId: string,
 	format: BookFileFormat,
-): Promise<string> =>
-	getDownloadURL(bookFileStorageRef(userId, bookId, format));
+): Promise<string> => {
+	const bytes = await getBytes(bookFileStorageRef(userId, bookId, format));
+	return URL.createObjectURL(new Blob([bytes]));
+};
 
 export const bookFileRepository: BookFileRepository = {
 	addBookFile,

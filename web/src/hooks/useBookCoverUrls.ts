@@ -22,24 +22,38 @@ export const useBookCoverUrls = (
 		}
 		setCoverInfos(initial);
 
+		const objectUrls: string[] = [];
+		let active = true;
+
 		for (const book of books) {
 			if (!hasAnyCover(book)) continue;
 
 			bookCoverRepository
 				.getCoverUrl(book.userId, book.id, book)
 				.then((url) => {
+					if (!active) {
+						URL.revokeObjectURL(url);
+						return;
+					}
+					objectUrls.push(url);
 					setCoverInfos((prev) => ({
 						...prev,
 						[book.id]: { coverUrl: url, loading: false },
 					}));
 				})
 				.catch(() => {
+					if (!active) return;
 					setCoverInfos((prev) => ({
 						...prev,
 						[book.id]: { coverUrl: null, loading: false },
 					}));
 				});
 		}
+
+		return () => {
+			active = false;
+			for (const url of objectUrls) URL.revokeObjectURL(url);
+		};
 	}, [books]);
 
 	return coverInfos;

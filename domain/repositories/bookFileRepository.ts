@@ -13,6 +13,13 @@ export interface BookFileRepository {
 		bookId: string,
 		format: BookFileFormat,
 	): Promise<void>;
+	/**
+	 * Resolves a URL the book's stored file can be read from.
+	 *
+	 * The caller owns the URL: the web implementation returns an object URL,
+	 * which must be released with `URL.revokeObjectURL` once the reader is done
+	 * with it.
+	 */
 	getBookFileDownloadUrl(
 		userId: string,
 		bookId: string,

@@ -13,8 +13,11 @@ export function hasAnyCover(ref: CoverRef): boolean {
 
 export interface BookCoverRepository {
 	/**
-	 * Resolves a download URL for the book's active cover. Callers should guard
-	 * with {@link hasAnyCover}; rejects if no cover exists.
+	 * Resolves a URL for the book's active cover. Callers should guard with
+	 * {@link hasAnyCover}; rejects if no cover exists.
+	 *
+	 * The caller owns the URL: the web implementation returns an object URL,
+	 * which must be released with `URL.revokeObjectURL` once the cover is no longer displayed.
 	 */
 	getCoverUrl(userId: string, bookId: string, ref: CoverRef): Promise<string>;
 	/**

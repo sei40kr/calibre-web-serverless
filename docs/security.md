@@ -42,7 +42,9 @@ authentication scheme:
 - Brute-force resistance relies on Identity Toolkit throttling
   (`TOO_MANY_ATTEMPTS_TRY_LATER` → `429`).
 
-## Download delivery (signed URLs)
+## Download delivery
+
+### OPDS (signed URLs)
 
 In production, OPDS book files and covers are delivered by issuing a **V4 signed
 URL (15-minute expiry) and returning a 302 redirect** (the emulator streams
@@ -52,6 +54,26 @@ through the function instead, since it does not support signing).
   granted the Token Creator role on its own identity (via Terraform).
 - Trade-off: a signed URL is accessible without authentication while it is valid.
   Keeping the expiry short limits the exposure.
+
+### Web client (authenticated reads)
+
+The web client does **not** use `getDownloadURL()`. A download URL carries a
+token that reads the object with **no authentication and no expiry**, so the
+Storage rules stop applying to it the moment it is created: wherever the URL
+ends up — history, a `Referer`, a copied link — the book file or cover behind
+it stays readable until the token is manually revoked.
+
+Covers and book files are fetched with `getBytes()` instead, which carries the
+signed-in user's credentials and is checked against the rules on every request,
+and the bytes reach the reader as an **object URL** — resolvable only inside
+the document that created it, and dead with it. The hook that requested one
+revokes it when the cover or the reader goes away.
+
+- No CORS configuration is needed: `firebasestorage.googleapis.com` answers the
+  preflight with `Access-Control-Allow-Origin: *` and allows the `Authorization`
+  header.
+- Trade-off: the file is downloaded in full before it can be read, so pdf.js no
+  longer serves a page from a byte range of a large PDF.
 
 ## Book metadata search (Cloud callables)
 

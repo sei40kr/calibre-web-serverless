@@ -8,12 +8,7 @@ import type {
 	CoverRef,
 } from "@calibre-web-serverless/domain/repositories/bookCoverRepository";
 import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
-import {
-	deleteObject,
-	getDownloadURL,
-	ref,
-	uploadBytes,
-} from "firebase/storage";
+import { deleteObject, getBytes, ref, uploadBytes } from "firebase/storage";
 import { db, storage } from "../lib/firebase";
 
 // Covers are normalised to PNG (server-side by Cloud Functions), so the active
@@ -35,6 +30,11 @@ const mimeToExtension: Record<string, string> = {
 	"image/webp": "webp",
 };
 
+// The bytes are fetched with the signed-in user's credentials and wrapped in an
+// object URL rather than handed out as a getDownloadURL() link: a download URL
+// carries a token that reads the object without any authentication and does not
+// expire, so anywhere it leaks — history, a referrer, a shared link — it stays
+// readable. An object URL is local to the document and dies with it.
 const getCoverUrl = async (
 	userId: string,
 	bookId: string,
@@ -44,7 +44,9 @@ const getCoverUrl = async (
 		throw new Error("Book has no cover image");
 	}
 	const storageRef = ref(storage, coverPath(userId, bookId, coverRef));
-	return getDownloadURL(storageRef);
+	// Covers are always stored as PNG; <img> needs the type to render the blob.
+	const blob = new Blob([await getBytes(storageRef)], { type: "image/png" });
+	return URL.createObjectURL(blob);
 };
 
 const uploadCustomCover = async ({

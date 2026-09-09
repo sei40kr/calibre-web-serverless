@@ -48,6 +48,17 @@ resource "google_identity_platform_config" "this" {
     }
   }
 
+  # The web API key ships in the client bundle, so without this anyone could
+  # POST accounts:signUp and hand themselves an authenticated session — and
+  # "authenticated" is the only gate the Firestore/Storage rules have. Accounts
+  # are provisioned out of band instead (see test_user.tf, which uses the
+  # project-scoped admin endpoint that this flag does not block).
+  client {
+    permissions {
+      disabled_user_signup = true
+    }
+  }
+
   authorized_domains = [
     "localhost",
     "${var.project_id}.firebaseapp.com",

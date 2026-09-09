@@ -13,6 +13,13 @@ service cloud.firestore {
 
     // A user's whole subtree, matched recursively rather than collection by
     // collection so that adding a collection cannot leave it unreachable.
+    //
+    // No field validation, deliberately: every path here is scoped to a single
+    // owner, so a forged or malformed write — a book marked ready with no file,
+    // an updatedAt far enough ahead to hide a stub from the reconcile job — can
+    // only corrupt the writer's own library. Checking the payload would restate
+    // every document shape in a second language, with nothing keeping the two
+    // in sync.
     match /users/{userId} {
       allow read, write: if isOwner(userId);
 

@@ -10,6 +10,7 @@
 			"infrastructure/services/**",
 			"infrastructure/admin/**",
 			"infrastructure/documents/**",
+			"infrastructure/security-rules/**",
 			"functions/src/**",
 			"web/src/**",
 			"!web/src/components/ui"

@@ -2,7 +2,11 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
 	test: {
-		include: ["repositories/**/*.test.ts", "services/**/*.test.ts"],
+		include: [
+			"repositories/**/*.test.ts",
+			"services/**/*.test.ts",
+			"security-rules/**/*.test.ts",
+		],
 		globalSetup: ["./vitest.globalSetup.ts"],
 		setupFiles: ["./vitest.setup.ts"],
 		env: {

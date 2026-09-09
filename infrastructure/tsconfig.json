@@ -4,6 +4,7 @@
 		"lib/**/*.ts",
 		"repositories/**/*.ts",
 		"services/**/*.ts",
+		"security-rules/**/*.ts",
 		"vitest.globalSetup.ts",
 		"vitest.setup.ts",
 		"testing/**/*.ts"

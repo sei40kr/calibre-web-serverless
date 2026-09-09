@@ -11,30 +11,12 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
+    // A user's whole subtree, matched recursively rather than collection by
+    // collection so that adding a collection cannot leave it unreachable.
     match /users/{userId} {
       allow read, write: if isOwner(userId);
 
-      match /books/{bookId} {
-        allow read, write: if isOwner(userId);
-      }
-
-      match /authors/{authorId} {
-        allow read, write: if isOwner(userId);
-      }
-
-      match /series/{seriesId} {
-        allow read, write: if isOwner(userId);
-      }
-
-      match /tags/{tagId} {
-        allow read, write: if isOwner(userId);
-      }
-
-      match /publishers/{publisherId} {
-        allow read, write: if isOwner(userId);
-      }
-
-      match /bookshelves/{bookshelfId} {
+      match /{document=**} {
         allow read, write: if isOwner(userId);
       }
     }

@@ -5,11 +5,18 @@
 
 A modern, serverless reimplementation of [Calibre-Web](https://github.com/janeczku/calibre-web) built with Next.js and TypeScript.
 
+## Why Not Calibre-Web?
+
+Calibre-Web does the job well. This project exists because of what running it costs and demands, not because of what it does:
+
+- **The stack has aged** — Python/Flask with server-rendered templates and a jQuery-era frontend, and no static typing to lean on. Reading the code and changing it safely costs more than it should.
+- **You pay for an instance around the clock** — tending a library takes a few minutes at a time: upload a book, correct its metadata, send a file to a reader. Because it is not serverless, the instance has to stay up and billing through all the hours in between.
+- **TLS on a single instance is awkward** — for one long-lived instance, the major cloud providers offer few managed certificate options. You end up either paying for a load balancer to sit in front of it or renewing certificates yourself.
+- **The library sits on ephemeral storage** — a Calibre library on an instance disk has no redundancy and needs a backup story of its own. Pointing it at NFS makes it durable but slow, and a grid of cover images makes that latency impossible to miss.
+
 ## Why This Project?
 
-The original Calibre-Web requires a persistent server instance, incurring continuous hosting costs. However, most users access their library through dedicated e-reader devices, meaning they only need the server for brief moments—uploading books, editing metadata, and downloading files.
-
-This project adopts a serverless architecture to:
+Reading happens on a dedicated e-reader; the web app is only needed for those brief moments in between. A serverless architecture fits that shape:
 
 - **Reduce costs** — Pay only for actual usage, not idle time
 - **Ensure reliability** — Leverage managed services (Firebase) for affordable, redundant storage

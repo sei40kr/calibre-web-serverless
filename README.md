@@ -47,9 +47,22 @@ Achieve feature parity with Calibre-Web while embracing serverless principles an
 - **Testing**: Vitest, Playwright, Storybook
 - **Linting/Formatting**: Biome
 
-## Development
+## Setup
 
-`bun run dev` starts Next.js together with the Firebase emulators and seed data.
+### Prerequisites
+
+- [Nix](https://nixos.org/download/) with flakes and [direnv](https://direnv.net/): `direnv allow` enters the devshell — bun, a headless JDK for the Firebase emulators, and Chromium for the E2E tests — and loads the development environment variables.
+- Without Nix, install those yourself: bun, a JDK (the Firestore and Storage emulators run on Java), and Chromium for `bun run test:e2e`.
+
+### Local development
+
+```bash
+direnv allow   # or: nix develop
+bun install
+bun run dev
+```
+
+`bun run dev` bundles the Cloud Functions, starts the Firebase emulators, seeds them, and serves the app on <http://localhost:3000>. Nothing talks to a real Firebase project, so no account or credentials are needed. Sign in as `test@example.com` / `password123`; [docs/seeding.md](docs/seeding.md) covers the rest of the seeded library.
 
 ### Stabilizing the metadata search locally
 
@@ -61,6 +74,16 @@ export GOOGLE_BOOKS_API_KEY=your-google-books-api-key
 ```
 
 `.envrc` sources `.envrc.local` automatically — run `direnv allow` after creating it. The key is only needed locally; deployed environments read it from Secret Manager.
+
+### Deploying
+
+Everything the deployed environments need is Terraform (`terraform/`): the Firebase projects, Firestore, Cloud Storage, Identity Platform, App Check, the functions' IAM and secrets, and the Workload Identity Federation that the GitHub Actions deploy authenticates with. The staging and production project IDs are declared in `terraform/main.tf`.
+
+1. Copy `terraform/terraform.tfvars.example` to `terraform.tfvars` and fill it in.
+2. Run `terraform apply`. It generates `web/.env.staging` and `web/.env.production`, and outputs the Workload Identity provider and the deploy service account.
+3. Set those as the `WIF_PROVIDER`, `FIREBASE_SERVICE_ACCOUNT` and `FIREBASE_PROJECT_ID` variables of the matching GitHub environment, then run the Deploy workflow.
+
+App Check enforcement has to follow the client that carries its site key, or the deployed app locks itself out — see [docs/security.md](docs/security.md).
 
 ## Roadmap
 

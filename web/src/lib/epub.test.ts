@@ -1,9 +1,13 @@
+import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { openEpub } from "./epub";
 
+// vitest runs from the repo root in CI but from web/ locally.
+const fixturesDir = existsSync("fixtures") ? "fixtures" : "../fixtures";
+
 async function loadFixture(name: string): Promise<ArrayBuffer> {
-	const buffer = await readFile(`../fixtures/books/${name}/book.epub`);
+	const buffer = await readFile(`${fixturesDir}/books/${name}/book.epub`);
 	// Copy into this realm: jsdom tests run in their own VM context, and
 	// jszip rejects an ArrayBuffer from node's realm (instanceof mismatch).
 	return Uint8Array.from(buffer).buffer;

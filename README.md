@@ -47,26 +47,30 @@ export GOOGLE_BOOKS_API_KEY=your-google-books-api-key
 
 ## Roadmap
 
-- [x] Authentication
-- [x] Dashboard
-- [ ] Book metadata editor
-- [ ] Book detail page
-- [ ] Book cover management
-- [ ] Auto-extract metadata from uploaded books
-- [ ] Book search
-- [ ] Browse books by author
-- [ ] Browse books by series
-- [ ] Browse books by publisher
-- [ ] Browse books by tag
+Shipped:
+
+- [x] Authentication, with password reset
+- [x] Library dashboard
+- [x] Book upload — several files at once, in a background queue that survives in-app navigation and resumes uploads interrupted mid-transfer
+- [x] Multiple file formats per book (EPUB, PDF, MOBI, AZW, AZW3, FB2, TXT)
+- [x] Auto-extract metadata from uploaded books (EPUB, PDF)
+- [x] Book metadata editor
+- [x] Book cover management, including custom cover upload
+- [x] Book deletion
+- [x] Filter and sort the library by author, series, publisher, tag, language and rating
 - [x] Bookshelves (user-created collections)
-- [ ] Fetch metadata from external sources by title or identifier
-- [ ] Send-to-Kindle
-- [ ] OPDS catalog
-- [ ] Built-in reader
+- [x] Fetch metadata from external sources by title or identifier
+- [x] OPDS catalog, authenticated, with per-bookshelf feeds
+- [x] Built-in reader for PDF and EPUB, including vertical writing
+
+Planned:
+
+- [ ] Book detail page
+- [ ] Book search
 - [ ] Reading progress tracking
+- [ ] Send-to-Kindle
 - [ ] NotebookLM integration
 - [ ] ML-based metadata extraction from cover images (fallback)
 - [ ] Social login
-- [ ] Password reset
 - [ ] Two-factor authentication
 - [ ] Passkey support

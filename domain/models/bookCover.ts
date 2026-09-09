@@ -8,6 +8,14 @@
 export const MAX_COVER_UPLOAD_BYTES = 10 * 1024 * 1024;
 
 /**
+ * Maximum number of pixels a cover image may decode to (50 MP). The byte cap
+ * says nothing about decoded size — a highly compressible image well under
+ * 10 MiB can expand to gigabytes of raw pixels and exhaust the resizing
+ * function's memory. No real book cover comes close to this.
+ */
+export const MAX_COVER_INPUT_PIXELS = 50_000_000;
+
+/**
  * Maximum width covers are resized to. Larger images are scaled down to this
  * width (aspect ratio preserved); smaller images are left untouched. Applied to
  * both metadata-extracted covers and user-uploaded custom covers.

@@ -1,4 +1,7 @@
-import { MAX_COVER_WIDTH } from "@calibre-web-serverless/domain/models/bookCover";
+import {
+	MAX_COVER_INPUT_PIXELS,
+	MAX_COVER_WIDTH,
+} from "@calibre-web-serverless/domain/models/bookCover";
 import sharp from "sharp";
 
 /**
@@ -7,10 +10,11 @@ import sharp from "sharp";
  * images are left at their original dimensions. Shared by metadata extraction
  * and the custom-cover upload flow so both apply identical constraints.
  *
- * @throws if the buffer is not a decodable image (callers decide how to handle).
+ * @throws if the buffer is not a decodable image, or decodes to more than
+ * {@link MAX_COVER_INPUT_PIXELS} pixels (callers decide how to handle).
  */
 export async function resizeCoverImage(coverImage: Buffer): Promise<Buffer> {
-	return sharp(coverImage)
+	return sharp(coverImage, { limitInputPixels: MAX_COVER_INPUT_PIXELS })
 		.resize({ width: MAX_COVER_WIDTH, withoutEnlargement: true })
 		.png()
 		.toBuffer();

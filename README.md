@@ -47,6 +47,10 @@ Achieve feature parity with Calibre-Web while embracing serverless principles an
 - **Testing**: Vitest, Playwright, Storybook
 - **Linting/Formatting**: Biome
 
+## Self-hosting
+
+See [docs/self-hosting.md](docs/self-hosting.md) to provision and deploy your own instance.
+
 ## Development
 
 `bun run dev` starts Next.js together with the Firebase emulators and seed data.

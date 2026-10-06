@@ -14,6 +14,12 @@ variable "github_repo" {
   type = string
 }
 
+# Custom domains the app is served from, besides the project's default ones.
+variable "custom_domains" {
+  type    = list(string)
+  default = []
+}
+
 # Add localhost to Firebase Auth's authorized domains.
 variable "allow_localhost" {
   type    = bool

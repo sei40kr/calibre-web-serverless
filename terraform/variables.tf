@@ -15,6 +15,11 @@ variable "environments" {
     # Let Firebase Auth accept sign-ins from pages served on localhost, for
     # running a local build against this project. Off by default.
     allow_localhost = optional(bool, false)
+    # Custom domains the app is served from (e.g. ["books.example.com"]),
+    # besides the project's own web.app/firebaseapp.com. Connect them to
+    # Firebase Hosting in the console; this only lets Auth and App Check
+    # accept them.
+    custom_domains = optional(list(string), [])
   }))
 }
 

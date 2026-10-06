@@ -46,6 +46,7 @@ module "environment" {
   github_repo = var.github_repo
 
   allow_localhost = each.value.allow_localhost
+  custom_domains  = each.value.custom_domains
   test_user = each.value.test_user && var.test_user_password != "" ? {
     email    = var.test_user_email
     password = var.test_user_password

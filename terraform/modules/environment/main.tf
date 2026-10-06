@@ -37,6 +37,18 @@ locals {
   ]
 }
 
+# Every domain the app is served from. Auth and App Check each keep their own
+# list, and a domain missing from either breaks sign-in there.
+locals {
+  app_domains = concat(
+    [
+      "${var.project_id}.web.app",
+      "${var.project_id}.firebaseapp.com",
+    ],
+    var.custom_domains,
+  )
+}
+
 resource "google_project_service" "apis" {
   for_each = toset(local.apis)
 

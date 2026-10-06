@@ -63,10 +63,7 @@ resource "google_identity_platform_config" "this" {
   # authorized lets any page on a visitor's machine drive sign-in flows
   # against this project.
   authorized_domains = concat(
-    [
-      "${var.project_id}.firebaseapp.com",
-      "${var.project_id}.web.app",
-    ],
+    local.app_domains,
     var.allow_localhost ? ["localhost"] : [],
   )
 

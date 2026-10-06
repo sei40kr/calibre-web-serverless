@@ -32,22 +32,31 @@ bun run test:e2e
 - **Framework**: Next.js 16 with App Router and React 19
 - **UI**: Chakra UI v3 with next-themes for color mode
 - **Forms**: react-hook-form
-- **Backend**: Firebase (Auth, Firestore, Storage)
+- **Backend**: Firebase (Auth, Firestore, Storage, Cloud Functions 2nd gen)
+- **Provisioning**: Terraform (`terraform/`), deployed by GitHub Actions
 - **Testing**: Vitest, Storybook (interaction tests), Playwright (E2E)
 
 ## Monorepo Structure
 
-Bun workspaces with three packages at the repo root:
+Bun workspaces with four packages at the repo root:
 
 ```
 domain/                       # @calibre-web-serverless/domain
-└── models/                   # Domain models (book, author, series, tag, publisher, bookshelf, language, identifier)
+├── models/                   # Domain models (book, author, series, tag, publisher, bookshelf, language, identifier, user)
+├── errors/                   # Domain errors
+├── repositories/             # Repository interfaces
+└── services/                 # Service interfaces
 
 infrastructure/               # @calibre-web-serverless/infrastructure
 ├── lib/
-│   ├── firebase.ts           # Firebase initialization + emulator setup
-│   └── auth.ts               # Re-exports firebase/auth + auth instance
-└── services/                 # Infrastructure services (Firebase Firestore/Storage)
+│   └── firebase.ts           # Firebase initialization, App Check, emulator setup
+├── repositories/             # Client-SDK repository implementations
+├── services/                 # Infrastructure services (auth, metadata search, ...)
+├── admin/                    # Admin-SDK implementations used by Cloud Functions and scripts
+└── security-rules/           # Firestore/Storage rules tests
+
+functions/                    # @calibre-web-serverless/functions (Cloud Functions, bundled with esbuild)
+└── src/                      # extractBookMetadata, resizeBookCover, opds, searchBookMetadata, reconcileStaleProcessingBooks
 
 web/                          # @calibre-web-serverless/web
 ├── src/
@@ -63,13 +72,15 @@ web/                          # @calibre-web-serverless/web
 ├── scripts/                  # Seed scripts
 ├── e2e/                      # Playwright E2E tests
 └── .storybook/               # Storybook config
+
+terraform/                    # GCP/Firebase provisioning, one module instance per environment
 ```
 
 ### Cross-package imports
 
 - **Within a package**: Use relative imports (`./identifier`)
 - **Between packages**: Use package exports (`@calibre-web-serverless/domain/models/book`)
-- **Firebase auth types**: Import from `@calibre-web-serverless/infrastructure/lib/auth` (re-exports `User`, `signInWithEmailAndPassword`, `signOut`, `onAuthStateChanged`, `FirebaseError`)
+- **User type**: Import `User` from `@calibre-web-serverless/domain/models/user`; Firebase auth types never leave `infrastructure/services/authService.ts`
 
 ## Authentication
 
@@ -81,8 +92,7 @@ web/                          # @calibre-web-serverless/web
 ## Firebase Emulators
 
 - Development uses Firebase emulators (Auth on :9099, Firestore on :8080, Storage on :9199)
-- Seed data in `seed/` directory includes a test user: `test@example.com` / `password123`
-- `bun run dev` automatically starts emulators with `--import=seed`
+- `bun run dev` seeds the emulators with `web/scripts/seed.ts`, including a test user: `test@example.com` / `password123` (see `docs/seeding.md`)
 
 # Coding Conventions
 

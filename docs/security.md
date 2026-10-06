@@ -42,6 +42,23 @@ authentication scheme:
 - Brute-force resistance relies on Identity Toolkit throttling
   (`TOO_MANY_ATTEMPTS_TRY_LATER` → `429`).
 
+### Known gap: throttling sees the function, not the client
+
+Identity Toolkit is called by the OPDS function, so whatever it keys its
+throttling on is the function's egress, shared by every OPDS client, rather
+than the client that sent the guess. Two consequences follow:
+
+- Guesses spread across many client IPs are not slowed down by per-IP
+  throttling: they all arrive from the same few function addresses.
+- When throttling does trip, it can trip for everyone at once: an attacker
+  hammering the endpoint can push legitimate OPDS clients into `429`.
+
+`maxInstances` caps how fast guesses can be relayed, which bounds the first,
+and the planned OAuth migration below removes the password from OPDS
+altogether. Until then, an OPDS-specific credential (a per-device app
+password checked by the function itself, with its own rate limit) would close
+both gaps without waiting for client OAuth support.
+
 ## Download delivery
 
 ### OPDS (signed URLs)

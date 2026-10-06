@@ -69,6 +69,9 @@ crash.*.log
 *.tfvars
 *.tfvars.json
 
+# Per-deployment backend settings (see terraform/backend.hcl.example)
+backend.hcl
+
 # Ignore override files as they are usually used to override resources locally and so
 # are not checked in
 override.tf

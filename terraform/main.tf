@@ -16,9 +16,11 @@ terraform {
     }
   }
 
-  backend "gcs" {
-    bucket = "calibre-web-serverless-tfstate"
-  }
+  # The state bucket is supplied at init, so each deployment keeps its own:
+  #   terraform init -backend-config=backend.hcl
+  # (copy backend.hcl.example). It must exist before init and stay
+  # access-controlled: the state holds the Google Books API key.
+  backend "gcs" {}
 }
 
 provider "google" {

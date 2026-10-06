@@ -63,7 +63,19 @@ jobs:
       # Toolkit, which needs the project's (public) web API key at runtime.
       # Firebase loads functions/.env.<projectId> into the function environment
       # at deploy; NEXT_PUBLIC_FIREBASE_API_KEY comes from the web env loaded above.
-      - run: echo "OPDS_WEB_API_KEY=$NEXT_PUBLIC_FIREBASE_API_KEY" >"functions/.env.${{ vars.FIREBASE_PROJECT_ID }}"
+      #
+      # GOOGLE_BOOKS_COUNTRY (optional environment var, ISO 3166-1 alpha-2)
+      # sets the store country metadata search resolves editions in; it
+      # defaults to US.
+      - run: |
+          {
+            echo "OPDS_WEB_API_KEY=$NEXT_PUBLIC_FIREBASE_API_KEY"
+            if [ -n "$GOOGLE_BOOKS_COUNTRY" ]; then
+              echo "GOOGLE_BOOKS_COUNTRY=$GOOGLE_BOOKS_COUNTRY"
+            fi
+          } >"functions/.env.${{ vars.FIREBASE_PROJECT_ID }}"
+        env:
+          GOOGLE_BOOKS_COUNTRY: ${{ vars.GOOGLE_BOOKS_COUNTRY }}
       - uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ vars.WIF_PROVIDER }}

@@ -9,6 +9,7 @@ import { bookCoverRepository } from "@calibre-web-serverless/infrastructure/admi
 import { bookFileRepository } from "@calibre-web-serverless/infrastructure/admin/repositories/bookFileRepository";
 import { bookRepository } from "@calibre-web-serverless/infrastructure/admin/repositories/bookRepository";
 import { bookshelfRepository } from "@calibre-web-serverless/infrastructure/admin/repositories/bookshelfRepository";
+import { opdsAccessTokenRepository } from "@calibre-web-serverless/infrastructure/admin/repositories/opdsAccessTokenRepository";
 import { publisherRepository } from "@calibre-web-serverless/infrastructure/admin/repositories/publisherRepository";
 import { tagRepository } from "@calibre-web-serverless/infrastructure/admin/repositories/tagRepository";
 import { logger } from "firebase-functions/v2";
@@ -17,7 +18,13 @@ import {
 	onRequest,
 	type Request,
 } from "firebase-functions/v2/https";
-import { parseBasicAuth, verifyCredentials } from "./auth";
+import {
+	AUTH_DOCUMENT_PATH,
+	AUTH_DOCUMENT_REL,
+	AUTH_DOCUMENT_TYPE,
+	buildAuthenticationDocument,
+	parseBearerToken,
+} from "./auth";
 import {
 	ACQUISITION_TYPE,
 	type AcquisitionSource,
@@ -48,12 +55,44 @@ const USE_SIGNED_URL_REDIRECT = process.env.FUNCTIONS_EMULATOR !== "true";
 const DOWNLOAD_PATH = /^\/download\/([^/]+)\.([^/.]+)$/;
 const COVER_PATH = /^\/cover\/([^/]+)(?:\/thumbnail)?$/;
 const BOOKSHELF_PATH = /^\/bookshelves\/([^/]+)$/;
+// AUTH_DOCUMENT_PATH relative to the catalog root.
+const AUTH_DOCUMENT_CATALOG_PATH = "/auth";
 
-function requireAuth(res: Response): void {
+// The origin the client reached the catalog on. Through Firebase Hosting the
+// function sees its own host, and the public one arrives as X-Forwarded-Host.
+function publicOrigin(req: Request): string {
+	const first = (name: string) =>
+		req.get(name)?.split(",")[0]?.trim() || undefined;
+	const host = first("x-forwarded-host") ?? req.get("host");
+	const proto = first("x-forwarded-proto") ?? req.protocol;
+	return `${proto}://${host}`;
+}
+
+function sendAuthenticationDocument(
+	req: Request,
+	res: Response,
+	status: 200 | 401,
+	invalidToken = false,
+): void {
+	const origin = publicOrigin(req);
+	if (status === 401) {
+		// RFC 6750 §3: a request that carried a token learns it was rejected.
+		res.set(
+			"WWW-Authenticate",
+			invalidToken
+				? 'Bearer realm="OPDS", error="invalid_token"'
+				: 'Bearer realm="OPDS"',
+		);
+	}
 	res
-		.set("WWW-Authenticate", 'Basic realm="OPDS", charset="UTF-8"')
-		.status(401)
-		.end();
+		.set(
+			"Link",
+			`<${origin}${AUTH_DOCUMENT_PATH}>; rel="${AUTH_DOCUMENT_REL}"; type="${AUTH_DOCUMENT_TYPE}"`,
+		)
+		.set("Content-Type", `${AUTH_DOCUMENT_TYPE}; charset=utf-8`)
+		.set("Cache-Control", "no-store")
+		.status(status)
+		.send(JSON.stringify(buildAuthenticationDocument(origin)));
 }
 
 // Through Firebase Hosting the path arrives as "/opds/...". When the function is
@@ -317,21 +356,33 @@ export const opdsFn = onRequest(async (req, res) => {
 		return;
 	}
 
-	const credentials = parseBasicAuth(req.headers.authorization);
-	if (!credentials) {
-		requireAuth(res);
+	// The spec requires the Authentication Document itself to be public.
+	if (catalogPath(req.path) === AUTH_DOCUMENT_CATALOG_PATH) {
+		sendAuthenticationDocument(req, res, 200);
 		return;
 	}
 
-	const verdict = await verifyCredentials(credentials);
-	if (!verdict.ok) {
-		if (verdict.status === 429) res.status(429).end();
-		else requireAuth(res);
+	const token = parseBearerToken(req.headers.authorization);
+	if (!token) {
+		sendAuthenticationDocument(req, res, 401);
+		return;
+	}
+
+	let userId: string | null;
+	try {
+		userId = await opdsAccessTokenRepository.resolveUserId(token);
+	} catch (err) {
+		logger.error("OPDS token verification failed", { error: err });
+		res.status(500).end();
+		return;
+	}
+	if (!userId) {
+		sendAuthenticationDocument(req, res, 401, true);
 		return;
 	}
 
 	try {
-		await route(req, res, verdict.uid);
+		await route(req, res, userId);
 	} catch (err) {
 		logger.error("OPDS request failed", { error: err });
 		if (!res.headersSent) res.status(500).end();

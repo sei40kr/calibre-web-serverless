@@ -4,6 +4,7 @@ initializeApp();
 
 export { extractBookMetadataFn as extractBookMetadata } from "./extractBookMetadata/index";
 export { opdsFn as opds } from "./opds/index";
+export { issueOpdsAccessTokenFn as issueOpdsAccessToken } from "./opds/issueAccessToken";
 export {
 	reconcileStaleProcessingBooksFn as reconcileStaleProcessingBooks,
 	reconcileStaleProcessingBooksHttpFn as reconcileStaleProcessingBooksHttp,

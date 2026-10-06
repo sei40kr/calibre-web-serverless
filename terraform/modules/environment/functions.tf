@@ -45,7 +45,8 @@ resource "google_project_iam_member" "pubsub_token_creator" {
 
 # The function runs as the default compute service account. Grant it the access
 # the extractor needs: read the uploaded file, write Firestore, and receive
-# Eventarc events / be invoked by the trigger.
+# Eventarc events / be invoked by the trigger. The OPDS function also reads the
+# token owner's account (disabled, sessions revoked) through the Auth admin API.
 locals {
   function_runtime_sa = "serviceAccount:${data.google_project.this.number}-compute@developer.gserviceaccount.com"
 }
@@ -53,6 +54,7 @@ locals {
 resource "google_project_iam_member" "function_runtime" {
   for_each = toset([
     "roles/datastore.user",
+    "roles/firebaseauth.viewer",
     "roles/storage.objectAdmin",
     "roles/eventarc.eventReceiver",
     "roles/run.invoker",

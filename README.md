@@ -77,7 +77,7 @@ Shipped:
 - [x] Filter and sort the library by author, series, publisher, tag, language and rating
 - [x] Bookshelves (user-created collections)
 - [x] Fetch metadata from external sources by title or identifier
-- [x] OPDS catalog, authenticated, with per-bookshelf feeds
+- [x] OPDS catalog with per-bookshelf feeds, signed in via OAuth (Authentication for OPDS)
 - [x] Built-in reader for PDF and EPUB, including vertical writing
 
 Planned:

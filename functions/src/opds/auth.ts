@@ -1,87 +1,52 @@
-// Firebase Auth has no admin-side password check, so OPDS Basic-auth
-// credentials are verified against the Identity Toolkit REST endpoint — the
-// same backend the client SDK's signInWithEmailAndPassword calls. We only need
-// the resulting uid; the returned session is intentionally discarded so each
-// request stays stateless (admin SDK, scoped to that uid, does the reads).
+// OPDS clients authenticate with OAuth 2.0 bearer tokens, as defined by
+// Authentication for OPDS 1.0 (https://drafts.opds.io/authentication-for-opds-1.0)
+// using its Implicit Grant flow: the client opens the `authenticate` link in a
+// browser, the signed-in user approves it on the web app (/authorize/opds), and
+// the web app hands the token back to the client via the shared OPDS callback
+// URI. The client never sees the account password.
 
-export interface BasicCredentials {
-	email: string;
-	password: string;
-}
+export const AUTH_DOCUMENT_TYPE = "application/opds-authentication+json";
+export const AUTH_DOCUMENT_REL = "http://opds-spec.org/auth/document";
+
+const IMPLICIT_GRANT_TYPE = "http://opds-spec.org/auth/oauth/implicit";
+
+/** Root-relative path of the Authentication Document. */
+export const AUTH_DOCUMENT_PATH = "/opds/auth";
+/** Root-relative path of the web app's authorization (consent) page. */
+export const AUTHORIZE_PATH = "/authorize/opds";
 
 /**
- * Parse an `Authorization: Basic <base64(email:password)>` header. Returns null
- * for any header that is missing, not Basic, malformed, or lacks both parts.
+ * Extract the token from an `Authorization: Bearer <token>` header (RFC 6750
+ * §2.1). Returns null for a missing header, another scheme, or an empty token.
  */
-export function parseBasicAuth(
-	header: string | undefined,
-): BasicCredentials | null {
+export function parseBearerToken(header: string | undefined): string | null {
 	if (!header) return null;
-	const match = header.match(/^Basic\s+(.+)$/i);
-	if (!match) return null;
-
-	let decoded: string;
-	try {
-		decoded = Buffer.from(match[1], "base64").toString("utf8");
-	} catch {
-		return null;
-	}
-
-	// The password may itself contain ":", so split on the first one only.
-	const sep = decoded.indexOf(":");
-	if (sep < 0) return null;
-	const email = decoded.slice(0, sep);
-	const password = decoded.slice(sep + 1);
-	if (!email || !password) return null;
-	return { email, password };
-}
-
-export type VerifyResult =
-	| { ok: true; uid: string }
-	| { ok: false; status: 401 | 429 };
-
-// The web API key is a public value (it ships in the client config). The Auth
-// emulator ignores it, so any non-empty placeholder works there.
-function identityToolkitUrl(): string {
-	const key = process.env.OPDS_WEB_API_KEY || "fake-api-key";
-	const path = `identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${key}`;
-	const emulatorHost = process.env.FIREBASE_AUTH_EMULATOR_HOST;
-	return emulatorHost ? `http://${emulatorHost}/${path}` : `https://${path}`;
+	const match = header.match(/^Bearer\s+([A-Za-z0-9\-._~+/]+=*)\s*$/i);
+	return match ? match[1] : null;
 }
 
 /**
- * Verify email/password via Identity Toolkit and return the uid. Maps Firebase
- * throttling to 429 and every other failure (bad password, unknown user,
- * disabled account) to 401. Credentials are never logged.
+ * The Authentication Document. `origin` is the public origin of the catalog
+ * (e.g. "https://example.web.app"); the spec makes `id` the document's
+ * canonical URL, and clients key the token they receive by it.
  */
-export async function verifyCredentials(
-	creds: BasicCredentials,
-): Promise<VerifyResult> {
-	const res = await fetch(identityToolkitUrl(), {
-		method: "POST",
-		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify({
-			email: creds.email,
-			password: creds.password,
-			returnSecureToken: true,
-		}),
-	});
-
-	if (res.ok) {
-		const data = (await res.json()) as { localId?: string };
-		return data.localId
-			? { ok: true, uid: data.localId }
-			: { ok: false, status: 401 };
-	}
-
-	let code = "";
-	try {
-		const body = (await res.json()) as { error?: { message?: string } };
-		code = body.error?.message ?? "";
-	} catch {
-		// Non-JSON error body; treat as a generic auth failure below.
-	}
-	return code.startsWith("TOO_MANY_ATTEMPTS")
-		? { ok: false, status: 429 }
-		: { ok: false, status: 401 };
+export function buildAuthenticationDocument(origin: string): object {
+	return {
+		id: `${origin}${AUTH_DOCUMENT_PATH}`,
+		title: "Calibre-Web",
+		description:
+			"Sign in to Calibre-Web in your browser and allow this reader to access your library.",
+		authentication: [
+			{
+				type: IMPLICIT_GRANT_TYPE,
+				links: [
+					{
+						rel: "authenticate",
+						href: `${origin}${AUTHORIZE_PATH}`,
+						type: "text/html",
+					},
+				],
+			},
+		],
+	};
 }

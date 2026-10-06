@@ -59,11 +59,6 @@ jobs:
       - run: |
           jq 'del(.devDependencies)' functions/package.json >functions/package.json.tmp
           mv functions/package.json.tmp functions/package.json
-      # The OPDS function verifies Basic-auth credentials against Identity
-      # Toolkit, which needs the project's (public) web API key at runtime.
-      # Firebase loads functions/.env.<projectId> into the function environment
-      # at deploy; NEXT_PUBLIC_FIREBASE_API_KEY comes from the web env loaded above.
-      - run: echo "OPDS_WEB_API_KEY=$NEXT_PUBLIC_FIREBASE_API_KEY" >"functions/.env.${{ vars.FIREBASE_PROJECT_ID }}"
       - uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ vars.WIF_PROVIDER }}

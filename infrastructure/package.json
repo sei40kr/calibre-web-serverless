@@ -11,6 +11,7 @@
 		"./services/authService": "./services/authService.ts",
 		"./services/bookMetadataSearchService": "./services/bookMetadataSearchService.ts",
 		"./services/bookshelfMembershipService": "./services/bookshelfMembershipService.ts",
+		"./services/opdsAccessTokenService": "./services/opdsAccessTokenService.ts",
 		"./documents/book": "./documents/book.ts",
 		"./repositories/bookRepository": "./repositories/bookRepository.ts",
 		"./repositories/bookFileRepository": "./repositories/bookFileRepository.ts",
@@ -27,6 +28,7 @@
 		"./admin/repositories/publisherRepository": "./admin/repositories/publisherRepository.ts",
 		"./admin/repositories/tagRepository": "./admin/repositories/tagRepository.ts",
 		"./admin/repositories/bookshelfRepository": "./admin/repositories/bookshelfRepository.ts",
+		"./admin/repositories/opdsAccessTokenRepository": "./admin/repositories/opdsAccessTokenRepository.ts",
 		"./admin/resizeCover": "./admin/resizeCover.ts"
 	},
 	"dependencies": {

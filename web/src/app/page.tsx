@@ -21,6 +21,7 @@ import { useForm } from "react-hook-form";
 import { Alert } from "@/components/ui/alert";
 import { Field } from "@/components/ui/field";
 import { useAuth } from "@/contexts/AuthContext";
+import { postSignInPath } from "@/lib/postSignInPath";
 
 interface LoginFormData {
 	email: string;
@@ -42,7 +43,7 @@ export default function Home() {
 
 	useEffect(() => {
 		if (!loading && user) {
-			router.replace("/dashboard");
+			router.replace(postSignInPath(window.location.search));
 		}
 	}, [user, loading, router]);
 
@@ -51,7 +52,7 @@ export default function Home() {
 		setIsTestLoggingIn(true);
 		try {
 			await authService.signIn("test@example.com", "password123");
-			router.replace("/dashboard");
+			router.replace(postSignInPath(window.location.search));
 		} catch (error) {
 			if (error instanceof AuthError) {
 				setAuthError("Failed to sign in as test user");
@@ -67,7 +68,7 @@ export default function Home() {
 		setAuthError(null);
 		try {
 			await authService.signIn(data.email, data.password);
-			router.replace("/dashboard");
+			router.replace(postSignInPath(window.location.search));
 		} catch (error) {
 			if (error instanceof AuthError) {
 				switch (error.code) {

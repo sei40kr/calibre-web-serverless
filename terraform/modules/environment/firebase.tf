@@ -35,6 +35,20 @@ resource "google_firestore_database" "this" {
   depends_on = [google_project_service.apis["firestore.googleapis.com"]]
 }
 
+# OPDS access tokens are rejected once past expiresAt, so the documents are dead
+# weight from then on; let Firestore delete them (within a day or so).
+resource "google_firestore_field" "opds_access_token_ttl" {
+  project    = var.project_id
+  database   = google_firestore_database.this.name
+  collection = "opdsAccessTokens"
+  field      = "expiresAt"
+
+  ttl_config {}
+
+  # A TTL field needs no single-field index; skip the default ones.
+  index_config {}
+}
+
 # -----------------------------------------------------------------------------
 # Firebase Authentication (Identity Platform)
 # -----------------------------------------------------------------------------

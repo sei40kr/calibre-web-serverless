@@ -7,9 +7,9 @@
 # exactly like the web app does. App Check adds the second question: requests
 # must also carry a token proving they came from this web app in a real browser.
 #
-# Not enforced on identitytoolkit.googleapis.com: the OPDS function verifies
-# Basic-auth credentials against it server-side and has no App Check token to
-# send, so enforcing there would break every OPDS client.
+# Not enforced on identitytoolkit.googleapis.com. That used to be forced by
+# OPDS Basic auth, which verified passwords there server-side; OPDS now uses
+# its own bearer tokens, so enforcing it is open for a follow-up.
 # -----------------------------------------------------------------------------
 resource "google_recaptcha_enterprise_key" "app_check" {
   project      = var.project_id

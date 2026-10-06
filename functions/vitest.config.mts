@@ -7,6 +7,7 @@ export default defineConfig({
 		setupFiles: ["./vitest.setup.ts"],
 		env: {
 			FIRESTORE_EMULATOR_HOST: "127.0.0.1:8080",
+			FIREBASE_AUTH_EMULATOR_HOST: "127.0.0.1:9099",
 			STORAGE_EMULATOR_HOST: "http://127.0.0.1:9199",
 			GCLOUD_PROJECT: "demo-test",
 		},

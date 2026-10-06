@@ -3,6 +3,18 @@
 		"public": "web/out",
 		"cleanUrls": true,
 		"ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+		"headers": [
+			{
+				"source": "/authorize/**",
+				"headers": [
+					{
+						"key": "Content-Security-Policy",
+						"value": "frame-ancestors 'none'"
+					},
+					{ "key": "X-Frame-Options", "value": "DENY" }
+				]
+			}
+		],
 		"rewrites": [
 			{
 				"source": "/opds",

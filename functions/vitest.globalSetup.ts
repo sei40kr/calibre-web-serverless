@@ -11,7 +11,11 @@ const firebaseBin = resolve(
 	"../infrastructure/node_modules/.bin/firebase",
 );
 
-const EMULATOR_RESOURCES = ["http-get://127.0.0.1:8080", "tcp:9199"];
+const EMULATOR_RESOURCES = [
+	"http-get://127.0.0.1:8080",
+	"http-get://127.0.0.1:9099",
+	"tcp:9199",
+];
 
 export const setup = async (): Promise<void> => {
 	const alreadyRunning = await waitOn({
@@ -29,7 +33,7 @@ export const setup = async (): Promise<void> => {
 		firebaseBin,
 		[
 			"emulators:start",
-			"--only=firestore,storage",
+			"--only=auth,firestore,storage",
 			`--project=${process.env.GCLOUD_PROJECT}`,
 		],
 		{ stdio: "ignore" },

@@ -1,3 +1,5 @@
+// Must come first: it sets options every function definition below reads.
+import "./globalOptions";
 import { initializeApp } from "firebase-admin/app";
 
 initializeApp();

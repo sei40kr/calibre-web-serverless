@@ -3,6 +3,8 @@ name: CI
 on:
   push:
     branches: [master]
+  pull_request:
+    branches: [master]
 
 jobs:
   typecheck:
@@ -69,6 +71,8 @@ jobs:
 
   deploy-staging:
     needs: [typecheck, lint, test]
+    # Pull requests are only checked; deploying waits for the merge.
+    if: github.event_name == 'push'
     uses: ./.github/workflows/deploy.yml
     with:
       environment: staging

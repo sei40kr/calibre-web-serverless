@@ -36,38 +36,25 @@ provider "google-beta" {
 # -----------------------------------------------------------------------------
 # Environments
 # -----------------------------------------------------------------------------
-locals {
-  environments = {
-    staging = {
-      project_id = "calibre-web-serverless-stg"
-      test_user = var.test_user_password == "" ? null : {
-        email    = var.test_user_email
-        password = var.test_user_password
-      }
-    }
-    production = {
-      project_id = "calibre-web-serverless-prd"
-      test_user  = null
-    }
-  }
-}
-
 module "environment" {
-  for_each = local.environments
+  for_each = var.environments
   source   = "./modules/environment"
 
   environment = each.key
   project_id  = each.value.project_id
   region      = var.region
   github_repo = var.github_repo
-  test_user   = each.value.test_user
+  test_user = each.value.test_user && var.test_user_password != "" ? {
+    email    = var.test_user_email
+    password = var.test_user_password
+  } : null
 }
 
 # -----------------------------------------------------------------------------
 # Write .env.<environment> files
 # -----------------------------------------------------------------------------
 resource "local_file" "dotenv" {
-  for_each = local.environments
+  for_each = var.environments
 
   filename        = "${path.root}/../web/.env.${each.key}"
   file_permission = "0644"

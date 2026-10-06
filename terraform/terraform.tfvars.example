@@ -1,4 +1,20 @@
 # Copy this file to terraform.tfvars (git-ignored) and set real values.
-# The staging test user is created only when test_user_password is non-empty.
+
+github_repo = "your-name/calibre-web-serverless"
+
+# One entry per deployment. Keys must match the GitHub Actions environments the
+# deploy workflow runs in. A single production environment is enough.
+environments = {
+  staging = {
+    project_id = "your-project-stg"
+    test_user  = true
+  }
+  production = {
+    project_id = "your-project-prd"
+  }
+}
+
+# The test user is created only in environments with test_user = true, and only
+# when test_user_password is non-empty.
 test_user_email    = "test@example.com"
 test_user_password = "change-me"

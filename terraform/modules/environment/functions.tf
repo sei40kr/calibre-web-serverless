@@ -69,9 +69,10 @@ resource "google_project_iam_member" "function_runtime" {
   ]
 }
 
-# The OPDS function hands clients V4 signed URLs for book/cover downloads. Cloud
-# Functions has no private key, so signing goes through the IAM signBlob API,
-# which requires the runtime SA to be a token creator on its own identity.
+# The OPDS function hands clients V4 signed URLs for book/cover downloads, and
+# passkey sign-in mints Firebase custom tokens. Cloud Functions has no private
+# key, so both sign through the IAM signBlob API, which requires the runtime SA
+# to be a token creator on its own identity.
 resource "google_service_account_iam_member" "function_runtime_sign_blob" {
   service_account_id = "projects/${var.project_id}/serviceAccounts/${data.google_project.this.number}-compute@developer.gserviceaccount.com"
   role               = "roles/iam.serviceAccountTokenCreator"

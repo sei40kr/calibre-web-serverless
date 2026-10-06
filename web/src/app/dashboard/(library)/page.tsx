@@ -5,8 +5,9 @@ import type { Bookshelf } from "@calibre-web-serverless/domain/models/bookshelf"
 import type { User } from "@calibre-web-serverless/domain/models/user";
 import { bookRepository } from "@calibre-web-serverless/infrastructure/repositories/bookRepository";
 import { Button, Container, Heading, HStack, VStack } from "@chakra-ui/react";
+import NextLink from "next/link";
 import { Suspense, useCallback, useMemo, useState } from "react";
-import { LuPlus } from "react-icons/lu";
+import { LuKeyRound, LuPlus } from "react-icons/lu";
 import { AuthGuard } from "@/components/AuthGuard";
 import { BookFilterToolbar } from "@/components/BookFilterToolbar";
 import { BookGrid } from "@/components/BookGrid";
@@ -111,6 +112,12 @@ function DashboardContent({
 							>
 								<LuPlus />
 								Upload Books
+							</Button>
+							<Button asChild variant="outline">
+								<NextLink href="/dashboard/passkeys">
+									<LuKeyRound />
+									Passkeys
+								</NextLink>
 							</Button>
 							<Button variant="outline" onClick={signOut}>
 								Logout

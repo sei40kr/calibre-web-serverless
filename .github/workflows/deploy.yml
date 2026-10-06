@@ -47,8 +47,8 @@ jobs:
       - run: cat web/.env.${{ inputs.environment }} >>"$GITHUB_ENV"
       # Produces the static export in web/out, served as plain Firebase Hosting.
       - run: bun run build
-      # Bundle the Cloud Functions (extractBookMetadata, resizeBookCover, opds)
-      # into a single esbuild bundle.
+      # Bundle the Cloud Functions (extractBookMetadata, resizeBookCover, opds,
+      # passkeys, ...) into a single esbuild bundle.
       - run: bun run --filter @calibre-web-serverless/functions build
       # esbuild inlines every devDependency (including the bun "workspace:*"
       # domain/infrastructure packages) into lib/index.js, so only the runtime
@@ -59,11 +59,19 @@ jobs:
       - run: |
           jq 'del(.devDependencies)' functions/package.json >functions/package.json.tmp
           mv functions/package.json.tmp functions/package.json
-      # The OPDS function verifies Basic-auth credentials against Identity
-      # Toolkit, which needs the project's (public) web API key at runtime.
       # Firebase loads functions/.env.<projectId> into the function environment
-      # at deploy; NEXT_PUBLIC_FIREBASE_API_KEY comes from the web env loaded above.
-      - run: echo "OPDS_WEB_API_KEY=$NEXT_PUBLIC_FIREBASE_API_KEY" >"functions/.env.${{ vars.FIREBASE_PROJECT_ID }}"
+      # at deploy.
+      # - OPDS_WEB_API_KEY: the OPDS function verifies Basic-auth credentials
+      #   against Identity Toolkit, which needs the project's (public) web API
+      #   key; NEXT_PUBLIC_FIREBASE_API_KEY comes from the web env loaded above.
+      # - PASSKEY_ALLOWED_ORIGINS: the origins the passkey callables accept
+      #   WebAuthn ceremonies from — the Hosting domains. Unset, passkeys fail
+      #   closed.
+      - run: |
+          {
+            echo "OPDS_WEB_API_KEY=$NEXT_PUBLIC_FIREBASE_API_KEY"
+            echo "PASSKEY_ALLOWED_ORIGINS=https://${{ vars.FIREBASE_PROJECT_ID }}.web.app,https://${{ vars.FIREBASE_PROJECT_ID }}.firebaseapp.com"
+          } >"functions/.env.${{ vars.FIREBASE_PROJECT_ID }}"
       - uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ vars.WIF_PROVIDER }}

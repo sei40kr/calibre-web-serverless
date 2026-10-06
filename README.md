@@ -66,7 +66,7 @@ export GOOGLE_BOOKS_API_KEY=your-google-books-api-key
 
 Shipped:
 
-- [x] Authentication, with password reset
+- [x] Authentication, with password reset and passkeys
 - [x] Library dashboard
 - [x] Book upload — several files at once, in a background queue that survives in-app navigation and resumes uploads interrupted mid-transfer
 - [x] Multiple file formats per book (EPUB, PDF, MOBI, AZW, AZW3, FB2, TXT)
@@ -90,4 +90,3 @@ Planned:
 - [ ] ML-based metadata extraction from cover images (fallback)
 - [ ] Social login
 - [ ] Two-factor authentication
-- [ ] Passkey support

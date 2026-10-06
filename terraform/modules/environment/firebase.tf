@@ -35,6 +35,20 @@ resource "google_firestore_database" "this" {
   depends_on = [google_project_service.apis["firestore.googleapis.com"]]
 }
 
+# Passkey challenges are deleted when answered; this sweeps the ones that
+# never are (a dismissed prompt, a closed tab). TTL deletion runs within about
+# a day of expiry, so the callables check `expiresAt` themselves and this only
+# bounds storage. The field is never queried, so it is not indexed either.
+resource "google_firestore_field" "passkey_challenge_ttl" {
+  project    = var.project_id
+  database   = google_firestore_database.this.name
+  collection = "passkeyChallenges"
+  field      = "expiresAt"
+
+  ttl_config {}
+  index_config {}
+}
+
 # -----------------------------------------------------------------------------
 # Firebase Authentication (Identity Platform)
 # -----------------------------------------------------------------------------

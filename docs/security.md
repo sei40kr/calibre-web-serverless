@@ -116,6 +116,46 @@ deployed client without the site key stops working the moment it lands. In a
 new project, create the key first (`terraform apply` targeted at the reCAPTCHA
 key), deploy a web build carrying it, then apply the rest.
 
+## Passkeys (WebAuthn)
+
+Firebase Auth has no WebAuthn provider, so passkeys are implemented on top of
+it: six callables (`functions/src/passkeys`) run the ceremonies with
+[SimpleWebAuthn](https://simplewebauthn.dev), and a verified sign-in is turned
+into an ordinary Firebase session with a **custom token**
+(`createCustomToken`, signed through IAM signBlob like the OPDS signed URLs).
+Everything downstream — rules, App Check, ID tokens — is unchanged.
+
+- **Server-only storage.** Credentials (`passkeyCredentials`) and pending
+  challenges (`passkeyChallenges`) live outside `users/{uid}`, where the rules
+  grant nothing. A client that could write a credential could plant a public
+  key whose private half it holds; one that could read a challenge could
+  answer it without the authenticator. Credential documents are keyed by the
+  SHA-256 of the credential ID, since the raw ID is attacker-chosen bytes.
+- **Single-use, short-lived challenges.** Each challenge is read and deleted
+  in one transaction and expires after 5 minutes, so a captured response
+  cannot be replayed. A Firestore TTL policy (Terraform) sweeps the ones never
+  answered.
+- **Origin pinning.** Ceremonies are only accepted from
+  `PASSKEY_ALLOWED_ORIGINS` (the Hosting domains, written at deploy). The RP ID
+  is the requesting origin's host, so a passkey made on `web.app` belongs to
+  `web.app` — the browser will not offer it on `firebaseapp.com`.
+- **User verification required.** The passkey replaces the password, so the
+  authenticator must verify the person (biometric or PIN), not just a tap.
+- **No account enumeration.** An unknown credential and a bad signature return
+  the same error. The user handle in the assertion must match the stored
+  owner, and a signature counter that goes backwards (a possibly cloned key)
+  is rejected.
+- **Unauthenticated start.** `startPasskeySignIn` has to be open, and each call
+  writes one document. App Check limits callers to the real web app, and the
+  TTL bounds what an abuser can leave behind.
+
+**Trade-off — adding a passkey needs only a session.** Registration requires a
+signed-in caller but not a *recent* sign-in, so whoever holds a live session
+(a stolen refresh token, an unlocked laptop) could add their own passkey as a
+persistent way back in. Revoking it from the Passkeys page closes that door.
+Requiring a fresh sign-in (`auth_time`) before registration would close it
+up front, at the cost of a re-authentication step.
+
 ## Secrets and configuration
 
 The **Firebase Web API key** is a public value (it ships in the client config)

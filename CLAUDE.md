@@ -77,6 +77,7 @@ web/                          # @calibre-web-serverless/web
 - `AuthGuard` component protects routes - renders children only when authenticated, redirects to `/` otherwise
 - Uses render props pattern: `<AuthGuard>{({ user, signOut }) => ...}</AuthGuard>`
 - Login page (`/`) redirects to `/dashboard` when already authenticated
+- Passkeys: Firebase Auth has no WebAuthn provider, so the `functions/src/passkeys` callables verify ceremonies and return a custom token; `passkeyService` signs in with it. Users manage passkeys at `/dashboard/passkeys` (see docs/security.md)
 
 ## Firebase Emulators
 

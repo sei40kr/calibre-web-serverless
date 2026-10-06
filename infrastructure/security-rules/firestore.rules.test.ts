@@ -114,3 +114,39 @@ describe("collection group queries", () => {
 		await assertFails(getDocs(collectionGroup(db, "books")));
 	});
 });
+
+// Passkey credentials and challenges are written by the passkey callables
+// through the admin SDK. A client that could write a credential could plant
+// a public key whose private half it holds; one that could read a challenge
+// could answer it without the authenticator.
+describe("passkey collections", () => {
+	beforeEach(async () => {
+		await testEnv.withSecurityRulesDisabled(async (context) => {
+			await setDoc(doc(context.firestore(), "passkeyCredentials/cred-1"), {
+				userId: OWNER,
+			});
+			await setDoc(doc(context.firestore(), "passkeyChallenges/chal-1"), {
+				userId: OWNER,
+			});
+		});
+	});
+
+	it("are unreadable even to the credential's owner", async () => {
+		const db = testEnv.authenticatedContext(OWNER).firestore();
+
+		await assertFails(getDoc(doc(db, "passkeyCredentials/cred-1")));
+		await assertFails(getDoc(doc(db, "passkeyChallenges/chal-1")));
+	});
+
+	it("are unwritable, signed in or not", async () => {
+		const owner = testEnv.authenticatedContext(OWNER).firestore();
+		const anonymous = testEnv.unauthenticatedContext().firestore();
+
+		await assertFails(
+			setDoc(doc(owner, "passkeyCredentials/cred-2"), { userId: OWNER }),
+		);
+		await assertFails(
+			setDoc(doc(anonymous, "passkeyChallenges/chal-2"), { userId: null }),
+		);
+	});
+});

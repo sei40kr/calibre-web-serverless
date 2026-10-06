@@ -28,6 +28,10 @@ service cloud.firestore {
       }
     }
 
+    // passkeyCredentials and passkeyChallenges are deliberately absent: only
+    // the passkey callables, through the admin SDK, may touch them. See
+    // docs/security.md.
+
     // Collection group queries are not covered by the match above: they are
     // evaluated against `match /{path=**}/books/{bookId}`, which nothing here
     // provides, so they are denied. The COLLECTION_GROUP indexes exist for the

@@ -32,6 +32,8 @@
 		"./errors/bookFileError": "./errors/bookFileError.ts",
 		"./errors/bookshelfError": "./errors/bookshelfError.ts",
 		"./errors/storageError": "./errors/storageError.ts",
-		"./services/authService": "./services/authService.ts"
+		"./services/authService": "./services/authService.ts",
+		"./models/passkey": "./models/passkey.ts",
+		"./errors/passkeyError": "./errors/passkeyError.ts"
 	}
 }

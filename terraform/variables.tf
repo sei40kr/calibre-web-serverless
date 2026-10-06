@@ -12,6 +12,9 @@ variable "environments" {
     project_id = string
     # Provision the test user below in this environment.
     test_user = optional(bool, false)
+    # Let Firebase Auth accept sign-ins from pages served on localhost, for
+    # running a local build against this project. Off by default.
+    allow_localhost = optional(bool, false)
   }))
 }
 

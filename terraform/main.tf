@@ -44,6 +44,8 @@ module "environment" {
   project_id  = each.value.project_id
   region      = var.region
   github_repo = var.github_repo
+
+  allow_localhost = each.value.allow_localhost
   test_user = each.value.test_user && var.test_user_password != "" ? {
     email    = var.test_user_email
     password = var.test_user_password

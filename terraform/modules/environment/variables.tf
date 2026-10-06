@@ -14,6 +14,12 @@ variable "github_repo" {
   type = string
 }
 
+# Add localhost to Firebase Auth's authorized domains.
+variable "allow_localhost" {
+  type    = bool
+  default = false
+}
+
 # When set, an email/password test user is provisioned in the environment's
 # Identity Platform (used to sign in for manual verification). Leave null to
 # skip (e.g. production).

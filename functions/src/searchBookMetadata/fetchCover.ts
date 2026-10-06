@@ -1,13 +1,17 @@
 const MAX_COVER_BYTES = 10 * 1024 * 1024;
 
+// Store CDNs redirect a cover once or twice at most; anything longer is not a
+// cover.
+const MAX_REDIRECTS = 3;
+
 // Covers are only ever fetched from the URLs our own providers emit. The
 // allowlist keeps this callable from being abused as an open server-side proxy
-// for arbitrary URLs.
+// for arbitrary URLs, so it names the cover hosts themselves rather than whole
+// Google domains: google.com carries open redirects (/url?q=) and
+// storage.googleapis.com serves anyone's bucket.
 const ALLOWED_COVER_HOSTS: RegExp[] = [
+	/^books\.google\.com$/,
 	/(^|\.)googleusercontent\.com$/,
-	/(^|\.)google\.com$/,
-	/(^|\.)googleapis\.com$/,
-	/(^|\.)gstatic\.com$/,
 ];
 
 // The client stages the cover through the custom-cover upload path, which only
@@ -22,6 +26,61 @@ function normalizeImageContentType(raw: string | null): string {
 
 export function isAllowedCoverHost(hostname: string): boolean {
 	return ALLOWED_COVER_HOSTS.some((re) => re.test(hostname));
+}
+
+function assertAllowedUrl(url: URL): void {
+	if (url.protocol !== "https:" && url.protocol !== "http:") {
+		throw new Error("Unsupported cover URL protocol");
+	}
+	if (!isAllowedCoverHost(url.hostname)) {
+		throw new Error(`Cover host not allowed: ${url.hostname}`);
+	}
+}
+
+/**
+ * Fetch `url`, following redirects by hand so every hop is checked against the
+ * allowlist; fetch's own redirect handling would only ever see the first URL.
+ */
+async function fetchAllowed(url: URL): Promise<Response> {
+	let current = url;
+	for (let hop = 0; ; hop++) {
+		assertAllowedUrl(current);
+		const res = await fetch(current, { redirect: "manual" });
+		if (res.status < 300 || res.status >= 400) return res;
+
+		const location = res.headers.get("location");
+		if (!location || hop >= MAX_REDIRECTS) {
+			throw new Error("Cover request redirected too often");
+		}
+		current = new URL(location, current);
+	}
+}
+
+/**
+ * Read the body, aborting as soon as it exceeds the cap rather than buffering
+ * whatever the server chooses to send.
+ */
+async function readCapped(res: Response): Promise<Buffer> {
+	const declared = Number(res.headers.get("content-length"));
+	if (declared > MAX_COVER_BYTES) {
+		throw new Error("Cover image is too large");
+	}
+	if (!res.body) return Buffer.alloc(0);
+
+	const chunks: Uint8Array[] = [];
+	let total = 0;
+	const reader = res.body.getReader();
+	for (;;) {
+		const { done, value } = await reader.read();
+		if (done) break;
+		total += value.byteLength;
+		if (total > MAX_COVER_BYTES) {
+			await reader.cancel();
+			throw new Error("Cover image is too large");
+		}
+		chunks.push(value);
+	}
+	return Buffer.concat(chunks);
 }
 
 export interface FetchBookCoverResult {
@@ -43,26 +102,17 @@ export async function fetchBookCover(
 	} catch {
 		throw new Error("Invalid cover URL");
 	}
-	if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
-		throw new Error("Unsupported cover URL protocol");
-	}
-	if (!isAllowedCoverHost(parsed.hostname)) {
-		throw new Error(`Cover host not allowed: ${parsed.hostname}`);
-	}
 
-	const res = await fetch(url);
+	const res = await fetchAllowed(parsed);
 	if (!res.ok) {
 		throw new Error(`Cover request failed (${res.status})`);
 	}
 	const contentType = normalizeImageContentType(
 		res.headers.get("content-type"),
 	);
-	const buffer = Buffer.from(await res.arrayBuffer());
+	const buffer = await readCapped(res);
 	if (buffer.byteLength === 0) {
 		throw new Error("Cover image is empty");
-	}
-	if (buffer.byteLength > MAX_COVER_BYTES) {
-		throw new Error("Cover image is too large");
 	}
 	return { dataBase64: buffer.toString("base64"), contentType };
 }

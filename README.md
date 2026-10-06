@@ -42,7 +42,8 @@ Achieve feature parity with Calibre-Web while embracing serverless principles an
 - **Framework**: Next.js (App Router), React
 - **UI**: Chakra UI, Emotion
 - **Forms**: react-hook-form
-- **Backend**: Firebase (Auth, Firestore, Storage)
+- **Backend**: Firebase (Auth, Firestore, Storage, Hosting), Cloud Functions
+- **Provisioning**: Terraform, GitHub Actions
 - **Language**: TypeScript
 - **Testing**: Vitest, Playwright, Storybook
 - **Linting/Formatting**: Biome

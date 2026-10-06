@@ -47,6 +47,8 @@ module "environment" {
 
   allow_localhost = each.value.allow_localhost
   custom_domains  = each.value.custom_domains
+
+  app_check_enforced = each.value.app_check_enforced
   test_user = each.value.test_user && var.test_user_password != "" ? {
     email    = var.test_user_email
     password = var.test_user_password

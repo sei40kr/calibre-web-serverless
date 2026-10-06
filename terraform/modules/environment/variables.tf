@@ -20,6 +20,12 @@ variable "custom_domains" {
   default = []
 }
 
+# Enforce App Check on Firestore and Storage, or only collect metrics.
+variable "app_check_enforced" {
+  type    = bool
+  default = true
+}
+
 # Add localhost to Firebase Auth's authorized domains.
 variable "allow_localhost" {
   type    = bool

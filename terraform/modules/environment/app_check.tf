@@ -38,7 +38,9 @@ resource "google_firebase_app_check_recaptcha_enterprise_config" "this" {
 
 # Enforcement is all-or-nothing per service and takes effect immediately, so a
 # client build that does not yet carry the site key stops working the moment
-# this is applied. Deploy the web app first, apply second.
+# this is applied. A new environment applies with app_check_enforced = false
+# (UNENFORCED: tokens are checked and counted, never required), deploys the
+# web app, then flips it to true.
 resource "google_firebase_app_check_service_config" "enforced" {
   for_each = toset([
     "firestore.googleapis.com",
@@ -48,7 +50,7 @@ resource "google_firebase_app_check_service_config" "enforced" {
   provider         = google-beta
   project          = var.project_id
   service_id       = each.value
-  enforcement_mode = "ENFORCED"
+  enforcement_mode = var.app_check_enforced ? "ENFORCED" : "UNENFORCED"
 
   depends_on = [google_firebase_app_check_recaptcha_enterprise_config.this]
 }

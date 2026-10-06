@@ -113,8 +113,9 @@ a stolen refresh token — is indistinguishable from the app itself.
 
 **Deploy before you enforce.** Enforcement is immediate and all-or-nothing: a
 deployed client without the site key stops working the moment it lands. In a
-new project, create the key first (`terraform apply` targeted at the reCAPTCHA
-key), deploy a web build carrying it, then apply the rest.
+new environment, apply with `app_check_enforced = false` (App Check runs
+unenforced: tokens are verified and counted but not required), deploy a web
+build carrying the site key, then set it to `true` and apply again.
 
 ## Secrets and configuration
 

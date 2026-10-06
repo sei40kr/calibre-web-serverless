@@ -20,6 +20,10 @@ variable "environments" {
     # Firebase Hosting in the console; this only lets Auth and App Check
     # accept them.
     custom_domains = optional(list(string), [])
+    # Enforce App Check on Firestore and Storage. A new environment must
+    # start with false: enforcement locks out every client build that does
+    # not yet carry the site key, so apply once, deploy, then flip to true.
+    app_check_enforced = optional(bool, true)
   }))
 }
 

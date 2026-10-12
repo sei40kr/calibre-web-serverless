@@ -121,4 +121,45 @@ describe("fetchBookCover", () => {
 			fetchBookCover("https://books.google.com/books/content?id=x"),
 		).rejects.toThrow(/Too many/);
 	});
+
+	it("rejects a cover whose Content-Length exceeds the limit", async () => {
+		const cancel = vi.fn();
+		const body = new ReadableStream({ cancel });
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(
+				async () =>
+					new Response(body, {
+						status: 200,
+						headers: { "content-length": String(11 * 1024 * 1024) },
+					}),
+			),
+		);
+		await expect(
+			fetchBookCover("https://books.google.com/books/content?id=x"),
+		).rejects.toThrow(/too large/);
+		expect(cancel).toHaveBeenCalled();
+	});
+
+	it("stops reading once the body exceeds the limit", async () => {
+		const chunk = new Uint8Array(1024 * 1024);
+		let pulls = 0;
+		const cancel = vi.fn();
+		const body = new ReadableStream<Uint8Array>({
+			pull(controller) {
+				pulls++;
+				controller.enqueue(chunk);
+			},
+			cancel,
+		});
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async () => new Response(body)),
+		);
+		await expect(
+			fetchBookCover("https://books.google.com/books/content?id=x"),
+		).rejects.toThrow(/too large/);
+		expect(cancel).toHaveBeenCalled();
+		expect(pulls).toBeLessThan(20);
+	});
 });

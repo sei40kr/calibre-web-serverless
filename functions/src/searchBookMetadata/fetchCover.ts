@@ -79,12 +79,42 @@ export async function fetchBookCover(
 	const contentType = normalizeImageContentType(
 		res.headers.get("content-type"),
 	);
-	const buffer = Buffer.from(await res.arrayBuffer());
+	const buffer = await readCoverBody(res);
 	if (buffer.byteLength === 0) {
 		throw new Error("Cover image is empty");
 	}
-	if (buffer.byteLength > MAX_COVER_BYTES) {
-		throw new Error("Cover image is too large");
-	}
 	return { dataBase64: buffer.toString("base64"), contentType };
+}
+
+/**
+ * Reads the body without ever buffering more than `MAX_COVER_BYTES`, throwing
+ * once it is exceeded. Content-Length may be absent or understate the body,
+ * so the bytes are also counted as they arrive.
+ */
+async function readCoverBody(res: Response): Promise<Buffer> {
+	const tooLarge = () => new Error("Cover image is too large");
+	if (Number(res.headers.get("content-length")) > MAX_COVER_BYTES) {
+		await res.body?.cancel();
+		throw tooLarge();
+	}
+	if (res.body === null) {
+		return Buffer.alloc(0);
+	}
+
+	const chunks: Uint8Array[] = [];
+	let total = 0;
+	const reader = res.body.getReader();
+	for (;;) {
+		const { done, value } = await reader.read();
+		if (done) {
+			break;
+		}
+		total += value.byteLength;
+		if (total > MAX_COVER_BYTES) {
+			await reader.cancel();
+			throw tooLarge();
+		}
+		chunks.push(value);
+	}
+	return Buffer.concat(chunks, total);
 }

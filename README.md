@@ -7,13 +7,28 @@ A modern, serverless reimplementation of [Calibre-Web](https://github.com/janecz
 
 ## Screenshots
 
-<img src="docs/images/library.png" alt="The library dashboard: a grid of book covers with a bookshelf sidebar" width="860">
-
-<img src="docs/images/edit-metadata.png" alt="The metadata editor for a book, with its cover and fields for title, authors and series" width="860">
-
-<img src="docs/images/fetch-metadata.png" alt="The fetch-metadata dialog listing candidate editions from Google Play Books, each with a cover, author, year and a Use this button" width="860">
-
-<img src="docs/images/reader.png" alt="The built-in reader showing a page of The Metamorphosis" width="860">
+<table>
+  <tr>
+    <td align="center">
+      <a href="docs/images/library.png"><img src="docs/images/library.png" alt="The library dashboard: a grid of book covers with a bookshelf sidebar" width="420"></a><br>
+      <sub>Library</sub>
+    </td>
+    <td align="center">
+      <a href="docs/images/edit-metadata.png"><img src="docs/images/edit-metadata.png" alt="The metadata editor for a book, with its cover and fields for title, authors and series" width="420"></a><br>
+      <sub>Edit metadata</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <a href="docs/images/fetch-metadata.png"><img src="docs/images/fetch-metadata.png" alt="The fetch-metadata dialog listing candidate editions from Google Play Books, each with a cover, author, year and a Use this button" width="420"></a><br>
+      <sub>Fetch metadata from the internet</sub>
+    </td>
+    <td align="center">
+      <a href="docs/images/reader.png"><img src="docs/images/reader.png" alt="The built-in reader showing a page of The Metamorphosis" width="420"></a><br>
+      <sub>Built-in reader</sub>
+    </td>
+  </tr>
+</table>
 
 ## Why Not Calibre-Web?
 

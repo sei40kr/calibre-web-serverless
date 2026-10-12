@@ -44,7 +44,12 @@ jobs:
           key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
           restore-keys: bun-${{ runner.os }}-
       - run: bun install --frozen-lockfile
-      - run: cat web/.env.${{ inputs.environment }} >>"$GITHUB_ENV"
+      # The web client config is specific to the deploying project, so it is
+      # not checked in: the GitHub environment carries the contents of the
+      # web/.env.<environment> file that `terraform apply` writes.
+      - env:
+          WEB_ENV: ${{ vars.WEB_ENV }}
+        run: printf '%s\n' "$WEB_ENV" >>"$GITHUB_ENV"
       # Produces the static export in web/out, served as plain Firebase Hosting.
       - run: bun run build
       # Bundle the Cloud Functions (extractBookMetadata, resizeBookCover, opds)

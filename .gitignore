@@ -92,3 +92,7 @@ terraform.rc
 
 *storybook.log
 storybook-static
+
+# Written by `terraform apply`; they hold the deployed projects' client config.
+web/.env.staging
+web/.env.production

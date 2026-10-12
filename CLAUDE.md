@@ -4,7 +4,7 @@ Calibre-Web Serverless is a modern reimplementation of [calibre-web](https://git
 
 # Development Environment
 
-Nix flake provides the development environment with bun and firebase-tools. Pre-commit hooks (biome, treefmt) run automatically.
+Nix flake provides the development environment: bun, a headless JDK for the Firebase emulators, and Chromium. `firebase-tools` is a devDependency of the web package, not part of the flake. Pre-commit hooks (biome, treefmt) run automatically.
 
 # Commands
 

@@ -114,3 +114,7 @@ Planned:
 - [ ] Social login
 - [ ] Two-factor authentication
 - [ ] Passkey support
+
+## License
+
+[MIT](LICENSE)

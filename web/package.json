@@ -2,6 +2,7 @@
 	"name": "@calibre-web-serverless/web",
 	"version": "0.0.0",
 	"private": true,
+	"license": "MIT",
 	"scripts": {
 		"dev": "bun run --cwd=../functions build && firebase emulators:exec --project=demo-project --ui --only hosting,auth,firestore,storage,functions,eventarc 'bun scripts/seed.ts && next dev --webpack'",
 		"build": "NODE_ENV=production next build --webpack",

@@ -69,6 +69,9 @@ jobs:
 
   deploy-staging:
     needs: [typecheck, lint, test]
+    # Opt-in per repository, so a fork without a configured staging
+    # environment gets green CI instead of a failed deploy on every push.
+    if: vars.DEPLOY_STAGING_ON_PUSH == 'true'
     uses: ./.github/workflows/deploy.yml
     with:
       environment: staging

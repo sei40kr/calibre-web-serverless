@@ -59,11 +59,11 @@ resource "google_identity_platform_config" "this" {
     }
   }
 
-  authorized_domains = [
+  authorized_domains = concat([
     "localhost",
     "${var.project_id}.firebaseapp.com",
     "${var.project_id}.web.app",
-  ]
+  ], var.additional_domains)
 
   depends_on = [google_project_service.apis["identitytoolkit.googleapis.com"]]
 }

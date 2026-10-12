@@ -37,10 +37,11 @@ provider "google-beta" {
 module "environment" {
   source = "./modules/environment"
 
-  environment = var.environment
-  project_id  = var.project_id
-  region      = var.region
-  github_repo = var.github_repo
+  environment        = var.environment
+  project_id         = var.project_id
+  region             = var.region
+  github_repo        = var.github_repo
+  additional_domains = var.additional_domains
   test_user = var.test_user_password == "" ? null : {
     email    = var.test_user_email
     password = var.test_user_password

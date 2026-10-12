@@ -16,3 +16,7 @@ github_repo = "your-github-user/calibre-web-serverless"
 # password is set.
 # test_user_email    = "test@example.com"
 # test_user_password = "change-me"
+
+# Custom domains the app is served from, if any (allowed for Auth and App
+# Check; connect them to Hosting in the Firebase console).
+# additional_domains = ["books.example.com"]

@@ -20,10 +20,10 @@ resource "google_recaptcha_enterprise_key" "app_check" {
     # exchanges the reCAPTCHA token for an App Check token.
     integration_type  = "SCORE"
     allow_all_domains = false
-    allowed_domains = [
+    allowed_domains = concat([
       "${var.project_id}.web.app",
       "${var.project_id}.firebaseapp.com",
-    ]
+    ], var.additional_domains)
   }
 
   depends_on = [google_project_service.apis["recaptchaenterprise.googleapis.com"]]

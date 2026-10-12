@@ -1,4 +1,18 @@
-# Copy this file to terraform.tfvars (git-ignored) and set real values.
-# The staging test user is created only when test_user_password is non-empty.
-test_user_email    = "test@example.com"
-test_user_password = "change-me"
+# Copy this file to terraform.tfvars (git-ignored) and set real values. For a
+# second deployment target, copy it to <environment>.tfvars instead and apply
+# with -var-file in a workspace of the same name.
+
+# The GCP project to deploy into. Create it (and link billing) first.
+project_id = "my-library"
+
+# Your fork, as "owner/name": its GitHub Actions deploy via Workload
+# Identity Federation.
+github_repo = "your-github-user/calibre-web-serverless"
+
+# Name of this target; "production" unless this is a second one.
+# environment = "staging"
+
+# Email/password test user for a staging target, created only when the
+# password is set.
+# test_user_email    = "test@example.com"
+# test_user_password = "change-me"

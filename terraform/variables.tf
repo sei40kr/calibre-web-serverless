@@ -12,6 +12,9 @@ variable "project_id" {
   type = string
 }
 
+# Where Firestore and the Storage bucket live. Keep firebase.json's
+# firestore.location in sync. The Cloud Functions region is set in the
+# functions' own code, not here.
 variable "region" {
   type    = string
   default = "us-west1"

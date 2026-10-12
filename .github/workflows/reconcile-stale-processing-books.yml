@@ -48,6 +48,7 @@ jobs:
       - uses: google-github-actions/setup-gcloud@v2
       - name: Resolve function URL
         id: fn
+        # Must match the region the functions' global options deploy to.
         run: |
           url=$(gcloud functions describe reconcileStaleProcessingBooksHttp \
             --gen2 --region us-central1 \

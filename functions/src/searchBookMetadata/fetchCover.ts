@@ -1,4 +1,5 @@
 const MAX_COVER_BYTES = 10 * 1024 * 1024;
+const MAX_COVER_REDIRECTS = 5;
 
 // Covers are only ever fetched from the URLs our own providers emit. The
 // allowlist keeps this callable from being abused as an open server-side proxy
@@ -29,6 +30,33 @@ export interface FetchBookCoverResult {
 	contentType: string;
 }
 
+function assertAllowedCoverUrl(url: URL): void {
+	if (url.protocol !== "https:" && url.protocol !== "http:") {
+		throw new Error("Unsupported cover URL protocol");
+	}
+	if (!isAllowedCoverHost(url.hostname)) {
+		throw new Error(`Cover host not allowed: ${url.hostname}`);
+	}
+}
+
+/**
+ * Follows redirects by hand: if fetch followed them, an allowed host could
+ * bounce the request to an arbitrary one. Throws if any hop is disallowed.
+ */
+async function fetchAllowedCover(url: URL): Promise<Response> {
+	let current = url;
+	for (let hop = 0; hop <= MAX_COVER_REDIRECTS; hop++) {
+		assertAllowedCoverUrl(current);
+		const res = await fetch(current, { redirect: "manual" });
+		const location = res.headers.get("location");
+		if (res.status < 300 || res.status >= 400 || location === null) {
+			return res;
+		}
+		current = new URL(location, current);
+	}
+	throw new Error("Too many cover redirects");
+}
+
 /**
  * Download a cover image server-side and return it base64-encoded, so the
  * browser can stage it as a custom cover without hitting cross-origin
@@ -43,14 +71,8 @@ export async function fetchBookCover(
 	} catch {
 		throw new Error("Invalid cover URL");
 	}
-	if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
-		throw new Error("Unsupported cover URL protocol");
-	}
-	if (!isAllowedCoverHost(parsed.hostname)) {
-		throw new Error(`Cover host not allowed: ${parsed.hostname}`);
-	}
 
-	const res = await fetch(url);
+	const res = await fetchAllowedCover(parsed);
 	if (!res.ok) {
 		throw new Error(`Cover request failed (${res.status})`);
 	}

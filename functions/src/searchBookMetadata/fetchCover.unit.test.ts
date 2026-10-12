@@ -67,4 +67,58 @@ describe("fetchBookCover", () => {
 		);
 		expect(out.contentType).toBe("image/jpeg");
 	});
+
+	it("follows redirects to allowed hosts", async () => {
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(
+				new Response(null, {
+					status: 302,
+					headers: { location: "https://lh3.googleusercontent.com/c.jpg" },
+				}),
+			)
+			.mockResolvedValueOnce(
+				new Response(new Uint8Array([1]), {
+					status: 200,
+					headers: { "content-type": "image/jpeg" },
+				}),
+			);
+		vi.stubGlobal("fetch", fetchMock);
+		await fetchBookCover("https://books.google.com/books/content?id=x");
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+		expect(String(fetchMock.mock.calls[1][0])).toBe(
+			"https://lh3.googleusercontent.com/c.jpg",
+		);
+	});
+
+	it("rejects a redirect to a disallowed host", async () => {
+		const fetchMock = vi.fn(
+			async () =>
+				new Response(null, {
+					status: 302,
+					headers: { location: "http://169.254.169.254/latest" },
+				}),
+		);
+		vi.stubGlobal("fetch", fetchMock);
+		await expect(
+			fetchBookCover("https://books.google.com/books/content?id=x"),
+		).rejects.toThrow(/not allowed/);
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+	});
+
+	it("gives up after too many redirects", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(
+				async () =>
+					new Response(null, {
+						status: 302,
+						headers: { location: "/loop" },
+					}),
+			),
+		);
+		await expect(
+			fetchBookCover("https://books.google.com/books/content?id=x"),
+		).rejects.toThrow(/Too many/);
+	});
 });

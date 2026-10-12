@@ -77,13 +77,45 @@ export GOOGLE_BOOKS_API_KEY=your-google-books-api-key
 
 ### Deploying
 
-Everything the deployed environments need is Terraform (`terraform/`): the Firebase projects, Firestore, Cloud Storage, Identity Platform, App Check, the functions' IAM and secrets, and the Workload Identity Federation that the GitHub Actions deploy authenticates with. The staging and production project IDs are declared in `terraform/main.tf`.
+Everything the deployed environments need is Terraform (`terraform/`): the Firebase projects, Firestore, Cloud Storage, Identity Platform, App Check, the functions' IAM and secrets, and the Workload Identity Federation that the GitHub Actions deploy authenticates with. It describes one deployment target, a single GCP project; a personal deployment needs just that.
+
+Before the first apply you need, outside Terraform:
+
+- A GCP project linked to a billing account (2nd-gen Cloud Functions need the Blaze plan), with Owner for your account. Terraform configures the project but does not create it.
+- A GCS bucket for the Terraform state.
+- [Terraform](https://developer.hashicorp.com/terraform/install) 1.5 or later and the [gcloud CLI](https://cloud.google.com/sdk/docs/install), signed in with `gcloud auth application-default login`. The Nix devshell provides neither.
+
+Then:
 
 1. Copy `terraform/terraform.tfvars.example` to `terraform.tfvars` and fill it in.
-2. Run `terraform apply`. It generates `web/.env.staging` and `web/.env.production`, and outputs the Workload Identity provider and the deploy service account.
-3. Set those as the `WIF_PROVIDER`, `FIREBASE_SERVICE_ACCOUNT` and `FIREBASE_PROJECT_ID` variables of the matching GitHub environment, then run the Deploy workflow.
+2. Run `terraform init -backend-config="bucket=<your tfstate bucket>"`, then `terraform apply`. It writes `web/.env.production` (gitignored: it holds your project's client config) and outputs the Workload Identity provider and the deploy service account.
+3. Set these variables on the `production` GitHub environment, then run the Deploy workflow:
 
-App Check enforcement has to follow the client that carries its site key, or the deployed app locks itself out — see [docs/security.md](docs/security.md).
+   | Variable                   | Value                                               |
+   | -------------------------- | --------------------------------------------------- |
+   | `WIF_PROVIDER`             | the `wif_provider` output                           |
+   | `FIREBASE_SERVICE_ACCOUNT` | the `service_account_email` output                  |
+   | `FIREBASE_PROJECT_ID`      | the project ID                                      |
+   | `WEB_ENV`                  | the contents of the generated `web/.env.production` |
+
+4. Create your account in the Firebase console under **Authentication → Users → Add user**. Sign-up is disabled on purpose: the web API key ships in the client, so open sign-up would let anyone mint an account.
+
+To try changes before they reach production, apply the same configuration to a second project as a `staging` target: put its values (including `environment = "staging"` and, if you like, a test user) in `staging.tfvars`, and apply it in a workspace of the same name so the two states stay apart:
+
+```bash
+terraform workspace new staging   # once; `terraform workspace select staging` afterwards
+terraform apply -var-file=staging.tfvars
+```
+
+It writes `web/.env.staging`, which goes into a `staging` GitHub environment the same way. Setting the repository variable `DEPLOY_STAGING_ON_PUSH` to `true` then deploys it on every push to `master`.
+
+App Check enforcement takes effect the moment `terraform apply` creates it; from then on a deployed web build without the site key is locked out. A new deployment is safe in the order above, since nothing is deployed yet and the first deploy carries the key. To add App Check to a target that already serves a client:
+
+1. `terraform apply -target=local_file.dotenv` creates the key and writes the env file without enforcing anything.
+2. Update `WEB_ENV` and deploy.
+3. Run the full `terraform apply`.
+
+[docs/security.md](docs/security.md) covers what App Check adds.
 
 ## Roadmap
 

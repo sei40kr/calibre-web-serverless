@@ -112,9 +112,9 @@ a stolen refresh token — is indistinguishable from the app itself.
   and the callables skip enforcement under `FUNCTIONS_EMULATOR`.
 
 **Deploy before you enforce.** Enforcement is immediate and all-or-nothing: a
-deployed client without the site key stops working the moment it lands. In a
-new project, create the key first (`terraform apply` targeted at the reCAPTCHA
-key), deploy a web build carrying it, then apply the rest.
+deployed client without the site key stops working the moment it lands. The
+README's deploy section gives the rollout order for an environment that
+already serves a client.
 
 ## Secrets and configuration
 

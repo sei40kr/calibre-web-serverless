@@ -31,14 +31,16 @@ export default function Home() {
 	const router = useRouter();
 	const { user, loading } = useAuth();
 	const [authError, setAuthError] = useState<string | null>(null);
-	const [isTestLoggingIn, setIsTestLoggingIn] = useState(false);
 	const {
 		register,
 		handleSubmit,
+		setValue,
 		formState: { errors, isSubmitting },
 	} = useForm<LoginFormData>();
 
 	const isDev = process.env.NODE_ENV === "development";
+	// Stay busy after sign-in succeeds until the redirect to /dashboard completes
+	const isSigningIn = isSubmitting || !!user;
 
 	useEffect(() => {
 		if (!loading && user) {
@@ -46,21 +48,10 @@ export default function Home() {
 		}
 	}, [user, loading, router]);
 
-	const handleTestLogin = async () => {
-		setAuthError(null);
-		setIsTestLoggingIn(true);
-		try {
-			await authService.signIn("test@example.com", "password123");
-			router.replace("/dashboard");
-		} catch (error) {
-			if (error instanceof AuthError) {
-				setAuthError("Failed to sign in as test user");
-			} else {
-				setAuthError("An unexpected error occurred");
-			}
-		} finally {
-			setIsTestLoggingIn(false);
-		}
+	const handleTestLogin = () => {
+		setValue("email", "test@example.com");
+		setValue("password", "password123");
+		handleSubmit(onSubmit)();
 	};
 
 	const onSubmit = async (data: LoginFormData) => {
@@ -110,7 +101,7 @@ export default function Home() {
 						{authError && <Alert status="error" title={authError} />}
 
 						<form noValidate onSubmit={handleSubmit(onSubmit)}>
-							<Fieldset.Root disabled={isSubmitting || isTestLoggingIn}>
+							<Fieldset.Root disabled={isSigningIn}>
 								<Fieldset.Content>
 									<Stack gap={4}>
 										<Field
@@ -158,7 +149,8 @@ export default function Home() {
 											colorPalette="blue"
 											size="lg"
 											width="full"
-											loading={isSubmitting}
+											loading={isSigningIn}
+											loadingText="Signing in..."
 											mt={4}
 										>
 											Sign In
@@ -177,7 +169,6 @@ export default function Home() {
 												colorPalette="gray"
 												size="lg"
 												width="full"
-												loading={isTestLoggingIn}
 												onClick={handleTestLogin}
 											>
 												Login as Test User

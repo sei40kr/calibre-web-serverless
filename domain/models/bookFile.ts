@@ -8,6 +8,7 @@ export const BOOK_FILE_FORMATS = [
 	"mobi",
 	"azw",
 	"azw3",
+	"cbz",
 	"fb2",
 	"txt",
 ] as const;

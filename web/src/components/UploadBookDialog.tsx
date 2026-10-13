@@ -33,6 +33,7 @@ interface UploadBookDialogProps {
 }
 
 const ACCEPTED_FORMATS = BOOK_FILE_FORMATS.map((f) => `.${f}`).join(",");
+const FORMAT_NAMES = BOOK_FILE_FORMATS.map((f) => f.toUpperCase()).join(", ");
 const MAX_FILES = 50;
 const MAX_FILE_SIZE = 100 * 1024 * 1024;
 
@@ -132,7 +133,7 @@ export function UploadBookDialog({
 												>
 													<FileUploadDropzone
 														label="Drag and drop your books here"
-														description="EPUB, PDF, MOBI up to 100MB each"
+														description={`${FORMAT_NAMES} up to 100MB each`}
 														minW="full"
 													/>
 													<FileUploadList showSize clearable />

@@ -13,7 +13,7 @@ service firebase.storage {
 
     // The format list must stay in sync with the domain's book formats.
     function isBookFileUpload(fileName) {
-      return fileName.matches('book\\.(epub|pdf|mobi|azw|azw3|fb2|txt)')
+      return fileName.matches('book\\.(epub|pdf|mobi|azw|azw3|cbz|fb2|txt)')
         && request.resource.size < 100 * 1024 * 1024;
     }
 

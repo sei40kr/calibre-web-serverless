@@ -1,7 +1,7 @@
 # Book fixtures
 
 Freely redistributable books used as test fixtures for the metadata extractors,
-the `extractBookMetadata` usecase and the EPUB reader, and as the data the dev
+the `extractBookMetadata` usecase and the in-browser readers, and as the data the dev
 seed loads into the emulators. The Project Gutenberg titles are distributed
 under the [Project Gutenberg License](https://www.gutenberg.org/policy/license.html),
 whose full text each EPUB carries and must keep; the Aozora Bunko titles are
@@ -54,3 +54,15 @@ See `docs/seeding.md` for how seeding works and how to add a seeded book.
   (_吾輩は猫である_, 夏目漱石; public domain). Horizontal-writing Japanese,
   the left-to-right counterpart to `rashomon` in the reader tests and
   stories.
+
+## joe-louis-champion-of-champions
+
+- `book.cbz` — the first 8 pages (cover included) of _Joe Louis, Champion of
+  Champions_ #2 (Fawcett Publications, November 1950), public domain in the
+  US because its copyright was not renewed
+  ([Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Joe_Louis,_Champion_of_Champions_comic_book_no._2.pdf),
+  PD-US-not renewed). The pages were rendered from that PDF with
+  `pdftoppm -f 1 -l 8 -scale-to-x 800 -scale-to-y -1 -jpeg -jpegopt quality=72`
+  and zipped with an added `ComicInfo.xml` (title, series/volume, publisher,
+  language and `Manga=No`, i.e. left-to-right), for the CBZ extractor and the
+  comic reader. `cover.jpg` is page 1.

@@ -26,6 +26,8 @@ interface BookReaderShellProps {
 	onBack: () => void;
 	/** Omit while there is nothing to page through (loading, error, no file). */
 	pageTurn?: PageTurnControls;
+	/** Reader-specific controls shown before the page-turn controls. */
+	actions?: ReactNode;
 	children: ReactNode;
 }
 
@@ -34,6 +36,7 @@ export function BookReaderShell({
 	title,
 	onBack,
 	pageTurn,
+	actions,
 	children,
 }: BookReaderShellProps) {
 	return (
@@ -50,6 +53,7 @@ export function BookReaderShell({
 				<Text fontWeight="medium" truncate flex="1" title={title}>
 					{title}
 				</Text>
+				{actions}
 				{pageTurn && (
 					<HStack gap={1}>
 						<IconButton

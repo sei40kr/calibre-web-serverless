@@ -114,6 +114,7 @@ export async function extractPdfMetadata(
 		pubDate,
 		// Only XMP carries typed identifiers; the Info dict has no such field.
 		identifiers: xmp.identifiers,
+		series: null,
 		coverImage: null,
 	};
 }

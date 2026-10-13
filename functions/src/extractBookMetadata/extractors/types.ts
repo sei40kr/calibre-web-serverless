@@ -6,5 +6,6 @@ export interface ExtractedMetadata {
 	publisher: string | null;
 	pubDate: Date | null;
 	identifiers: Array<{ type: string; value: string }>;
+	series: { name: string; index: number } | null;
 	coverImage: Buffer | null;
 }

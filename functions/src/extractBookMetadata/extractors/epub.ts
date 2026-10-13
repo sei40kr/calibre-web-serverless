@@ -183,6 +183,7 @@ export async function extractEpubMetadata(
 		publisher,
 		pubDate,
 		identifiers,
+		series: null,
 		coverImage,
 	};
 }

@@ -38,6 +38,7 @@ const TEST_USER = {
 const CONTENT_TYPES: Partial<Record<BookFileFormat, string>> = {
 	epub: "application/epub+zip",
 	pdf: "application/pdf",
+	cbz: "application/vnd.comicbook+zip",
 	txt: "text/plain",
 };
 
@@ -121,6 +122,19 @@ const books: BookSeed[] = [
 			"A satirical novel told from the perspective of a cat observing the follies of human behavior in Meiji-era Japan.",
 		rating: 5,
 		identifiers: [{ type: ISBN13, value: "9784805311868" }],
+	},
+	{
+		title: "Joe Louis, Champion of Champions #2",
+		fixtureName: "joe-louis-champion-of-champions",
+		formats: ["cbz"],
+		authorNames: [],
+		seriesName: "Joe Louis, Champion of Champions",
+		seriesIndex: 2,
+		tagNames: ["Comics"],
+		publisher: "Fawcett Publications",
+		pubDate: new Date("1950-11-01"),
+		languages: [Language.EN],
+		description: "The heroic story of the fightingest champion of all time.",
 	},
 ];
 

@@ -144,6 +144,42 @@ describe("extractBookMetadata", () => {
 		expect(exists).toBe(true);
 	});
 
+	it("extracts metadata and series from a CBZ file", async () => {
+		const bookId = "test-book-cbz";
+		const storagePath = `users/${TEST_USER_ID}/books/${bookId}/book.cbz`;
+
+		await createStubBook(TEST_USER_ID, bookId, "cbz");
+		await uploadFixture(
+			storagePath,
+			path.join(fixturesDir, "joe-louis-champion-of-champions", "book.cbz"),
+		);
+
+		await extractBookMetadata({
+			userId: TEST_USER_ID,
+			bookId,
+			format: "cbz",
+		});
+
+		const db = getFirestore();
+		const book = (
+			await db.doc(`users/${TEST_USER_ID}/books/${bookId}`).get()
+		).data()!;
+		expect(book.status).toBe("ready");
+		expect(book.title).toBe("Joe Louis, Champion of Champions #2");
+		expect(book.hasCover).toBe(true);
+		expect(book.seriesIndex).toBe(2);
+
+		const seriesSnap = await db
+			.collection(`users/${TEST_USER_ID}/series`)
+			.get();
+		expect(seriesSnap.docs).toHaveLength(1);
+		expect(seriesSnap.docs[0].data().name).toBe(
+			"Joe Louis, Champion of Champions",
+		);
+		expect(seriesSnap.docs[0].data().bookCount).toBe(1);
+		expect(book.seriesId).toBe(seriesSnap.docs[0].id);
+	});
+
 	it("sets error status for invalid file data", async () => {
 		const bookId = "test-book-invalid";
 		const storagePath = `users/${TEST_USER_ID}/books/${bookId}/book.epub`;

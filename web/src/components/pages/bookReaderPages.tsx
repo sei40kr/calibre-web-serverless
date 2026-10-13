@@ -4,6 +4,7 @@ import {
 	readyFiles,
 } from "@calibre-web-serverless/domain/models/bookFile";
 import type { ComponentType } from "react";
+import { ComicReaderPage } from "./ComicReaderPage";
 import { EpubReaderPage } from "./EpubReaderPage";
 import { PdfReaderPage } from "./PdfReaderPage";
 
@@ -14,7 +15,7 @@ export interface BookReaderPageProps {
 	fileUrl: string | null;
 	fileLoading: boolean;
 	/** 1-based reading position from the URL; its unit is the reader's own
-	 * (PDF: a page, EPUB: a spine chapter). */
+	 * (PDF/CBZ: a page, EPUB: a spine chapter). */
 	pageNo: number;
 	onPageNoChange: (pageNo: number) => void;
 	onBack: () => void;
@@ -44,6 +45,7 @@ function EpubBookReaderPage({
 export const READER_PAGES_BY_FORMAT = {
 	epub: EpubBookReaderPage,
 	pdf: PdfReaderPage,
+	cbz: ComicReaderPage,
 } as const satisfies Partial<
 	Record<BookFileFormat, ComponentType<BookReaderPageProps>>
 >;

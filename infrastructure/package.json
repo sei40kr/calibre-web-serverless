@@ -26,6 +26,7 @@
 		"./admin/repositories/bookCoverRepository": "./admin/repositories/bookCoverRepository.ts",
 		"./admin/repositories/authorRepository": "./admin/repositories/authorRepository.ts",
 		"./admin/repositories/publisherRepository": "./admin/repositories/publisherRepository.ts",
+		"./admin/repositories/seriesRepository": "./admin/repositories/seriesRepository.ts",
 		"./admin/repositories/tagRepository": "./admin/repositories/tagRepository.ts",
 		"./admin/repositories/bookshelfRepository": "./admin/repositories/bookshelfRepository.ts",
 		"./admin/resizeCover": "./admin/resizeCover.ts"

@@ -345,6 +345,9 @@ function CoverEditor({
 }
 
 const BOOK_FILE_ACCEPT = BOOK_FILE_FORMATS.map((f) => `.${f}`).join(",");
+const BOOK_FORMAT_NAMES = BOOK_FILE_FORMATS.map((f) => f.toUpperCase()).join(
+	", ",
+);
 const MAX_BOOK_UPLOAD_BYTES = 100 * 1024 * 1024;
 
 interface BookFilesSectionProps {
@@ -376,7 +379,7 @@ function BookFilesSection({
 					title: "Couldn't use that file",
 					description: tooLarge
 						? "File must be 100 MB or smaller."
-						: "Use a supported book format (EPUB, PDF, MOBI, ...).",
+						: `Use a supported book format (${BOOK_FORMAT_NAMES}).`,
 				});
 				return;
 			}

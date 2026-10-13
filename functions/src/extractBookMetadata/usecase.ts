@@ -14,6 +14,7 @@ import { bookCoverRepository } from "@calibre-web-serverless/infrastructure/admi
 import { bookFileRepository } from "@calibre-web-serverless/infrastructure/admin/repositories/bookFileRepository";
 import { bookRepository } from "@calibre-web-serverless/infrastructure/admin/repositories/bookRepository";
 import { publisherRepository } from "@calibre-web-serverless/infrastructure/admin/repositories/publisherRepository";
+import { seriesRepository } from "@calibre-web-serverless/infrastructure/admin/repositories/seriesRepository";
 import { logger } from "firebase-functions/v2";
 import {
 	type ExtractedMetadata,
@@ -63,6 +64,7 @@ async function resolveEntities(
 ): Promise<{
 	authorIds: string[];
 	publisherId: string | null;
+	seriesId: string | null;
 	identifiers: Identifier[];
 	languages: Language[];
 }> {
@@ -81,6 +83,10 @@ async function resolveEntities(
 		);
 	}
 
+	const seriesId = metadata.series
+		? await seriesRepository.findOrCreateSeries(userId, metadata.series.name)
+		: null;
+
 	const identifiers = metadata.identifiers
 		.map(({ type, value }): Identifier | null => {
 			const identifierType = resolveIdentifierType(type);
@@ -94,7 +100,7 @@ async function resolveEntities(
 		if (language) languages.push(language);
 	}
 
-	return { authorIds, publisherId, identifiers, languages };
+	return { authorIds, publisherId, seriesId, identifiers, languages };
 }
 
 export async function extractBookMetadata(
@@ -166,6 +172,8 @@ export async function extractBookMetadata(
 			title: title ?? "",
 			authorIds: entities.authorIds,
 			publisherId: entities.publisherId,
+			seriesId: entities.seriesId,
+			seriesIndex: metadata.series?.index ?? book.seriesIndex,
 			description: metadata.description,
 			languages: entities.languages,
 			identifiers: entities.identifiers,

@@ -1,3 +1,4 @@
+import { extractCbzMetadata } from "./cbz";
 import { extractEpubMetadata } from "./epub";
 import { extractPdfMetadata } from "./pdf";
 import type { ExtractedMetadata } from "./types";
@@ -25,6 +26,8 @@ export function extractMetadata(
 			return extractEpubMetadata(data);
 		case "pdf":
 			return extractPdfMetadata(data);
+		case "cbz":
+			return extractCbzMetadata(data);
 		default:
 			return Promise.reject(new UnsupportedBookFormatError(format));
 	}

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { downloadWithProgress } from "@/lib/download";
 import type { EpubBook } from "@/lib/epub";
 
 /**
@@ -28,28 +29,9 @@ export const useEpubBook = (fileUrl: string | null) => {
 		setError(null);
 
 		(async () => {
-			const response = await fetch(fileUrl);
-			if (!response.ok) {
-				throw new Error(`Failed to download EPUB: HTTP ${response.status}`);
-			}
-
-			const total = Number(response.headers.get("content-length"));
-			let data: ArrayBuffer;
-			if (response.body && total > 0) {
-				const reader = response.body.getReader();
-				const chunks: BlobPart[] = [];
-				let loaded = 0;
-				for (;;) {
-					const { done, value } = await reader.read();
-					if (done) break;
-					chunks.push(value);
-					loaded += value.length;
-					if (active) setProgress(Math.min(loaded / total, 1));
-				}
-				data = await new Blob(chunks).arrayBuffer();
-			} else {
-				data = await response.arrayBuffer();
-			}
+			const data = await downloadWithProgress(fileUrl, (fraction) => {
+				if (active) setProgress(fraction);
+			});
 
 			const { openEpub } = await import("@/lib/epub");
 			book = await openEpub(data);

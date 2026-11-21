@@ -22,6 +22,17 @@ import { Alert } from "@/components/ui/alert";
 import { Field } from "@/components/ui/field";
 import { useAuth } from "@/contexts/AuthContext";
 
+// Where to go after signing in: the `next` page (e.g. the OPDS consent page),
+// as long as it stays on this site, so sign-in can't become an open redirect.
+const returnPath = (): string => {
+	const next = new URLSearchParams(window.location.search).get("next");
+	if (!next) return "/dashboard";
+	const url = new URL(next, window.location.origin);
+	return url.origin === window.location.origin
+		? `${url.pathname}${url.search}`
+		: "/dashboard";
+};
+
 interface LoginFormData {
 	email: string;
 	password: string;
@@ -39,12 +50,12 @@ export default function Home() {
 	} = useForm<LoginFormData>();
 
 	const isDev = process.env.NODE_ENV === "development";
-	// Stay busy after sign-in succeeds until the redirect to /dashboard completes
+	// Stay busy after sign-in succeeds until the redirect completes
 	const isSigningIn = isSubmitting || !!user;
 
 	useEffect(() => {
 		if (!loading && user) {
-			router.replace("/dashboard");
+			router.replace(returnPath());
 		}
 	}, [user, loading, router]);
 
@@ -58,7 +69,7 @@ export default function Home() {
 		setAuthError(null);
 		try {
 			await authService.signIn(data.email, data.password);
-			router.replace("/dashboard");
+			router.replace(returnPath());
 		} catch (error) {
 			if (error instanceof AuthError) {
 				switch (error.code) {

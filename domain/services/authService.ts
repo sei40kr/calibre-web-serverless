@@ -11,5 +11,11 @@ export interface AuthService {
 	 * `ChangeEmailError` when `newEmail` is.
 	 */
 	changeEmail(currentPassword: string, newEmail: string): Promise<void>;
+	/**
+	 * `currentPassword` re-authenticates the signed-in user. Rejects with an
+	 * `AuthError` when it is rejected, or a `ChangePasswordError` when
+	 * `newPassword` is.
+	 */
+	changePassword(currentPassword: string, newPassword: string): Promise<void>;
 	onAuthStateChanged(callback: (user: User | null) => void): () => void;
 }

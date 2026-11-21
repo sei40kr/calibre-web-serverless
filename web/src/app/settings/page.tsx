@@ -19,6 +19,13 @@ export default function SettingsRoute() {
 							description: `Open the link sent to ${newEmail} to finish changing your email.`,
 						});
 					}}
+					onChangePassword={async (currentPassword, newPassword) => {
+						await authService.changePassword(currentPassword, newPassword);
+						toaster.success({
+							title: "Password updated",
+							description: "Use your new password the next time you sign in.",
+						});
+					}}
 				/>
 			)}
 		</AuthGuard>

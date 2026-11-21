@@ -8,17 +8,24 @@ import {
 	Heading,
 	HStack,
 	Stack,
+	StackSeparator,
 	Text,
 	VStack,
 } from "@chakra-ui/react";
 import { type ReactNode, useState } from "react";
 import { ChangeEmailDialog } from "@/components/ChangeEmailDialog";
+import { ChangePasswordDialog } from "@/components/ChangePasswordDialog";
 
 export interface SettingsPageProps {
 	email: string;
 	onSignOut: () => void;
 	/** Rejects with an `AuthError` or `ChangeEmailError` when the change is refused. */
 	onChangeEmail: (newEmail: string, currentPassword: string) => Promise<void>;
+	/** Rejects with an `AuthError` or `ChangePasswordError` when the change is refused. */
+	onChangePassword: (
+		currentPassword: string,
+		newPassword: string,
+	) => Promise<void>;
 }
 
 function SettingRow({
@@ -56,8 +63,10 @@ export function SettingsPage({
 	email,
 	onSignOut,
 	onChangeEmail,
+	onChangePassword,
 }: SettingsPageProps) {
 	const [isChangeEmailOpen, setIsChangeEmailOpen] = useState(false);
+	const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
 	return (
 		<Container maxW="container.lg" py={8}>
@@ -79,19 +88,34 @@ export function SettingsPage({
 						<Heading as="h2" size="md" px={6} pt={5} pb={1}>
 							Account
 						</Heading>
-						<SettingRow
-							label="Email"
-							description={email}
-							action={
-								<Button
-									variant="outline"
-									size="sm"
-									onClick={() => setIsChangeEmailOpen(true)}
-								>
-									Change email
-								</Button>
-							}
-						/>
+						<Stack gap={0} separator={<StackSeparator />}>
+							<SettingRow
+								label="Email"
+								description={email}
+								action={
+									<Button
+										variant="outline"
+										size="sm"
+										onClick={() => setIsChangeEmailOpen(true)}
+									>
+										Change email
+									</Button>
+								}
+							/>
+							<SettingRow
+								label="Password"
+								description="Change the password you sign in with."
+								action={
+									<Button
+										variant="outline"
+										size="sm"
+										onClick={() => setIsChangePasswordOpen(true)}
+									>
+										Change password
+									</Button>
+								}
+							/>
+						</Stack>
 					</Box>
 				</Stack>
 			</VStack>
@@ -101,6 +125,12 @@ export function SettingsPage({
 				onOpenChange={setIsChangeEmailOpen}
 				currentEmail={email}
 				onChangeEmail={onChangeEmail}
+			/>
+
+			<ChangePasswordDialog
+				open={isChangePasswordOpen}
+				onOpenChange={setIsChangePasswordOpen}
+				onChangePassword={onChangePassword}
 			/>
 		</Container>
 	);

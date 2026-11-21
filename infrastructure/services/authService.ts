@@ -4,6 +4,7 @@ import {
 	ChangeEmailError,
 	type ChangeEmailErrorCode,
 } from "@calibre-web-serverless/domain/errors/changeEmailError";
+import { ChangePasswordError } from "@calibre-web-serverless/domain/errors/changePasswordError";
 import type { User } from "@calibre-web-serverless/domain/models/user";
 import type { AuthService } from "@calibre-web-serverless/domain/services/authService";
 import { FirebaseError } from "firebase/app";
@@ -15,6 +16,7 @@ import {
 	signOut as firebaseSignOut,
 	reauthenticateWithCredential,
 	signInWithEmailAndPassword,
+	updatePassword,
 	verifyBeforeUpdateEmail,
 } from "firebase/auth";
 import { auth } from "../lib/firebase";
@@ -113,6 +115,24 @@ export const authService: AuthService = {
 			if (error instanceof FirebaseError) {
 				const code = mapChangeEmailErrorCode(error.code);
 				if (code) throw new ChangeEmailError(code, error.message);
+			}
+			throw error;
+		}
+	},
+
+	async changePassword(
+		currentPassword: string,
+		newPassword: string,
+	): Promise<void> {
+		const user = await reauthenticate(currentPassword);
+		try {
+			await updatePassword(user, newPassword);
+		} catch (error) {
+			if (
+				error instanceof FirebaseError &&
+				error.code === "auth/weak-password"
+			) {
+				throw new ChangePasswordError("weak-password", error.message);
 			}
 			throw error;
 		}

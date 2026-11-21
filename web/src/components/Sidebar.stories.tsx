@@ -74,6 +74,20 @@ export const ActiveBookshelf: Story = {
 	},
 };
 
+export const ActiveSettings: Story = {
+	args: { settingsActive: true },
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+
+		const settings = canvas.getByRole("link", { name: /settings/i });
+		await expect(settings).toHaveAttribute("href", "/settings");
+		await expect(settings).toHaveAttribute("aria-current", "page");
+		await expect(
+			canvas.getByRole("link", { name: /all books/i }),
+		).not.toHaveAttribute("aria-current");
+	},
+};
+
 export const Empty: Story = {
 	args: { bookshelves: [] },
 	play: async ({ canvasElement }) => {

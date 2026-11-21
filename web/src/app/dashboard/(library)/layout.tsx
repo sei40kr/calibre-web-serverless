@@ -10,8 +10,9 @@ import { bookshelfHref, Sidebar } from "@/components/Sidebar";
 import { toaster } from "@/components/ui/toaster";
 import { useBookshelves } from "@/hooks/useBookshelves";
 
-// The library views (all books and each bookshelf) share the bookshelf sidebar. The
-// book edit page lives outside this route group and renders without it.
+// The library views (all books and each bookshelf) and the settings page share
+// the bookshelf sidebar. The book edit page lives outside this route group and
+// renders without it.
 export default function LibraryLayout({ children }: { children: ReactNode }) {
 	return (
 		<AuthGuard>
@@ -106,6 +107,7 @@ function LibraryShell({
 				<Sidebar
 					bookshelves={bookshelves}
 					activeBookshelfId={activeBookshelfId}
+					settingsActive={pathname === "/settings"}
 					onCreateBookshelf={handleCreateBookshelf}
 					onRenameBookshelf={handleRenameBookshelf}
 					onDeleteBookshelf={handleDeleteBookshelf}

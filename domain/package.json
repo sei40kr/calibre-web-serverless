@@ -33,6 +33,7 @@
 		"./errors/authError": "./errors/authError.ts",
 		"./errors/bookFileError": "./errors/bookFileError.ts",
 		"./errors/bookshelfError": "./errors/bookshelfError.ts",
+		"./errors/changeEmailError": "./errors/changeEmailError.ts",
 		"./errors/storageError": "./errors/storageError.ts",
 		"./services/authService": "./services/authService.ts"
 	}

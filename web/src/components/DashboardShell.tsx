@@ -41,9 +41,6 @@ export function DashboardShell({ sidebar, children }: DashboardShellProps) {
 				position="sticky"
 				top={0}
 				h="100vh"
-				overflowY="auto"
-				py={6}
-				px={3}
 			>
 				{sidebar({ onNavigate: () => {} })}
 			</Box>
@@ -72,7 +69,7 @@ export function DashboardShell({ sidebar, children }: DashboardShellProps) {
 					<DrawerHeader>
 						<DrawerTitle>Library</DrawerTitle>
 					</DrawerHeader>
-					<DrawerBody>
+					<DrawerBody p={0}>
 						{sidebar({ onNavigate: () => setDrawerOpen(false) })}
 					</DrawerBody>
 					<DrawerCloseTrigger />

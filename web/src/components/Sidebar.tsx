@@ -5,6 +5,7 @@ import {
 	Badge,
 	Box,
 	Button,
+	Flex,
 	HStack,
 	IconButton,
 	Menu,
@@ -20,6 +21,7 @@ import {
 	LuLibrary,
 	LuPencil,
 	LuPlus,
+	LuSettings,
 	LuTrash2,
 } from "react-icons/lu";
 import { CreateBookshelfDialog } from "@/components/CreateBookshelfDialog";
@@ -41,6 +43,7 @@ interface SidebarProps {
 	bookshelves: Bookshelf[];
 	/** The bookshelf currently being viewed, or null on the all-books view. */
 	activeBookshelfId: string | null;
+	settingsActive?: boolean;
 	onCreateBookshelf: (name: string) => Promise<void>;
 	onRenameBookshelf: (bookshelf: Bookshelf, name: string) => Promise<void>;
 	onDeleteBookshelf: (bookshelf: Bookshelf) => Promise<void>;
@@ -56,6 +59,7 @@ interface SidebarProps {
 export function Sidebar({
 	bookshelves,
 	activeBookshelfId,
+	settingsActive = false,
 	onCreateBookshelf,
 	onRenameBookshelf,
 	onDeleteBookshelf,
@@ -65,6 +69,7 @@ export function Sidebar({
 	const [pendingRename, setPendingRename] = useState<Bookshelf | null>(null);
 	const [pendingDelete, setPendingDelete] = useState<Bookshelf | null>(null);
 	const [isDeleting, setIsDeleting] = useState(false);
+	const allBooksActive = activeBookshelfId === null && !settingsActive;
 
 	const handleDelete = async () => {
 		if (!pendingDelete) return;
@@ -80,116 +85,150 @@ export function Sidebar({
 	};
 
 	return (
-		<VStack as="nav" aria-label="Library" align="stretch" gap={6}>
-			<Button
-				asChild
-				variant={activeBookshelfId === null ? "subtle" : "ghost"}
-				justifyContent="flex-start"
-				aria-current={activeBookshelfId === null ? "page" : undefined}
-				onClick={onNavigate}
+		<Flex direction="column" h="full">
+			<VStack
+				as="nav"
+				aria-label="Library"
+				align="stretch"
+				gap={6}
+				flex="1"
+				minH={0}
+				overflowY="auto"
+				py={6}
+				px={3}
 			>
-				<NextLink href="/dashboard">
-					<LuLibrary />
-					All Books
-				</NextLink>
-			</Button>
+				<Button
+					asChild
+					variant={allBooksActive ? "subtle" : "ghost"}
+					justifyContent="flex-start"
+					aria-current={allBooksActive ? "page" : undefined}
+					onClick={onNavigate}
+				>
+					<NextLink href="/dashboard">
+						<LuLibrary />
+						All Books
+					</NextLink>
+				</Button>
 
-			<VStack align="stretch" gap={1}>
-				<HStack justify="space-between" px={2}>
-					<Text
-						fontSize="xs"
-						fontWeight="semibold"
-						textTransform="uppercase"
-						color="fg.muted"
-					>
-						Bookshelves
-					</Text>
-					<IconButton
-						aria-label="New bookshelf"
-						size="xs"
-						variant="ghost"
-						onClick={() => setIsCreateOpen(true)}
-					>
-						<LuPlus />
-					</IconButton>
-				</HStack>
+				<VStack align="stretch" gap={1}>
+					<HStack justify="space-between" px={2}>
+						<Text
+							fontSize="xs"
+							fontWeight="semibold"
+							textTransform="uppercase"
+							color="fg.muted"
+						>
+							Bookshelves
+						</Text>
+						<IconButton
+							aria-label="New bookshelf"
+							size="xs"
+							variant="ghost"
+							onClick={() => setIsCreateOpen(true)}
+						>
+							<LuPlus />
+						</IconButton>
+					</HStack>
 
-				{bookshelves.length === 0 ? (
-					<Text fontSize="sm" color="fg.muted" px={2} py={1}>
-						No bookshelves yet
-					</Text>
-				) : (
-					<VStack as="ul" align="stretch" gap={1} listStyleType="none">
-						{bookshelves.map((bookshelf) => {
-							const active = bookshelf.id === activeBookshelfId;
-							return (
-								<Box as="li" key={bookshelf.id} position="relative">
-									<Button
-										asChild
-										w="full"
-										minW={0}
-										variant={active ? "subtle" : "ghost"}
-										justifyContent="flex-start"
-										aria-current={active ? "page" : undefined}
-										onClick={onNavigate}
-										pe={10}
-									>
-										<NextLink href={bookshelfHref(bookshelf.id)}>
-											<Span truncate flex="1" textAlign="start">
-												{bookshelf.name}
-											</Span>
-											<Badge variant="subtle" colorPalette="gray">
-												{bookshelf.bookCount}
-											</Badge>
-										</NextLink>
-									</Button>
-									<Menu.Root
-										positioning={{ placement: "bottom-end" }}
-										onSelect={({ value }) => {
-											if (value === "rename") setPendingRename(bookshelf);
-											if (value === "delete") setPendingDelete(bookshelf);
-										}}
-									>
-										{/* Overlaid on the link's padding, not nested in it, so
+					{bookshelves.length === 0 ? (
+						<Text fontSize="sm" color="fg.muted" px={2} py={1}>
+							No bookshelves yet
+						</Text>
+					) : (
+						<VStack as="ul" align="stretch" gap={1} listStyleType="none">
+							{bookshelves.map((bookshelf) => {
+								const active = bookshelf.id === activeBookshelfId;
+								return (
+									<Box as="li" key={bookshelf.id} position="relative">
+										<Button
+											asChild
+											w="full"
+											minW={0}
+											variant={active ? "subtle" : "ghost"}
+											justifyContent="flex-start"
+											aria-current={active ? "page" : undefined}
+											onClick={onNavigate}
+											pe={10}
+										>
+											<NextLink href={bookshelfHref(bookshelf.id)}>
+												<Span truncate flex="1" textAlign="start">
+													{bookshelf.name}
+												</Span>
+												<Badge variant="subtle" colorPalette="gray">
+													{bookshelf.bookCount}
+												</Badge>
+											</NextLink>
+										</Button>
+										<Menu.Root
+											positioning={{ placement: "bottom-end" }}
+											onSelect={({ value }) => {
+												if (value === "rename") setPendingRename(bookshelf);
+												if (value === "delete") setPendingDelete(bookshelf);
+											}}
+										>
+											{/* Overlaid on the link's padding, not nested in it, so
 										    opening the menu can never also follow the link. */}
-										<Menu.Trigger asChild>
-											<IconButton
-												aria-label={`Bookshelf actions for ${bookshelf.name}`}
-												size="xs"
-												variant="ghost"
-												position="absolute"
-												insetEnd={1}
-												top="50%"
-												transform="translateY(-50%)"
-											>
-												<LuEllipsis />
-											</IconButton>
-										</Menu.Trigger>
-										<Portal>
-											<Menu.Positioner>
-												<Menu.Content>
-													<Menu.Item value="rename">
-														<LuPencil />
-														Rename
-													</Menu.Item>
-													<Menu.Item
-														value="delete"
-														color="fg.error"
-														_hover={{ bg: "bg.error", color: "fg.error" }}
-													>
-														<LuTrash2 />
-														Delete
-													</Menu.Item>
-												</Menu.Content>
-											</Menu.Positioner>
-										</Portal>
-									</Menu.Root>
-								</Box>
-							);
-						})}
-					</VStack>
-				)}
+											<Menu.Trigger asChild>
+												<IconButton
+													aria-label={`Bookshelf actions for ${bookshelf.name}`}
+													size="xs"
+													variant="ghost"
+													position="absolute"
+													insetEnd={1}
+													top="50%"
+													transform="translateY(-50%)"
+												>
+													<LuEllipsis />
+												</IconButton>
+											</Menu.Trigger>
+											<Portal>
+												<Menu.Positioner>
+													<Menu.Content>
+														<Menu.Item value="rename">
+															<LuPencil />
+															Rename
+														</Menu.Item>
+														<Menu.Item
+															value="delete"
+															color="fg.error"
+															_hover={{ bg: "bg.error", color: "fg.error" }}
+														>
+															<LuTrash2 />
+															Delete
+														</Menu.Item>
+													</Menu.Content>
+												</Menu.Positioner>
+											</Portal>
+										</Menu.Root>
+									</Box>
+								);
+							})}
+						</VStack>
+					)}
+				</VStack>
 			</VStack>
+
+			<Box
+				as="nav"
+				aria-label="Account"
+				flexShrink={0}
+				p={3}
+				borderTopWidth="1px"
+			>
+				<Button
+					asChild
+					w="full"
+					variant={settingsActive ? "subtle" : "ghost"}
+					justifyContent="flex-start"
+					aria-current={settingsActive ? "page" : undefined}
+					onClick={onNavigate}
+				>
+					<NextLink href="/settings">
+						<LuSettings />
+						Settings
+					</NextLink>
+				</Button>
+			</Box>
 
 			<CreateBookshelfDialog
 				open={isCreateOpen}
@@ -246,6 +285,6 @@ export function Sidebar({
 					<DialogCloseTrigger disabled={isDeleting} />
 				</DialogContent>
 			</DialogRoot>
-		</VStack>
+		</Flex>
 	);
 }

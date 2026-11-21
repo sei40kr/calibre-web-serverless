@@ -30,6 +30,13 @@ const nextConfig: NextConfig = {
 							source: "/books/:bookId/pages/:pageNo",
 							destination: "/books/__shell__/pages/__shell__",
 						},
+						// Hosting's /opds rewrite, so the catalog shares the consent
+						// page's origin (the Authentication Document id depends on it).
+						{
+							source: "/opds/:path*",
+							destination:
+								"http://127.0.0.1:5001/demo-project/us-central1/opds/:path*",
+						},
 					];
 				},
 			}),

@@ -6,10 +6,6 @@
 # refresh token — talks to Firestore, Storage and the metadata-search callables
 # exactly like the web app does. App Check adds the second question: requests
 # must also carry a token proving they came from this web app in a real browser.
-#
-# Not enforced on identitytoolkit.googleapis.com: the OPDS function verifies
-# Basic-auth credentials against it server-side and has no App Check token to
-# send, so enforcing there would break every OPDS client.
 # -----------------------------------------------------------------------------
 resource "google_recaptcha_enterprise_key" "app_check" {
   project      = var.project_id

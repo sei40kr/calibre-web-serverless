@@ -1,46 +1,42 @@
 import { describe, expect, it } from "vitest";
-import { parseBasicAuth } from "./auth";
+import { buildAuthDocument, parseBearerToken } from "./auth";
 
-describe("parseBasicAuth", () => {
-	const encode = (value: string) => Buffer.from(value).toString("base64");
-
-	it("parses email and password", () => {
-		expect(parseBasicAuth(`Basic ${encode("a@b.com:secret")}`)).toEqual({
-			email: "a@b.com",
-			password: "secret",
-		});
-	});
-
-	it("keeps colons in the password", () => {
-		expect(parseBasicAuth(`Basic ${encode("a@b.com:pa:ss")}`)).toEqual({
-			email: "a@b.com",
-			password: "pa:ss",
-		});
+describe("parseBearerToken", () => {
+	it("returns the token", () => {
+		expect(parseBearerToken("Bearer a.b.c")).toBe("a.b.c");
 	});
 
 	it("is case-insensitive on the scheme", () => {
-		expect(parseBasicAuth(`basic ${encode("a@b.com:x")}`)?.email).toBe(
-			"a@b.com",
-		);
+		expect(parseBearerToken("bearer a.b.c")).toBe("a.b.c");
 	});
 
 	it("returns null when header is missing", () => {
-		expect(parseBasicAuth(undefined)).toBeNull();
+		expect(parseBearerToken(undefined)).toBeNull();
 	});
 
-	it("returns null for a non-Basic scheme", () => {
-		expect(parseBasicAuth("Bearer token")).toBeNull();
+	it("returns null for Basic credentials", () => {
+		expect(parseBearerToken("Basic dXNlcjpwYXNz")).toBeNull();
 	});
+});
 
-	it("returns null when there is no colon", () => {
-		expect(parseBasicAuth(`Basic ${encode("noseparator")}`)).toBeNull();
-	});
-
-	it("returns null when email is empty", () => {
-		expect(parseBasicAuth(`Basic ${encode(":secret")}`)).toBeNull();
-	});
-
-	it("returns null when password is empty", () => {
-		expect(parseBasicAuth(`Basic ${encode("a@b.com:")}`)).toBeNull();
+describe("buildAuthDocument", () => {
+	it("points the implicit grant at the consent page of the same origin", () => {
+		expect(JSON.parse(buildAuthDocument("https://example.web.app"))).toEqual({
+			id: "https://example.web.app/opds/auth",
+			title: "Calibre-Web Serverless",
+			description: expect.any(String),
+			authentication: [
+				{
+					type: "http://opds-spec.org/auth/oauth/implicit",
+					links: [
+						{
+							rel: "authenticate",
+							href: "https://example.web.app/oauth/authorize",
+							type: "text/html",
+						},
+					],
+				},
+			],
+		});
 	});
 });

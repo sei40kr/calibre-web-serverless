@@ -9,6 +9,7 @@ import { bookCoverRepository } from "@calibre-web-serverless/infrastructure/admi
 import { bookFileRepository } from "@calibre-web-serverless/infrastructure/admin/repositories/bookFileRepository";
 import { bookRepository } from "@calibre-web-serverless/infrastructure/admin/repositories/bookRepository";
 import { bookshelfRepository } from "@calibre-web-serverless/infrastructure/admin/repositories/bookshelfRepository";
+import { opdsAppRepository } from "@calibre-web-serverless/infrastructure/admin/repositories/opdsAppRepository";
 import { publisherRepository } from "@calibre-web-serverless/infrastructure/admin/repositories/publisherRepository";
 import { tagRepository } from "@calibre-web-serverless/infrastructure/admin/repositories/tagRepository";
 import { logger } from "firebase-functions/v2";
@@ -17,7 +18,11 @@ import {
 	onRequest,
 	type Request,
 } from "firebase-functions/v2/https";
-import { parseBasicAuth, verifyCredentials } from "./auth";
+import {
+	AUTH_DOCUMENT_TYPE,
+	buildAuthDocument,
+	parseBearerToken,
+} from "./auth";
 import {
 	ACQUISITION_TYPE,
 	type AcquisitionSource,
@@ -49,11 +54,22 @@ const DOWNLOAD_PATH = /^\/download\/([^/]+)\.([^/.]+)$/;
 const COVER_PATH = /^\/cover\/([^/]+)(?:\/thumbnail)?$/;
 const BOOKSHELF_PATH = /^\/bookshelves\/([^/]+)$/;
 
-function requireAuth(res: Response): void {
+// Hosting (and the dev server's rewrite) forward the host the reader used; the
+// function's own Host header names its run.app URL instead.
+function publicOrigin(req: Request): string {
+	const header = (name: string) =>
+		req.get(name)?.split(",")[0].trim() || undefined;
+	const proto = header("x-forwarded-proto") ?? req.protocol;
+	const host = header("x-forwarded-host") ?? req.get("host");
+	return `${proto}://${host}`;
+}
+
+function sendAuthDocument(req: Request, res: Response, status: number): void {
+	if (status === 401) res.set("WWW-Authenticate", 'Bearer realm="OPDS"');
 	res
-		.set("WWW-Authenticate", 'Basic realm="OPDS", charset="UTF-8"')
-		.status(401)
-		.end();
+		.set("Content-Type", `${AUTH_DOCUMENT_TYPE}; charset=utf-8`)
+		.status(status)
+		.send(buildAuthDocument(publicOrigin(req)));
 }
 
 // Through Firebase Hosting the path arrives as "/opds/...". When the function is
@@ -317,21 +333,30 @@ export const opdsFn = onRequest(async (req, res) => {
 		return;
 	}
 
-	const credentials = parseBasicAuth(req.headers.authorization);
-	if (!credentials) {
-		requireAuth(res);
+	// The Authentication Document must be readable without authentication.
+	if (catalogPath(req.path) === "/auth") {
+		sendAuthDocument(req, res, 200);
 		return;
 	}
 
-	const verdict = await verifyCredentials(credentials);
-	if (!verdict.ok) {
-		if (verdict.status === 429) res.status(429).end();
-		else requireAuth(res);
+	const token = parseBearerToken(req.headers.authorization);
+	let userId: string | null = null;
+	try {
+		userId = token
+			? await opdsAppRepository.findUserIdByAccessToken(token)
+			: null;
+	} catch (err) {
+		logger.error("OPDS token verification failed", { error: err });
+		res.status(500).end();
+		return;
+	}
+	if (!userId) {
+		sendAuthDocument(req, res, 401);
 		return;
 	}
 
 	try {
-		await route(req, res, verdict.uid);
+		await route(req, res, userId);
 	} catch (err) {
 		logger.error("OPDS request failed", { error: err });
 		if (!res.headersSent) res.status(500).end();

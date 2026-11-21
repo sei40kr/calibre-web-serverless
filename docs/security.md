@@ -1,46 +1,34 @@
 # Security Notes
 
-This document covers the security model of the OPDS catalog, the trade-offs we
-are aware of, and planned improvements.
+This document covers the security model of the OPDS catalog and the trade-offs
+we are aware of.
 
-## OPDS endpoint: HTTP Basic authentication (deprecated)
+## OPDS endpoint: OAuth (Authentication for OPDS)
 
-The OPDS catalog (served at `/opds`) uses **HTTP Basic authentication**,
-chosen to prioritize client compatibility and a minimal implementation. The
-client sends `Authorization: Basic base64(email:password)`, and the Cloud
-Function verifies it against the Identity Toolkit REST API
-(`accounts:signInWithPassword`) to obtain the uid.
+The OPDS catalog (served at `/opds`) authorizes each reader app through
+[Authentication for OPDS 1.0](https://drafts.opds.io/authentication-for-opds-1.0)'s
+OAuth implicit grant, so readers never hold the account password. A token is
+`<uid>.<appId>.<secret>`; only the secret's SHA-256 is stored, in
+`users/{uid}/opdsApps/{appId}`, and the function compares hashes in constant
+time.
 
-- username = the Firebase account email
-- password = **the actual Firebase login password**
-
-### Why it is discouraged
-
-Even over HTTPS, Basic auth has properties that make it unsuitable as a modern
-authentication scheme:
-
-1. **Credentials are sent on every request.** Feeds, covers, and downloads all
-   carry the email/password, widening the attack surface.
-2. **The client must retain the real password.** To send it on every request the
-   OPDS client has to keep the Firebase password around — how securely (plaintext
-   vs. an OS keychain) is up to the client. If the device is compromised, the
-   entire Firebase account, including web login, can be exposed.
-3. **Revocation is hard.** There is no way to disable only OPDS access; the only
-   remedy is changing the Firebase password, which affects every client and the
-   web login.
-4. **Scope cannot be narrowed.** The verified session is equivalent to full
-   account access; a read-only OPDS scope cannot be granted.
-
-### Current mitigations
-
-- **HTTPS only** (Cloud Functions / Hosting are HTTPS-only).
-- Credentials and ID tokens are **never logged**.
+- **Read-only, per app**: a token only reaches the OPDS feeds and downloads, and
+  each app is listed in Settings › OPDS, where revoking deletes its document and
+  the token stops working on the next request. Deleting the account deletes
+  every app with the rest of `users/{uid}`.
+- **No open redirect**: the callback is always `opds://authorize/`, and the `id`
+  is derived from the page's own origin, never from request parameters, so a
+  crafted link can't send the token elsewhere or bind it to another catalog.
+  The sign-in page's `next` parameter only accepts same-origin paths.
+- **No expiry**: implicit-grant tokens have no refresh, so a token is valid
+  until revoked. Revocation is the control; the last-used time (recorded at most
+  every five minutes) helps spot a stale or unknown app.
 - **Strict uid scoping**: every Firestore/Storage access is fixed to
-  `users/{uid}/...` for the authenticated uid. The admin SDK bypasses security
-  rules, so the function never relies on them and constrains IDs to `[^/]+` to
-  prevent path traversal.
-- Brute-force resistance relies on Identity Toolkit throttling
-  (`TOO_MANY_ATTEMPTS_TRY_LATER` → `429`).
+  `users/{uid}/...` for the token's uid. The admin SDK bypasses security rules,
+  so the function never relies on them and constrains IDs (in the token and the
+  URL) to characters that can't escape a path segment.
+- The token is never logged, and only the owner can read the hash (Firestore
+  rules).
 
 ## Download delivery
 
@@ -113,9 +101,8 @@ a stolen refresh token — is indistinguishable from the app itself.
   `NEXT_PUBLIC_FIREBASE_APP_CHECK_SITE_KEY`.
 - Enforced on `firestore.googleapis.com` and `firebasestorage.googleapis.com`;
   the callables enforce it themselves via `enforceAppCheck`.
-- **Not** enforced on `identitytoolkit.googleapis.com`: the OPDS function
-  verifies Basic-auth credentials against it server-side and has no App Check
-  token to send, so enforcing there would lock out every OPDS client.
+- **Not** enforced on `identitytoolkit.googleapis.com` yet. OPDS no longer
+  signs in through it, so enforcing there is a candidate follow-up.
 - Local development and the E2E run talk to the emulators, which have no App
   Check backend, so the client skips initialisation when the site key is absent
   and the callables skip enforcement under `FUNCTIONS_EMULATOR`.
@@ -128,19 +115,10 @@ already serves a client.
 ## Secrets and configuration
 
 The **Firebase Web API key** is a public value (it ships in the client config)
-and is not a secret. It is passed to the OPDS function via the
-`OPDS_WEB_API_KEY` environment variable (for the Identity Toolkit call).
+and is not a secret.
 
 The **Google Books API key** (raises the metadata-search quota) _is_ a secret:
 stored in **Secret Manager** (`GOOGLE_BOOKS_API_KEY`, via Terraform) and bound to
 `searchBookMetadata` only when deployed (the emulator runs keyless, using
 `.envrc.local` if present). The runtime service account holds
 `roles/secretmanager.secretAccessor` on it.
-
-## Planned improvements
-
-- **Adopt OAuth following the OPDS spec**: replace Basic auth with the OAuth flow
-  defined by Authentication for OPDS, so clients no longer hold the real Firebase
-  password and access can be granted with a narrow, revocable scope.
-  `functions/src/opds/auth.ts` keeps verification behind a replaceable interface,
-  so this migration needs no changes to feed generation or delivery.

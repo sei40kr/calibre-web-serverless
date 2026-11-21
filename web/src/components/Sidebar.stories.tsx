@@ -27,6 +27,7 @@ const meta = {
 	args: {
 		bookshelves,
 		activeBookshelfId: null,
+		onOpenSettings: fn(),
 		onCreateBookshelf: fn(async () => {}),
 		onRenameBookshelf: fn(async () => {}),
 		onDeleteBookshelf: fn(async () => {}),
@@ -74,17 +75,12 @@ export const ActiveBookshelf: Story = {
 	},
 };
 
-export const ActiveSettings: Story = {
-	args: { settingsActive: true },
-	play: async ({ canvasElement }) => {
+export const OpenSettings: Story = {
+	play: async ({ canvasElement, args }) => {
 		const canvas = within(canvasElement);
 
-		const settings = canvas.getByRole("link", { name: /settings/i });
-		await expect(settings).toHaveAttribute("href", "/settings");
-		await expect(settings).toHaveAttribute("aria-current", "page");
-		await expect(
-			canvas.getByRole("link", { name: /all books/i }),
-		).not.toHaveAttribute("aria-current");
+		await userEvent.click(canvas.getByRole("button", { name: /settings/i }));
+		await expect(args.onOpenSettings).toHaveBeenCalled();
 	},
 };
 

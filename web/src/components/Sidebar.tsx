@@ -43,7 +43,7 @@ interface SidebarProps {
 	bookshelves: Bookshelf[];
 	/** The bookshelf currently being viewed, or null on the all-books view. */
 	activeBookshelfId: string | null;
-	settingsActive?: boolean;
+	onOpenSettings: () => void;
 	onCreateBookshelf: (name: string) => Promise<void>;
 	onRenameBookshelf: (bookshelf: Bookshelf, name: string) => Promise<void>;
 	onDeleteBookshelf: (bookshelf: Bookshelf) => Promise<void>;
@@ -59,7 +59,7 @@ interface SidebarProps {
 export function Sidebar({
 	bookshelves,
 	activeBookshelfId,
-	settingsActive = false,
+	onOpenSettings,
 	onCreateBookshelf,
 	onRenameBookshelf,
 	onDeleteBookshelf,
@@ -69,7 +69,7 @@ export function Sidebar({
 	const [pendingRename, setPendingRename] = useState<Bookshelf | null>(null);
 	const [pendingDelete, setPendingDelete] = useState<Bookshelf | null>(null);
 	const [isDeleting, setIsDeleting] = useState(false);
-	const allBooksActive = activeBookshelfId === null && !settingsActive;
+	const allBooksActive = activeBookshelfId === null;
 
 	const handleDelete = async () => {
 		if (!pendingDelete) return;
@@ -216,17 +216,16 @@ export function Sidebar({
 				borderTopWidth="1px"
 			>
 				<Button
-					asChild
 					w="full"
-					variant={settingsActive ? "subtle" : "ghost"}
+					variant="ghost"
 					justifyContent="flex-start"
-					aria-current={settingsActive ? "page" : undefined}
-					onClick={onNavigate}
+					onClick={() => {
+						onNavigate?.();
+						onOpenSettings();
+					}}
 				>
-					<NextLink href="/settings">
-						<LuSettings />
-						Settings
-					</NextLink>
+					<LuSettings />
+					Settings
 				</Button>
 			</Box>
 

@@ -1,39 +1,39 @@
 "use client";
 
 import type { Bookshelf } from "@calibre-web-serverless/domain/models/bookshelf";
+import type { User } from "@calibre-web-serverless/domain/models/user";
 import { bookshelfRepository } from "@calibre-web-serverless/infrastructure/repositories/bookshelfRepository";
+import { authService } from "@calibre-web-serverless/infrastructure/services/authService";
 import { usePathname, useRouter } from "next/navigation";
-import { type ReactNode, useCallback } from "react";
+import { type ReactNode, useCallback, useState } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
 import { DashboardShell } from "@/components/DashboardShell";
+import { SettingsDialog } from "@/components/SettingsDialog";
 import { bookshelfHref, Sidebar } from "@/components/Sidebar";
 import { toaster } from "@/components/ui/toaster";
+import { useBooks } from "@/hooks/useBooks";
 import { useBookshelves } from "@/hooks/useBookshelves";
 
-// The library views (all books and each bookshelf) and the settings page share
-// the bookshelf sidebar. The book edit page lives outside this route group and
-// renders without it.
+// The library views (all books and each bookshelf) share the bookshelf sidebar. The
+// book edit page lives outside this route group and renders without it.
 export default function LibraryLayout({ children }: { children: ReactNode }) {
 	return (
 		<AuthGuard>
-			{({ user }) => <LibraryShell userId={user.uid}>{children}</LibraryShell>}
+			{({ user }) => <LibraryShell user={user}>{children}</LibraryShell>}
 		</AuthGuard>
 	);
 }
 
 const BOOKSHELF_ROUTE = /^\/dashboard\/bookshelves\/([^/]+)/;
 
-function LibraryShell({
-	userId,
-	children,
-}: {
-	userId: string;
-	children: ReactNode;
-}) {
+function LibraryShell({ user, children }: { user: User; children: ReactNode }) {
+	const userId = user.uid;
 	const router = useRouter();
 	const pathname = usePathname();
 	const activeBookshelfId = pathname?.match(BOOKSHELF_ROUTE)?.[1] ?? null;
 	const { bookshelves } = useBookshelves(userId);
+	const { books } = useBooks(userId);
+	const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
 	const handleCreateBookshelf = useCallback(
 		async (name: string) => {
@@ -107,7 +107,7 @@ function LibraryShell({
 				<Sidebar
 					bookshelves={bookshelves}
 					activeBookshelfId={activeBookshelfId}
-					settingsActive={pathname === "/settings"}
+					onOpenSettings={() => setIsSettingsOpen(true)}
 					onCreateBookshelf={handleCreateBookshelf}
 					onRenameBookshelf={handleRenameBookshelf}
 					onDeleteBookshelf={handleDeleteBookshelf}
@@ -116,6 +116,33 @@ function LibraryShell({
 			)}
 		>
 			{children}
+
+			<SettingsDialog
+				open={isSettingsOpen}
+				onOpenChange={setIsSettingsOpen}
+				email={user.email}
+				bookCount={books.length}
+				bookshelfCount={bookshelves.length}
+				onChangeEmail={async (newEmail, currentPassword) => {
+					await authService.changeEmail(currentPassword, newEmail);
+					toaster.success({
+						title: "Verification email sent",
+						description: `Open the link sent to ${newEmail} to finish changing your email.`,
+					});
+				}}
+				onChangePassword={async (currentPassword, newPassword) => {
+					await authService.changePassword(currentPassword, newPassword);
+					toaster.success({
+						title: "Password updated",
+						description: "Use your new password the next time you sign in.",
+					});
+				}}
+				onDeleteAccount={async (password) => {
+					// Signing out sends AuthGuard back to the sign-in page.
+					await authService.deleteAccount(password);
+					toaster.success({ title: "Account deleted" });
+				}}
+			/>
 		</DashboardShell>
 	);
 }

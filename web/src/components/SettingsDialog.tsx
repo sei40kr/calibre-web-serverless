@@ -1,5 +1,6 @@
 "use client";
 
+import type { OpdsApp } from "@calibre-web-serverless/domain/models/opdsApp";
 import {
 	Box,
 	Button,
@@ -11,10 +12,11 @@ import {
 	Text,
 } from "@chakra-ui/react";
 import { type ReactNode, useState } from "react";
-import { LuTrash2, LuUser } from "react-icons/lu";
+import { LuRss, LuTrash2, LuUser } from "react-icons/lu";
 import { ChangeEmailDialog } from "@/components/ChangeEmailDialog";
 import { ChangePasswordDialog } from "@/components/ChangePasswordDialog";
 import { DeleteAccountDialog } from "@/components/DeleteAccountDialog";
+import { OpdsSettings } from "@/components/OpdsSettings";
 import {
 	DialogCloseTrigger,
 	DialogContent,
@@ -37,6 +39,10 @@ interface SettingsDialogProps {
 	) => Promise<void>;
 	/** Rejects with an `AuthError` when the deletion is refused. */
 	onDeleteAccount: (password: string) => Promise<void>;
+	/** The URL OPDS apps add to reach the catalog. */
+	opdsCatalogUrl: string;
+	opdsApps: OpdsApp[];
+	onRevokeOpdsApp: (app: OpdsApp) => Promise<void>;
 }
 
 function SettingRow({
@@ -72,6 +78,9 @@ export function SettingsDialog({
 	onChangeEmail,
 	onChangePassword,
 	onDeleteAccount,
+	opdsCatalogUrl,
+	opdsApps,
+	onRevokeOpdsApp,
 }: SettingsDialogProps) {
 	const [isChangeEmailOpen, setIsChangeEmailOpen] = useState(false);
 	const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
@@ -90,7 +99,6 @@ export function SettingsDialog({
 					h={{ md: "calc(100dvh - 6rem)" }}
 					overflow="hidden"
 				>
-					{/* A tab list even with one section, so others can sit beside Account. */}
 					<Tabs.Root
 						defaultValue="account"
 						orientation="vertical"
@@ -123,6 +131,10 @@ export function SettingsDialog({
 								<Tabs.Trigger value="account" justifyContent="flex-start">
 									<LuUser />
 									Account
+								</Tabs.Trigger>
+								<Tabs.Trigger value="opds" justifyContent="flex-start">
+									<LuRss />
+									OPDS
 								</Tabs.Trigger>
 							</Tabs.List>
 							<Text
@@ -226,6 +238,25 @@ export function SettingsDialog({
 									</Flex>
 								</Stack>
 							</Stack>
+						</Tabs.Content>
+
+						<Tabs.Content
+							value="opds"
+							flex="1"
+							minW={0}
+							overflowY="auto"
+							px={6}
+							pt={5}
+							pb={6}
+						>
+							<Heading as="h3" size="lg" mb={4}>
+								OPDS
+							</Heading>
+							<OpdsSettings
+								catalogUrl={opdsCatalogUrl}
+								opdsApps={opdsApps}
+								onRevokeOpdsApp={onRevokeOpdsApp}
+							/>
 						</Tabs.Content>
 					</Tabs.Root>
 					<DialogCloseTrigger />

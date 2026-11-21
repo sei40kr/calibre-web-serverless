@@ -3,9 +3,10 @@
 import type { Bookshelf } from "@calibre-web-serverless/domain/models/bookshelf";
 import type { User } from "@calibre-web-serverless/domain/models/user";
 import { bookshelfRepository } from "@calibre-web-serverless/infrastructure/repositories/bookshelfRepository";
+import { opdsAppRepository } from "@calibre-web-serverless/infrastructure/repositories/opdsAppRepository";
 import { authService } from "@calibre-web-serverless/infrastructure/services/authService";
 import { usePathname, useRouter } from "next/navigation";
-import { type ReactNode, useCallback, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
 import { DashboardShell } from "@/components/DashboardShell";
 import { SettingsDialog } from "@/components/SettingsDialog";
@@ -13,6 +14,8 @@ import { bookshelfHref, Sidebar } from "@/components/Sidebar";
 import { toaster } from "@/components/ui/toaster";
 import { useBooks } from "@/hooks/useBooks";
 import { useBookshelves } from "@/hooks/useBookshelves";
+import { useOpdsApps } from "@/hooks/useOpdsApps";
+import { OPDS_CATALOG_PATH } from "@/lib/opdsOAuth";
 
 // The library views (all books and each bookshelf) share the bookshelf sidebar. The
 // book edit page lives outside this route group and renders without it.
@@ -33,7 +36,13 @@ function LibraryShell({ user, children }: { user: User; children: ReactNode }) {
 	const activeBookshelfId = pathname?.match(BOOKSHELF_ROUTE)?.[1] ?? null;
 	const { bookshelves } = useBookshelves(userId);
 	const { books } = useBooks(userId);
+	const { opdsApps } = useOpdsApps(userId);
 	const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+	// The origin is only known in the browser, not in the static export.
+	const [opdsCatalogUrl, setOpdsCatalogUrl] = useState("");
+	useEffect(() => {
+		setOpdsCatalogUrl(`${window.location.origin}${OPDS_CATALOG_PATH}`);
+	}, []);
 
 	const handleCreateBookshelf = useCallback(
 		async (name: string) => {
@@ -141,6 +150,23 @@ function LibraryShell({ user, children }: { user: User; children: ReactNode }) {
 					// Signing out sends AuthGuard back to the sign-in page.
 					await authService.deleteAccount(password);
 					toaster.success({ title: "Account deleted" });
+				}}
+				opdsCatalogUrl={opdsCatalogUrl}
+				opdsApps={opdsApps}
+				onRevokeOpdsApp={async (app) => {
+					try {
+						await opdsAppRepository.revoke(userId, app.id);
+					} catch (error) {
+						toaster.error({
+							title: "Failed to revoke access",
+							description: "Please try again.",
+						});
+						throw error;
+					}
+					toaster.success({
+						title: "Access revoked",
+						description: `"${app.name}" can no longer read your library.`,
+					});
 				}}
 			/>
 		</DashboardShell>

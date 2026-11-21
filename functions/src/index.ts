@@ -9,6 +9,7 @@ initializeApp();
 // region, so change both together.
 setGlobalOptions({ region: "us-central1" });
 
+export { deleteAccountFn as deleteAccount } from "./deleteAccount/index";
 export { extractBookMetadataFn as extractBookMetadata } from "./extractBookMetadata/index";
 export { opdsFn as opds } from "./opds/index";
 export {

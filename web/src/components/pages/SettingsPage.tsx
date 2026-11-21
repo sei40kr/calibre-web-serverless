@@ -13,11 +13,15 @@ import {
 	VStack,
 } from "@chakra-ui/react";
 import { type ReactNode, useState } from "react";
+import { LuTrash2 } from "react-icons/lu";
 import { ChangeEmailDialog } from "@/components/ChangeEmailDialog";
 import { ChangePasswordDialog } from "@/components/ChangePasswordDialog";
+import { DeleteAccountDialog } from "@/components/DeleteAccountDialog";
 
 export interface SettingsPageProps {
 	email: string;
+	bookCount: number;
+	bookshelfCount: number;
 	onSignOut: () => void;
 	/** Rejects with an `AuthError` or `ChangeEmailError` when the change is refused. */
 	onChangeEmail: (newEmail: string, currentPassword: string) => Promise<void>;
@@ -26,6 +30,8 @@ export interface SettingsPageProps {
 		currentPassword: string,
 		newPassword: string,
 	) => Promise<void>;
+	/** Rejects with an `AuthError` when the deletion is refused. */
+	onDeleteAccount: (password: string) => Promise<void>;
 }
 
 function SettingRow({
@@ -61,12 +67,16 @@ function SettingRow({
 
 export function SettingsPage({
 	email,
+	bookCount,
+	bookshelfCount,
 	onSignOut,
 	onChangeEmail,
 	onChangePassword,
+	onDeleteAccount,
 }: SettingsPageProps) {
 	const [isChangeEmailOpen, setIsChangeEmailOpen] = useState(false);
 	const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+	const [isDeleteAccountOpen, setIsDeleteAccountOpen] = useState(false);
 
 	return (
 		<Container maxW="container.lg" py={8}>
@@ -117,6 +127,37 @@ export function SettingsPage({
 							/>
 						</Stack>
 					</Box>
+
+					<Flex
+						as="section"
+						wrap="wrap"
+						align="center"
+						justify="space-between"
+						gap={4}
+						p={6}
+						bg="bg.panel"
+						borderWidth="1px"
+						borderColor="border.error"
+						borderRadius="l3"
+					>
+						<Box flex="1 1 320px" minW={0}>
+							<Heading as="h2" size="md">
+								Delete account
+							</Heading>
+							<Text fontSize="sm" color="fg.muted">
+								Permanently delete your account and your entire library: books,
+								files, covers and bookshelves. This can't be undone.
+							</Text>
+						</Box>
+						<Button
+							variant="outline"
+							colorPalette="red"
+							onClick={() => setIsDeleteAccountOpen(true)}
+						>
+							<LuTrash2 />
+							Delete account
+						</Button>
+					</Flex>
 				</Stack>
 			</VStack>
 
@@ -131,6 +172,15 @@ export function SettingsPage({
 				open={isChangePasswordOpen}
 				onOpenChange={setIsChangePasswordOpen}
 				onChangePassword={onChangePassword}
+			/>
+
+			<DeleteAccountDialog
+				open={isDeleteAccountOpen}
+				onOpenChange={setIsDeleteAccountOpen}
+				email={email}
+				bookCount={bookCount}
+				bookshelfCount={bookshelfCount}
+				onDeleteAccount={onDeleteAccount}
 			/>
 		</Container>
 	);

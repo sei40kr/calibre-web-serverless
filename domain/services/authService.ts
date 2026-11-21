@@ -17,5 +17,11 @@ export interface AuthService {
 	 * `newPassword` is.
 	 */
 	changePassword(currentPassword: string, newPassword: string): Promise<void>;
+	/**
+	 * Permanently deletes the signed-in user's library and account, then signs
+	 * out. `password` re-authenticates the user. Rejects with an `AuthError`
+	 * when it is rejected.
+	 */
+	deleteAccount(password: string): Promise<void>;
 	onAuthStateChanged(callback: (user: User | null) => void): () => void;
 }

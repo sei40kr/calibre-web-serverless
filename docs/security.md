@@ -91,10 +91,19 @@ against that site (and risking IP bans / ToS violations). Before adding one: add
 per-user + global rate limiting, cache by query, back off on `429`/`Retry-After`,
 respect `robots.txt`/ToS, and keep the host allowlist.
 
+## Account deletion (Cloud callable)
+
+`deleteAccount` deletes the caller's whole library (everything under
+`users/{uid}` in Firestore and Storage) and then their Auth user. It requires
+auth and a sign-in from the last five minutes: the client re-authenticates with
+the password just before calling, so a stolen session alone cannot wipe an
+account. The runtime service account holds `roles/firebaseauth.admin` for the
+user deletion.
+
 ## App Check
 
 Auth answers _which account_ a request carries. App Check answers _which app_:
-requests to Firestore, Cloud Storage and the metadata-search callables must
+requests to Firestore, Cloud Storage and the callables must
 also present a token proving they came from this web app running in a real
 browser. Without it, anything holding an ID token — a script, a copied session,
 a stolen refresh token — is indistinguishable from the app itself.
@@ -103,7 +112,7 @@ a stolen refresh token — is indistinguishable from the app itself.
   site key is provisioned by Terraform and reaches the client as
   `NEXT_PUBLIC_FIREBASE_APP_CHECK_SITE_KEY`.
 - Enforced on `firestore.googleapis.com` and `firebasestorage.googleapis.com`;
-  the two callables enforce it themselves via `enforceAppCheck`.
+  the callables enforce it themselves via `enforceAppCheck`.
 - **Not** enforced on `identitytoolkit.googleapis.com`: the OPDS function
   verifies Basic-auth credentials against it server-side and has no App Check
   token to send, so enforcing there would lock out every OPDS client.

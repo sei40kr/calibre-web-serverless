@@ -19,7 +19,8 @@ import {
 	updatePassword,
 	verifyBeforeUpdateEmail,
 } from "firebase/auth";
-import { auth } from "../lib/firebase";
+import { httpsCallable } from "firebase/functions";
+import { auth, functions } from "../lib/firebase";
 
 const toUser = (firebaseUser: FirebaseUser): User => {
 	// Email/password is the only sign-in method, so every account has an email.
@@ -79,6 +80,8 @@ const reauthenticate = async (password: string): Promise<FirebaseUser> => {
 	return user;
 };
 
+const deleteAccountCallable = httpsCallable(functions, "deleteAccount");
+
 export const authService: AuthService = {
 	async signIn(email: string, password: string): Promise<User> {
 		try {
@@ -136,6 +139,14 @@ export const authService: AuthService = {
 			}
 			throw error;
 		}
+	},
+
+	async deleteAccount(password: string): Promise<void> {
+		await reauthenticate(password);
+		await deleteAccountCallable();
+		// The account is gone server-side, but this client holds its session
+		// until the ID token expires.
+		await firebaseSignOut(auth);
 	},
 
 	async signOut(): Promise<void> {

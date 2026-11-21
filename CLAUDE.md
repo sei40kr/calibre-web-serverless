@@ -125,6 +125,11 @@ web/                          # @calibre-web-serverless/web
 - For complex entities, create `toModel` / `toDocument` functions (e.g., `toBook` / `toBookDocument`) in the service; simple cases can inline
 - Create payload type: `Omit<Document, "id" | "createdAt" | "updatedAt"> & { createdAt: FieldValue; updatedAt: FieldValue }`
 
+# Design
+
+- UI designs are managed in a Claude Design canvas: https://claude.ai/code/artifact/dce6d16b-b13f-4385-862f-8b71bdfe8a85
+- Treat it as the source of truth for UI design; read it with the Artifact tool's `read` action (not WebFetch) before implementing or changing UI
+
 # Chakra UI
 
 - Use the Chakra UI MCP tools when available (`mcp__chakra-ui__*`)

@@ -4,9 +4,9 @@ import { setGlobalOptions } from "firebase-functions/v2";
 initializeApp();
 
 // Independent of the Terraform `region`, which places Firestore and the Storage
-// bucket: Storage triggers fire across regions. Changing this moves every
-// deployed function, and the reconcile workflow looks the HTTP function up by
-// region, so change both together.
+// bucket; only the Storage triggers must follow the bucket (STORAGE_REGION).
+// Changing this moves every other deployed function, and the reconcile
+// workflow looks the HTTP function up by region, so change both together.
 setGlobalOptions({ region: "us-central1" });
 
 export { deleteAccountFn as deleteAccount } from "./deleteAccount/index";

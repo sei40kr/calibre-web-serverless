@@ -1,4 +1,5 @@
 import { onObjectFinalized } from "firebase-functions/v2/storage";
+import { STORAGE_REGION } from "../storageRegion";
 import { resizeBookCover } from "./usecase";
 
 /**
@@ -18,7 +19,7 @@ export function parseCoverUploadPath(
 }
 
 export const resizeBookCoverFn = onObjectFinalized(
-	{ memory: "512MiB", timeoutSeconds: 120 },
+	{ region: STORAGE_REGION, memory: "512MiB", timeoutSeconds: 120 },
 	async (event) => {
 		const { name, size } = event.data;
 		if (!name) return;

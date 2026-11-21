@@ -1,4 +1,5 @@
 import { onObjectFinalized } from "firebase-functions/v2/storage";
+import { STORAGE_REGION } from "../storageRegion";
 import { extractBookMetadata } from "./usecase";
 
 export function parseStoragePath(
@@ -10,7 +11,7 @@ export function parseStoragePath(
 }
 
 export const extractBookMetadataFn = onObjectFinalized(
-	{ memory: "512MiB", timeoutSeconds: 120 },
+	{ region: STORAGE_REGION, memory: "512MiB", timeoutSeconds: 120 },
 	async (event) => {
 		const { name, metadata } = event.data;
 		if (!name) return;

@@ -82,3 +82,42 @@ resource "google_firebase_storage_default_bucket" "this" {
 
   depends_on = [google_project_service.apis["firebasestorage.googleapis.com"]]
 }
+
+# Browsers download objects directly, and a successful download carries only
+# the bucket's own CORS headers, so without this the browser blocks it. The
+# Firebase bucket resource has no cors field and a google_storage_bucket would
+# fight it over the same bucket, so set it over the GCS JSON API instead.
+locals {
+  storage_cors = [{
+    origin = concat([
+      "https://${var.project_id}.firebaseapp.com",
+      "https://${var.project_id}.web.app",
+    ], [for d in var.additional_domains : "https://${d}"])
+    method         = ["GET"]
+    maxAgeSeconds  = 3600
+    responseHeader = ["Content-Type", "Content-Range"]
+  }]
+}
+
+resource "terraform_data" "storage_cors" {
+  triggers_replace = [jsonencode(local.storage_cors)]
+
+  provisioner "local-exec" {
+    interpreter = ["/bin/sh", "-c"]
+
+    environment = {
+      ACCESS_TOKEN = data.google_client_config.default.access_token
+    }
+
+    command = <<-EOT
+      curl -sSf -o /dev/null -X PATCH \
+        "https://storage.googleapis.com/storage/v1/b/${var.project_id}.firebasestorage.app?fields=cors" \
+        -H "Authorization: Bearer $ACCESS_TOKEN" \
+        -H "X-Goog-User-Project: ${var.project_id}" \
+        -H "Content-Type: application/json" \
+        -d '${jsonencode({ cors = local.storage_cors })}'
+    EOT
+  }
+
+  depends_on = [google_firebase_storage_default_bucket.this]
+}

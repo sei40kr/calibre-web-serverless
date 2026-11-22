@@ -541,6 +541,47 @@ describe("bookRepository", () => {
 			expect(books).toEqual([]);
 		});
 
+		it("sorts by last read, never-read books last", async () => {
+			const [unread, older, newer] = await Promise.all(
+				["unread", "older", "newer"].map(async (name) => {
+					const { bookId } = await bookRepository.createBook({
+						userId,
+						file: createTestFile(`${name}.pdf`),
+					});
+					return bookId;
+				}),
+			);
+			for (const [bookId, lastReadAt] of [
+				[older, "2026-11-01"],
+				[newer, "2026-11-02"],
+			] as const) {
+				await bookRepository.updateReadingProgress(userId, bookId, {
+					status: "reading",
+					lastReadAt: new Date(lastReadAt),
+					lastFormat: "pdf",
+					positions: {
+						pdf: { pageNo: 1, pageCount: 9, activeSeconds: 0, unitsRead: 0 },
+					},
+				});
+			}
+
+			let ids: string[] = [];
+			const unsubscribe = bookRepository.subscribeToBooks(userId, {
+				sort: { key: "lastReadAt", direction: "desc" },
+				onData: (books) => {
+					ids = books.map((book) => book.id);
+				},
+				onError: (error) => {
+					throw error;
+				},
+			});
+			try {
+				await vi.waitFor(() => expect(ids).toEqual([newer, older, unread]));
+			} finally {
+				unsubscribe();
+			}
+		});
+
 		it("returns books sorted by createdAt descending", async () => {
 			const { bookId: firstId } = await bookRepository.createBook({
 				userId,

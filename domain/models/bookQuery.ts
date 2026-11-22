@@ -42,7 +42,12 @@ export const emptyBookFilter: BookFilter = {
 	minRating: null,
 };
 
-export type BookSortKey = "createdAt" | "title" | "pubDate" | "rating";
+export type BookSortKey =
+	| "createdAt"
+	| "lastReadAt"
+	| "title"
+	| "pubDate"
+	| "rating";
 
 export type SortDirection = "asc" | "desc";
 

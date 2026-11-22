@@ -8,6 +8,8 @@ import { orderBy, type QueryConstraint, where } from "firebase/firestore";
 
 const SORT_FIELD: Record<BookSortKey, string> = {
 	createdAt: "createdAt",
+	// Never-read books hold null, which sorts after every date descending.
+	lastReadAt: "reading.lastReadAt",
 	title: "title",
 	pubDate: "pubDate",
 	rating: "rating",

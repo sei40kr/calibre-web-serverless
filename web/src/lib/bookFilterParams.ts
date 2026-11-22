@@ -24,6 +24,7 @@ const SCALAR_PARAM = {
 
 const SORT_KEYS: readonly BookSortKey[] = [
 	"createdAt",
+	"lastReadAt",
 	"title",
 	"pubDate",
 	"rating",

@@ -45,6 +45,14 @@ describe("parseSearchParams", () => {
 		expect(roundTrip(filter, sort)).toEqual({ filter, sort });
 	});
 
+	it("round-trips the recently read sort", () => {
+		const sort: BookSort = { key: "lastReadAt", direction: "desc" };
+		expect(roundTrip(emptyBookFilter, sort)).toEqual({
+			filter: emptyBookFilter,
+			sort,
+		});
+	});
+
 	it("keeps only the first array dimension when several are present", () => {
 		const { filter } = parseSearchParams(
 			new URLSearchParams("authors=a1&tags=t1"),

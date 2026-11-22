@@ -21,6 +21,12 @@ const SORT_OPTIONS: SortOption[] = [
 		direction: "desc",
 	},
 	{
+		value: "lastReadAt:desc",
+		label: "Recently read",
+		key: "lastReadAt",
+		direction: "desc",
+	},
+	{
 		value: "createdAt:asc",
 		label: "Oldest added",
 		key: "createdAt",

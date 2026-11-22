@@ -117,6 +117,14 @@
 			"queryScope": "COLLECTION",
 			"fields": [
 				{ "fieldPath": "bookshelfIds", "arrayConfig": "CONTAINS" },
+				{ "fieldPath": "reading.lastReadAt", "order": "DESCENDING" }
+			]
+		},
+		{
+			"collectionGroup": "books",
+			"queryScope": "COLLECTION",
+			"fields": [
+				{ "fieldPath": "bookshelfIds", "arrayConfig": "CONTAINS" },
 				{ "fieldPath": "status", "order": "ASCENDING" },
 				{ "fieldPath": "createdAt", "order": "DESCENDING" }
 			]

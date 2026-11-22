@@ -58,7 +58,7 @@ export const FirstPage: Story = {
 		await expect(args.onPageNoChange).toHaveBeenCalledWith(2);
 
 		await userEvent.click(
-			canvas.getByRole("button", { name: /back to library/i }),
+			canvas.getByRole("button", { name: /back to book details/i }),
 		);
 		await expect(args.onBack).toHaveBeenCalled();
 	},

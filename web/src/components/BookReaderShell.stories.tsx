@@ -49,7 +49,7 @@ export const Default: Story = {
 		await expect(args.pageTurn?.rightButton.onClick).toHaveBeenCalled();
 
 		await userEvent.click(
-			canvas.getByRole("button", { name: /back to library/i }),
+			canvas.getByRole("button", { name: /back to book details/i }),
 		);
 		await expect(args.onBack).toHaveBeenCalled();
 	},
@@ -87,7 +87,7 @@ export const WithoutPageTurnControls: Story = {
 		const canvas = within(canvasElement);
 
 		await expect(
-			canvas.getByRole("button", { name: /back to library/i }),
+			canvas.getByRole("button", { name: /back to book details/i }),
 		).toBeInTheDocument();
 		await expect(
 			canvas.queryByRole("button", { name: /next page/i }),

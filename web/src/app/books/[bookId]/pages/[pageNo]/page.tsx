@@ -10,6 +10,7 @@ import { Center, Spinner } from "@chakra-ui/react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
+import { bookDetailsHref } from "@/components/pages/BookDetailsPage";
 import { BookNotFoundPage } from "@/components/pages/BookNotFoundPage";
 import {
 	READER_PAGES_BY_FORMAT,
@@ -150,7 +151,7 @@ function BookReaderRouteContent({
 			onLocationChange={handleLocationChange}
 			read={book.reading.status === "read"}
 			onMarkRead={markRead}
-			onBack={() => router.push("/dashboard")}
+			onBack={() => router.push(bookDetailsHref(bookId))}
 		/>
 	);
 }

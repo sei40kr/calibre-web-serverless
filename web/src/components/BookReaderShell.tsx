@@ -73,7 +73,7 @@ export function BookReaderShell({
 		<Box display="flex" flexDirection="column" height="100dvh">
 			<HStack px={4} py={2} gap={3} borderBottomWidth="1px">
 				<IconButton
-					aria-label="Back to library"
+					aria-label="Back to book details"
 					variant="ghost"
 					size="sm"
 					onClick={onBack}

@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
 
-// The reader pages are fully client-rendered (the real bookId is read from the
-// URL at runtime). For `output: export` we still need at least one param, so we
-// emit a single shell page and rewrite every /books/<id>/pages/<n> request to
-// it in firebase.json.
+// The book details and reader pages are fully client-rendered (the real bookId
+// is read from the URL at runtime). For `output: export` we still need at least
+// one param, so we emit a single shell page per route and rewrite every
+// /books/<id> and /books/<id>/pages/<n> request to it in firebase.json.
 export function generateStaticParams() {
 	return [{ bookId: "__shell__" }];
 }

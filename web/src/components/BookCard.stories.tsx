@@ -94,12 +94,13 @@ export const Default: Story = {
 			canvas.getByRole("img", { name: "Alice's Adventures in Wonderland" }),
 		).toBeInTheDocument();
 
-		// A single readable format links straight into the reader.
-		const readLink = canvas.getByRole("link", { name: /read book/i });
-		await expect(readLink).toHaveAttribute(
-			"href",
-			"/books/book-001/pages/1?format=epub",
-		);
+		// The cover and the title open the book's details.
+		await expect(
+			canvas.getByRole("link", { name: /view details for/i }),
+		).toHaveAttribute("href", "/books/book-001");
+		await expect(
+			canvas.getByRole("link", { name: "Alice's Adventures in Wonderland" }),
+		).toHaveAttribute("href", "/books/book-001");
 	},
 };
 
@@ -271,12 +272,6 @@ export const PdfFormat: Story = {
 		const canvas = within(canvasElement);
 
 		await expect(canvas.getByText("PDF")).toBeInTheDocument();
-
-		const readLink = canvas.getByRole("link", { name: /read book/i });
-		await expect(readLink).toHaveAttribute(
-			"href",
-			"/books/book-001/pages/1?format=pdf",
-		);
 	},
 };
 
@@ -329,22 +324,10 @@ export const MultipleFormats: Story = {
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		const body = within(canvasElement.ownerDocument.body);
 
 		await expect(canvas.getByText("EPUB")).toBeInTheDocument();
 		await expect(canvas.getByText("PDF")).toBeInTheDocument();
 		await expect(canvas.queryByText("MOBI")).not.toBeInTheDocument();
-
-		// Several readable formats: the cover opens a format chooser instead
-		// of linking directly. Each format resumes at its own saved position.
-		await userEvent.click(canvas.getByRole("button", { name: /read book/i }));
-		const dialog = await body.findByRole("dialog");
-		await expect(
-			within(dialog).getByRole("link", { name: "EPUB" }),
-		).toHaveAttribute("href", "/books/book-001/pages/3?format=epub");
-		await expect(
-			within(dialog).getByRole("link", { name: "PDF" }),
-		).toHaveAttribute("href", "/books/book-001/pages/1?format=pdf");
 	},
 };
 

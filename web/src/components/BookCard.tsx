@@ -2,56 +2,31 @@
 
 import type { Book } from "@calibre-web-serverless/domain/models/book";
 import { readyFiles } from "@calibre-web-serverless/domain/models/bookFile";
-import {
-	type Bookshelf,
-	isBookInBookshelf,
-} from "@calibre-web-serverless/domain/models/bookshelf";
+import type { Bookshelf } from "@calibre-web-serverless/domain/models/bookshelf";
 import { readingFraction } from "@calibre-web-serverless/domain/models/readingProgress";
 import {
 	Badge,
 	Box,
-	Button,
 	Card,
 	HStack,
 	IconButton,
 	Image,
-	Menu,
-	Portal,
 	Progress,
 	Skeleton,
-	Span,
 	Text,
 	VStack,
 	Wrap,
 } from "@chakra-ui/react";
 import Link from "next/link";
-import { useState } from "react";
 import {
 	LuBook,
-	LuBookmark,
-	LuBookmarkMinus,
 	LuCheck,
-	LuChevronRight,
 	LuClock,
 	LuEllipsis,
-	LuPencil,
-	LuRotateCcw,
-	LuTrash2,
 	LuTriangleAlert,
 } from "react-icons/lu";
-import {
-	readableBookFormats,
-	readerHref,
-} from "@/components/pages/bookReaderPages";
-import {
-	DialogBody,
-	DialogCloseTrigger,
-	DialogContent,
-	DialogFooter,
-	DialogHeader,
-	DialogRoot,
-	DialogTitle,
-} from "@/components/ui/dialog";
+import { BookActionsMenu } from "@/components/BookActionsMenu";
+import { bookDetailsHref } from "@/components/pages/BookDetailsPage";
 import { readingTimeLeft } from "@/lib/timeLeft";
 
 interface BookCardProps {
@@ -88,37 +63,7 @@ export function BookCard({
 }: BookCardProps) {
 	const isProcessing = book.status === "processing";
 	const isError = book.status === "error";
-	const readableFormats = readableBookFormats(book.files);
-	const [isFormatDialogOpen, setIsFormatDialogOpen] = useState(false);
-	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-	const [isDeleting, setIsDeleting] = useState(false);
-	const [isRemoving, setIsRemoving] = useState(false);
-
-	const handleDelete = async () => {
-		if (!onDelete) return;
-		setIsDeleting(true);
-		try {
-			await onDelete();
-			setIsDeleteDialogOpen(false);
-		} catch {
-			// Keep the dialog open so the user can retry; the failure is surfaced
-			// by the caller (e.g. a toast).
-		} finally {
-			setIsDeleting(false);
-		}
-	};
-
-	const handleRemoveFromBookshelf = async () => {
-		if (!onRemoveFromBookshelf) return;
-		setIsRemoving(true);
-		try {
-			await onRemoveFromBookshelf();
-		} catch {
-			// Surfaced by the caller.
-		} finally {
-			setIsRemoving(false);
-		}
-	};
+	const title = book.title || "Untitled";
 
 	const fraction = readingFraction(book.reading);
 	const timeLeft = readingTimeLeft(book.reading);
@@ -203,33 +148,25 @@ export function BookCard({
 			transition="all 0.2s"
 			position="relative"
 		>
-			{/* The cover doubles as the entry into the reader. With several
-			    readable formats it opens a chooser dialog instead of linking
-			    directly. */}
-			{readableFormats.length === 1 ? (
+			{/* A processing book has nothing to show yet, so it links nowhere. */}
+			{isProcessing ? (
+				cover
+			) : (
 				<Link
-					href={readerHref(book, readableFormats[0])}
-					aria-label="Read book"
+					href={bookDetailsHref(book.id)}
+					aria-label={`View details for ${title}`}
 				>
 					{cover}
 				</Link>
-			) : readableFormats.length > 1 ? (
-				<Box asChild cursor="pointer" width="100%">
-					<button
-						type="button"
-						aria-label="Read book"
-						onClick={() => setIsFormatDialogOpen(true)}
-					>
-						{cover}
-					</button>
-				</Box>
-			) : (
-				cover
 			)}
 			<Card.Body p={3}>
 				<VStack align="start" gap={1}>
 					<Text fontWeight="medium" lineClamp={2} title={book.title}>
-						{isProcessing ? "Processing..." : book.title || "Untitled"}
+						{isProcessing ? (
+							"Processing..."
+						) : (
+							<Link href={bookDetailsHref(book.id)}>{title}</Link>
+						)}
 					</Text>
 					<Wrap gap={1}>
 						{readyFiles(book.files).map((file) => (
@@ -249,8 +186,9 @@ export function BookCard({
 
 			{!isProcessing && (
 				<Box position="absolute" top={2} right={2}>
-					<Menu.Root positioning={{ placement: "bottom-end" }}>
-						<Menu.Trigger asChild>
+					<BookActionsMenu
+						book={book}
+						trigger={
 							<IconButton
 								aria-label="Book actions"
 								variant="surface"
@@ -259,173 +197,16 @@ export function BookCard({
 							>
 								<LuEllipsis />
 							</IconButton>
-						</Menu.Trigger>
-						<Portal>
-							<Menu.Positioner>
-								<Menu.Content minW="13rem">
-									<Menu.Item value="edit" asChild>
-										<Link href={`/dashboard/books/${book.id}/edit`}>
-											<LuPencil />
-											Edit
-										</Link>
-									</Menu.Item>
-									{bookshelves && onToggleBookshelf && (
-										<Menu.Root
-											closeOnSelect={false}
-											positioning={{ placement: "right-start", gutter: 2 }}
-										>
-											<Menu.TriggerItem>
-												<LuBookmark />
-												<Box flex="1">Add to bookshelf</Box>
-												<LuChevronRight />
-											</Menu.TriggerItem>
-											<Portal>
-												<Menu.Positioner>
-													<Menu.Content>
-														<Menu.ItemGroup>
-															<Menu.ItemGroupLabel>
-																Bookshelves
-															</Menu.ItemGroupLabel>
-															{bookshelves.length === 0 ? (
-																<Menu.Item value="none" disabled>
-																	No bookshelves yet
-																</Menu.Item>
-															) : (
-																bookshelves.map((bookshelf) => {
-																	const member = isBookInBookshelf(
-																		book,
-																		bookshelf.id,
-																	);
-																	return (
-																		<Menu.CheckboxItem
-																			key={bookshelf.id}
-																			value={bookshelf.id}
-																			checked={member}
-																			onCheckedChange={() =>
-																				onToggleBookshelf(bookshelf, !member)
-																			}
-																		>
-																			{bookshelf.name}
-																			<Menu.ItemIndicator />
-																		</Menu.CheckboxItem>
-																	);
-																})
-															)}
-														</Menu.ItemGroup>
-													</Menu.Content>
-												</Menu.Positioner>
-											</Portal>
-										</Menu.Root>
-									)}
-									{onRemoveFromBookshelf && (
-										<Menu.Item
-											value="remove-from-bookshelf"
-											disabled={isRemoving}
-											onClick={handleRemoveFromBookshelf}
-										>
-											<LuBookmarkMinus />
-											Remove from bookshelf
-										</Menu.Item>
-									)}
-									{onMarkRead && book.reading.status !== "read" && (
-										<Menu.Item value="mark-read" onClick={onMarkRead}>
-											<LuCheck />
-											Mark as read
-										</Menu.Item>
-									)}
-									{onMarkUnread && book.reading.status !== "unread" && (
-										<Menu.Item value="mark-unread" onClick={onMarkUnread}>
-											<LuRotateCcw />
-											Mark as unread
-										</Menu.Item>
-									)}
-									{onDelete && (
-										<>
-											<Menu.Separator />
-											<Menu.Item
-												value="delete"
-												color="fg.error"
-												_hover={{ bg: "bg.error", color: "fg.error" }}
-												onClick={() => setIsDeleteDialogOpen(true)}
-											>
-												<LuTrash2 />
-												Delete
-											</Menu.Item>
-										</>
-									)}
-								</Menu.Content>
-							</Menu.Positioner>
-						</Portal>
-					</Menu.Root>
-				</Box>
-			)}
-
-			{readableFormats.length > 1 && (
-				<DialogRoot
-					open={isFormatDialogOpen}
-					onOpenChange={(e) => setIsFormatDialogOpen(e.open)}
-				>
-					<DialogContent>
-						<DialogHeader>
-							<DialogTitle>Read Book</DialogTitle>
-						</DialogHeader>
-						<DialogBody>
-							<Text mb={4}>Choose a format to read.</Text>
-							<VStack gap={2} align="stretch">
-								{readableFormats.map((format) => (
-									<Button key={format} asChild variant="outline">
-										<Link href={readerHref(book, format)}>
-											{format.toUpperCase()}
-										</Link>
-									</Button>
-								))}
-							</VStack>
-						</DialogBody>
-						<DialogCloseTrigger />
-					</DialogContent>
-				</DialogRoot>
-			)}
-
-			{onDelete && (
-				<DialogRoot
-					role="alertdialog"
-					open={isDeleteDialogOpen}
-					onOpenChange={(e) => {
-						if (!isDeleting) {
-							setIsDeleteDialogOpen(e.open);
 						}
-					}}
-				>
-					<DialogContent>
-						<DialogHeader>
-							<DialogTitle>Delete Book</DialogTitle>
-						</DialogHeader>
-						<DialogBody>
-							<Text>
-								Are you sure you want to delete{" "}
-								<Span fontWeight="semibold">{book.title || "this book"}</Span>?
-								This action cannot be undone.
-							</Text>
-						</DialogBody>
-						<DialogFooter>
-							<Button
-								variant="outline"
-								onClick={() => setIsDeleteDialogOpen(false)}
-								disabled={isDeleting}
-							>
-								Cancel
-							</Button>
-							<Button
-								colorPalette="red"
-								onClick={handleDelete}
-								loading={isDeleting}
-							>
-								Delete
-							</Button>
-						</DialogFooter>
-						<DialogCloseTrigger disabled={isDeleting} />
-					</DialogContent>
-				</DialogRoot>
+						editHref={`/dashboard/books/${book.id}/edit`}
+						onDelete={onDelete}
+						bookshelves={bookshelves}
+						onToggleBookshelf={onToggleBookshelf}
+						onRemoveFromBookshelf={onRemoveFromBookshelf}
+						onMarkRead={onMarkRead}
+						onMarkUnread={onMarkUnread}
+					/>
+				</Box>
 			)}
 		</Card.Root>
 	);

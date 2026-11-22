@@ -13,6 +13,10 @@
 				"function": "opds"
 			},
 			{
+				"regex": "^/books/[^/]+/?$",
+				"destination": "/books/__shell__.html"
+			},
+			{
 				"regex": "^/dashboard/books/[^/]+/edit/?$",
 				"destination": "/dashboard/books/__shell__/edit.html"
 			},

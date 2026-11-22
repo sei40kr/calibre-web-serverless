@@ -16,6 +16,7 @@ import { bookMetadataSearchService } from "@calibre-web-serverless/infrastructur
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useMemo } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
+import { bookDetailsHref } from "@/components/pages/BookDetailsPage";
 import { BookNotFoundPage } from "@/components/pages/BookNotFoundPage";
 import {
 	type BookEditData,
@@ -187,7 +188,7 @@ function EditBookRouteContent({ userId, bookId }: EditBookRouteContentProps) {
 				title: "Book updated",
 				description: `"${params.title}" has been updated.`,
 			});
-			router.push("/dashboard");
+			router.push(bookDetailsHref(bookId));
 		},
 		[book, userId, bookId, router],
 	);
@@ -204,8 +205,8 @@ function EditBookRouteContent({ userId, bookId }: EditBookRouteContentProps) {
 	}, [book, userId, bookId, router]);
 
 	const handleCancel = useCallback(() => {
-		router.push("/dashboard");
-	}, [router]);
+		router.push(bookDetailsHref(bookId));
+	}, [router, bookId]);
 
 	const handleSearchMetadata = useCallback(
 		(query: string) => bookMetadataSearchService.search(query),

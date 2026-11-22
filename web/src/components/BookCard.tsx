@@ -6,6 +6,7 @@ import {
 	type Bookshelf,
 	isBookInBookshelf,
 } from "@calibre-web-serverless/domain/models/bookshelf";
+import { readingFraction } from "@calibre-web-serverless/domain/models/readingProgress";
 import {
 	Badge,
 	Box,
@@ -16,6 +17,7 @@ import {
 	Image,
 	Menu,
 	Portal,
+	Progress,
 	Skeleton,
 	Span,
 	Text,
@@ -28,6 +30,7 @@ import {
 	LuBook,
 	LuBookmark,
 	LuBookmarkMinus,
+	LuCheck,
 	LuPencil,
 	LuTrash2,
 	LuTriangleAlert,
@@ -106,6 +109,7 @@ export function BookCard({
 		}
 	};
 
+	const fraction = readingFraction(book.reading);
 	const cover = (
 		<Box
 			bg="bg.muted"
@@ -114,6 +118,7 @@ export function BookCard({
 			alignItems="center"
 			justifyContent="center"
 			overflow="hidden"
+			position="relative"
 		>
 			{isProcessing ? (
 				<Skeleton width="100%" height="100%" />
@@ -131,6 +136,50 @@ export function BookCard({
 				/>
 			) : (
 				<LuBook size={48} color="var(--chakra-colors-fg-muted)" />
+			)}
+			{fraction !== null && (
+				<>
+					{book.reading.status === "read" ? (
+						<Badge
+							position="absolute"
+							left={2}
+							bottom={3}
+							boxSize={5}
+							justifyContent="center"
+							px={0}
+							bg="blackAlpha.700"
+							color="white"
+							role="img"
+							aria-label="Read"
+						>
+							<LuCheck strokeWidth={2.5} aria-hidden />
+						</Badge>
+					) : (
+						<Badge
+							position="absolute"
+							left={2}
+							bottom={3}
+							bg="blackAlpha.700"
+							color="white"
+							fontVariantNumeric="tabular-nums"
+						>
+							{Math.round(fraction * 100)}%
+						</Badge>
+					)}
+					<Progress.Root
+						position="absolute"
+						insetX={0}
+						bottom={0}
+						size="xs"
+						value={fraction * 100}
+						colorPalette="blue"
+						aria-hidden
+					>
+						<Progress.Track borderRadius={0} bg="blackAlpha.500">
+							<Progress.Range />
+						</Progress.Track>
+					</Progress.Root>
+				</>
 			)}
 		</Box>
 	);

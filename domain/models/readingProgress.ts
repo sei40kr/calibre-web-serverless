@@ -151,3 +151,13 @@ export function locationFraction(location: ReadingLocation): number {
 		.reduce((sum, length) => sum + length, 0);
 	return Math.min((before + charOffset) / total, 1);
 }
+
+/**
+ * How much of the book is read, in [0, 1], or null when it has not been
+ * started. A read book is wholly read wherever it was left.
+ */
+export function readingFraction(reading: ReadingProgress): number | null {
+	if (reading.status === "read") return 1;
+	const position = currentPosition(reading);
+	return position ? locationFraction(position) : null;
+}

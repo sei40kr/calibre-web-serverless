@@ -103,6 +103,54 @@ export const Default: Story = {
 	},
 };
 
+const inProgress: Book["reading"] = {
+	status: "reading",
+	lastReadAt: new Date("2024-02-01"),
+	lastFormat: "epub",
+	positions: {
+		epub: {
+			chapterNo: 2,
+			charOffset: 28,
+			chapterTitle: null,
+			chapterLengths: [100, 100],
+			activeSeconds: 0,
+			unitsRead: 0,
+		},
+	},
+};
+
+export const Reading: Story = {
+	args: { book: { ...mockBook, reading: inProgress } },
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+
+		// (100 + 28) of 200 characters.
+		await expect(canvas.getByText("64%")).toBeInTheDocument();
+	},
+};
+
+export const Read: Story = {
+	args: { book: { ...mockBook, reading: { ...inProgress, status: "read" } } },
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+
+		// A full bar and a check; no percentage.
+		await expect(canvas.getByRole("img", { name: "Read" })).toBeInTheDocument();
+		await expect(canvas.queryByText(/%$/)).not.toBeInTheDocument();
+		await expect(
+			canvasElement.querySelector('[data-scope="progress"]'),
+		).toBeInTheDocument();
+	},
+};
+
+export const Unread: Story = {
+	play: async ({ canvasElement }) => {
+		await expect(
+			canvasElement.querySelector('[data-scope="progress"]'),
+		).not.toBeInTheDocument();
+	},
+};
+
 export const CoverLoading: Story = {
 	args: {
 		coverUrl: null,

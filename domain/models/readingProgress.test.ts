@@ -3,6 +3,7 @@ import {
 	locationFraction,
 	type ReadingProgress,
 	type ReadProgress,
+	readingFraction,
 	unreadProgress,
 	withLocation,
 } from "./readingProgress";
@@ -75,6 +76,30 @@ describe("locationFraction", () => {
 				chapterLengths: [0],
 			}),
 		).toBe(0);
+	});
+});
+
+describe("readingFraction", () => {
+	const reading: ReadingProgress = {
+		status: "reading",
+		lastReadAt: at,
+		lastFormat: "pdf",
+		positions: {
+			pdf: { pageNo: 5, pageCount: 10, activeSeconds: 0, unitsRead: 0 },
+			cbz: { pageNo: 9, pageCount: 10, activeSeconds: 0, unitsRead: 0 },
+		},
+	};
+
+	it("is null for an unread book", () => {
+		expect(readingFraction(unreadProgress)).toBeNull();
+	});
+
+	it("follows the format read last", () => {
+		expect(readingFraction(reading)).toBe(0.5);
+	});
+
+	it("is 1 for a read book wherever it was left", () => {
+		expect(readingFraction({ ...reading, status: "read" })).toBe(1);
 	});
 });
 

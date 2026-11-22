@@ -22,6 +22,15 @@ export interface BookRepository {
 			onError: (error: Error) => void;
 		},
 	): () => void;
+	/** Live view of the books being read, most recently read first. */
+	subscribeToBooksInProgress(
+		userId: string,
+		options: {
+			limit: number;
+			onData: (books: Book[]) => void;
+			onError: (error: Error) => void;
+		},
+	): () => void;
 	subscribeToBook(
 		userId: string,
 		bookId: string,

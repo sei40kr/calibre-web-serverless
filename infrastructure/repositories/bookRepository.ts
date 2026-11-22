@@ -25,7 +25,9 @@ import {
 	getDoc,
 	getDocs,
 	increment,
+	limit,
 	onSnapshot,
+	orderBy,
 	type QueryDocumentSnapshot,
 	query,
 	runTransaction,
@@ -35,6 +37,7 @@ import {
 	type Timestamp,
 	type Transaction,
 	updateDoc,
+	where,
 } from "firebase/firestore";
 import { deleteObject, ref } from "firebase/storage";
 import {
@@ -211,6 +214,31 @@ const subscribeToBooks = (
 		(snapshot) => {
 			onData(snapshot.docs.map((d) => d.data()));
 		},
+		onError,
+	);
+};
+
+const subscribeToBooksInProgress = (
+	userId: string,
+	{
+		limit: count,
+		onData,
+		onError,
+	}: {
+		limit: number;
+		onData: (books: Book[]) => void;
+		onError: (error: Error) => void;
+	},
+): (() => void) => {
+	const q = query(
+		collection(db, "users", userId, "books").withConverter(bookConverter),
+		where("reading.status", "==", "reading"),
+		orderBy("reading.lastReadAt", "desc"),
+		limit(count),
+	);
+	return onSnapshot(
+		q,
+		(snapshot) => onData(snapshot.docs.map((d) => d.data())),
 		onError,
 	);
 };
@@ -505,6 +533,7 @@ export const bookRepository: BookRepository = {
 	hasBooks,
 	getBook,
 	subscribeToBooks,
+	subscribeToBooksInProgress,
 	subscribeToBook,
 	createBook,
 	updateBook,

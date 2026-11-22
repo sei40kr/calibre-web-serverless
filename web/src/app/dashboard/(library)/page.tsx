@@ -10,6 +10,7 @@ import { LuPlus } from "react-icons/lu";
 import { AuthGuard } from "@/components/AuthGuard";
 import { BookFilterToolbar } from "@/components/BookFilterToolbar";
 import { BookGrid } from "@/components/BookGrid";
+import { ContinueReading } from "@/components/ContinueReading";
 import { UploadBookDialog } from "@/components/UploadBookDialog";
 import { toaster } from "@/components/ui/toaster";
 import { useBookUploads } from "@/contexts/BookUploadContext";
@@ -19,11 +20,14 @@ import { useBookFilter } from "@/hooks/useBookFilter";
 import { useBooks } from "@/hooks/useBooks";
 import { useBookshelfMembership } from "@/hooks/useBookshelfMembership";
 import { useBookshelves } from "@/hooks/useBookshelves";
+import { useBooksInProgress } from "@/hooks/useBooksInProgress";
 import { usePublishers } from "@/hooks/usePublishers";
 import { useSeries } from "@/hooks/useSeries";
 import { useTags } from "@/hooks/useTags";
 import { buildBookFacets } from "@/lib/bookFacets";
 import { isFilterActive } from "@/lib/bookFilter";
+
+const CONTINUE_READING_LIMIT = 4;
 
 interface DashboardContentProps {
 	user: User;
@@ -44,6 +48,11 @@ function DashboardContent({
 	// Books are filtered and sorted server-side via the Firestore query.
 	const { books, loading } = useBooks(user.uid, filter, sort);
 	const bookCoverInfos = useBookCoverUrls(books);
+	const { books: booksInProgress } = useBooksInProgress(
+		user.uid,
+		CONTINUE_READING_LIMIT,
+	);
+	const inProgressCoverInfos = useBookCoverUrls(booksInProgress);
 
 	// Filter options come from the full entity lists, independent of the
 	// (filtered) book results, so every choice stays available.
@@ -126,6 +135,16 @@ function DashboardContent({
 							onFilterChange={setFilter}
 							onSortChange={setSort}
 						/>
+					)}
+
+					{!filtering && booksInProgress.length > 0 && (
+						<>
+							<ContinueReading
+								books={booksInProgress}
+								bookCoverInfos={inProgressCoverInfos}
+							/>
+							<Heading size="md">All books</Heading>
+						</>
 					)}
 
 					<BookGrid

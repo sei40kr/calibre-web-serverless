@@ -6,7 +6,7 @@ import {
 	unreadProgress,
 } from "@calibre-web-serverless/domain/models/readingProgress";
 import { deleteField, doc, getDoc, updateDoc } from "firebase/firestore";
-import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "../lib/firebase";
 import { clearFirestore } from "../testing/clearFirestore";
 import { signInTestUser } from "../testing/testUser";
@@ -452,6 +452,66 @@ describe("bookRepository", () => {
 			expect((await getDoc(seriesRef)).data()?.bookCount).toBe(1);
 			expect((await getDoc(tagRef)).data()?.bookCount).toBe(1);
 			expect((await getDoc(publisherRef)).data()?.bookCount).toBe(1);
+		});
+	});
+
+	describe("subscribeToBooksInProgress", () => {
+		it("lists only books being read, most recently read first", async () => {
+			const [older, newer, read, unread] = await Promise.all(
+				["older", "newer", "read", "unread"].map(async (name) => {
+					const { bookId } = await bookRepository.createBook({
+						userId,
+						file: createTestFile(`${name}.pdf`),
+					});
+					return bookId;
+				}),
+			);
+			const progress = (
+				status: "reading" | "read",
+				lastReadAt: string,
+			): ReadingProgress => ({
+				status,
+				lastReadAt: new Date(lastReadAt),
+				lastFormat: "pdf",
+				positions: {
+					pdf: { pageNo: 2, pageCount: 9, activeSeconds: 0, unitsRead: 0 },
+				},
+			});
+			await bookRepository.updateReadingProgress(
+				userId,
+				older,
+				progress("reading", "2026-11-01"),
+			);
+			await bookRepository.updateReadingProgress(
+				userId,
+				newer,
+				progress("reading", "2026-11-02"),
+			);
+			await bookRepository.updateReadingProgress(
+				userId,
+				read,
+				progress("read", "2026-11-03"),
+			);
+
+			// The first snapshot can come from the local cache, which still holds
+			// books written by earlier tests, so wait for the settled result.
+			let ids: string[] = [];
+			const unsubscribe = bookRepository.subscribeToBooksInProgress(userId, {
+				limit: 4,
+				onData: (books) => {
+					ids = books.map((book) => book.id);
+				},
+				onError: (error) => {
+					throw error;
+				},
+			});
+			try {
+				await vi.waitFor(() => expect(ids).toEqual([newer, older]));
+			} finally {
+				unsubscribe();
+			}
+			expect(ids).not.toContain(read);
+			expect(ids).not.toContain(unread);
 		});
 	});
 

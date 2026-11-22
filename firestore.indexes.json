@@ -4,6 +4,14 @@
 			"collectionGroup": "books",
 			"queryScope": "COLLECTION",
 			"fields": [
+				{ "fieldPath": "reading.status", "order": "ASCENDING" },
+				{ "fieldPath": "reading.lastReadAt", "order": "DESCENDING" }
+			]
+		},
+		{
+			"collectionGroup": "books",
+			"queryScope": "COLLECTION",
+			"fields": [
 				{ "fieldPath": "status", "order": "ASCENDING" },
 				{ "fieldPath": "createdAt", "order": "DESCENDING" }
 			]

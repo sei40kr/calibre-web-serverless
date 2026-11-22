@@ -14,15 +14,21 @@ A modern, serverless reimplementation of [Calibre-Web](https://github.com/janecz
       <sub>Library</sub>
     </td>
     <td align="center">
-      <a href="docs/images/edit-metadata.png"><img src="docs/images/edit-metadata.png" alt="The metadata editor for a book, with its cover and fields for title, authors and series" width="420"></a><br>
-      <sub>Edit metadata</sub>
+      <a href="docs/images/book-details.png"><img src="docs/images/book-details.png" alt="The details page of Alice's Adventures in Wonderland, with its cover, rating, tags, reading progress, description and metadata" width="420"></a><br>
+      <sub>Book details</sub>
     </td>
   </tr>
   <tr>
     <td align="center">
+      <a href="docs/images/edit-metadata.png"><img src="docs/images/edit-metadata.png" alt="The metadata editor for a book, with its cover and fields for title, authors and series" width="420"></a><br>
+      <sub>Edit metadata</sub>
+    </td>
+    <td align="center">
       <a href="docs/images/fetch-metadata.png"><img src="docs/images/fetch-metadata.png" alt="The fetch-metadata dialog listing candidate editions from Google Play Books, each with a cover, author, year and a Use this button" width="420"></a><br>
       <sub>Fetch metadata from the internet</sub>
     </td>
+  </tr>
+  <tr>
     <td align="center">
       <a href="docs/images/reader.png"><img src="docs/images/reader.png" alt="The built-in reader showing a page of The Metamorphosis" width="420"></a><br>
       <sub>Built-in reader</sub>

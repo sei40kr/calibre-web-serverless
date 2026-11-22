@@ -67,7 +67,8 @@ const joeLouis: Book = {
 		lastReadAt: new Date("2024-02-01"),
 		lastFormat: "cbz",
 		positions: {
-			cbz: { pageNo: 4, pageCount: 8, activeSeconds: 0, unitsRead: 0 },
+			// 5 pages left at 2 minutes a page.
+			cbz: { pageNo: 4, pageCount: 8, activeSeconds: 360, unitsRead: 3 },
 		},
 	},
 };
@@ -114,6 +115,9 @@ export const Default: Story = {
 		).toBeInTheDocument();
 		await expect(canvas.getByText("8%")).toBeInTheDocument();
 		await expect(canvas.getByText("50%")).toBeInTheDocument();
+		await expect(canvas.getByText("About 10 min left")).toBeInTheDocument();
+		// Alice has no pace measured yet.
+		await expect(canvas.getAllByText(/left$/)).toHaveLength(1);
 		await expect(
 			canvas.getByRole("progressbar", {
 				name: "Alice's Adventures in Wonderland reading progress",

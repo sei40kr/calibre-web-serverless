@@ -54,7 +54,31 @@ describe("useReadingProgressRecorder", () => {
 				status: "reading",
 				lastFormat: "pdf",
 				positions: {
-					pdf: { pageNo: 3, pageCount: 10, activeSeconds: 0, unitsRead: 0 },
+					pdf: expect.objectContaining({ pageNo: 3, pageCount: 10 }),
+				},
+			}),
+		);
+	});
+
+	it("counts only focused time toward the pace", () => {
+		const { result } = render();
+		const hasFocus = vi.spyOn(document, "hasFocus").mockReturnValue(true);
+
+		act(() => {
+			result.current("pdf", { pageNo: 2, pageCount: 10 });
+			vi.advanceTimersByTime(20_000);
+			hasFocus.mockReturnValue(false);
+			vi.advanceTimersByTime(60_000);
+			result.current("pdf", { pageNo: 3, pageCount: 10 });
+			vi.advanceTimersByTime(SAVE_DELAY_MS);
+		});
+
+		expect(save).toHaveBeenLastCalledWith(
+			"user-1",
+			"book-1",
+			expect.objectContaining({
+				positions: {
+					pdf: { pageNo: 3, pageCount: 10, activeSeconds: 20, unitsRead: 1 },
 				},
 			}),
 		);

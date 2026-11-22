@@ -21,6 +21,7 @@ import {
 	readableBookFormats,
 	readerHref,
 } from "@/components/pages/bookReaderPages";
+import { readingTimeLeft } from "@/lib/timeLeft";
 
 interface ContinueReadingProps {
 	/** Books being read, in the order to show them. Renders nothing when empty. */
@@ -72,6 +73,7 @@ function ContinueReadingItem({
 	const chapterTitle =
 		position && "chapterTitle" in position ? position.chapterTitle : null;
 	const percent = Math.round((readingFraction(book.reading) ?? 0) * 100);
+	const timeLeft = readingTimeLeft(book.reading);
 
 	// The format read last may have been removed since; fall back to another.
 	const formats = readableBookFormats(book.files);
@@ -130,6 +132,11 @@ function ContinueReadingItem({
 						{percent}%
 					</Text>
 				</HStack>
+				{timeLeft && (
+					<Text textStyle="xs" color="fg.muted">
+						{timeLeft}
+					</Text>
+				)}
 			</Stack>
 		</HStack>
 	);

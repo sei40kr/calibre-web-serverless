@@ -31,6 +31,7 @@ import {
 	LuBookmark,
 	LuBookmarkMinus,
 	LuCheck,
+	LuClock,
 	LuPencil,
 	LuTrash2,
 	LuTriangleAlert,
@@ -48,6 +49,7 @@ import {
 	DialogRoot,
 	DialogTitle,
 } from "@/components/ui/dialog";
+import { readingTimeLeft } from "@/lib/timeLeft";
 
 interface BookCardProps {
 	book: Book;
@@ -110,6 +112,7 @@ export function BookCard({
 	};
 
 	const fraction = readingFraction(book.reading);
+	const timeLeft = readingTimeLeft(book.reading);
 	const cover = (
 		<Box
 			bg="bg.muted"
@@ -227,6 +230,12 @@ export function BookCard({
 							</Badge>
 						))}
 					</Wrap>
+					{timeLeft && (
+						<HStack gap={1} textStyle="xs" color="fg.muted">
+							<LuClock aria-hidden />
+							{timeLeft}
+						</HStack>
+					)}
 				</VStack>
 			</Card.Body>
 

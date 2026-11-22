@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
 	locationFraction,
+	MAX_SECONDS_PER_PAGE,
 	type ReadingProgress,
 	type ReadProgress,
 	readingFraction,
+	secondsLeft,
 	unreadProgress,
 	withLocation,
 } from "./readingProgress";
@@ -47,6 +49,121 @@ describe("withLocation", () => {
 			unitsRead: 4,
 		});
 		expect(reading.positions.cbz).toEqual(read.positions.cbz);
+	});
+});
+
+describe("withLocation pace", () => {
+	const onPage = (pageNo: number): ReadingProgress => ({
+		status: "reading",
+		lastReadAt: at,
+		lastFormat: "pdf",
+		positions: {
+			pdf: { pageNo, pageCount: 10, activeSeconds: 100, unitsRead: 2 },
+		},
+	});
+
+	it("credits the time on a page when turning to the next", () => {
+		const reading = withLocation(
+			onPage(3),
+			"pdf",
+			{ pageNo: 4, pageCount: 10 },
+			at,
+			40,
+		);
+		expect(reading.positions.pdf).toMatchObject({
+			activeSeconds: 140,
+			unitsRead: 3,
+		});
+	});
+
+	it("caps the time credited for one page", () => {
+		const reading = withLocation(
+			onPage(3),
+			"pdf",
+			{ pageNo: 4, pageCount: 10 },
+			at,
+			MAX_SECONDS_PER_PAGE * 3,
+		);
+		expect(reading.positions.pdf?.activeSeconds).toBe(
+			100 + MAX_SECONDS_PER_PAGE,
+		);
+	});
+
+	it("credits nothing for turning back or jumping ahead", () => {
+		for (const pageNo of [2, 3, 7]) {
+			const reading = withLocation(
+				onPage(3),
+				"pdf",
+				{ pageNo, pageCount: 10 },
+				at,
+				40,
+			);
+			expect(reading.positions.pdf).toMatchObject({
+				activeSeconds: 100,
+				unitsRead: 2,
+			});
+		}
+	});
+
+	it("credits the characters of an EPUB page, across a chapter end", () => {
+		const epub = (chapterNo: number, charOffset: number): ReadingProgress => ({
+			status: "reading",
+			lastReadAt: at,
+			lastFormat: "epub",
+			positions: {
+				epub: {
+					chapterNo,
+					charOffset,
+					chapterTitle: null,
+					chapterLengths: [500, 500],
+					activeSeconds: 0,
+					unitsRead: 0,
+				},
+			},
+		});
+		const location = (chapterNo: number, charOffset: number) => ({
+			chapterNo,
+			charOffset,
+			chapterTitle: null,
+			chapterLengths: [500, 500],
+		});
+
+		expect(
+			withLocation(epub(1, 100), "epub", location(1, 300), at, 30).positions
+				.epub,
+		).toMatchObject({ activeSeconds: 30, unitsRead: 200 });
+		expect(
+			withLocation(epub(1, 400), "epub", location(2, 0), at, 30).positions.epub,
+		).toMatchObject({ activeSeconds: 30, unitsRead: 100 });
+		expect(
+			withLocation(epub(1, 400), "epub", location(2, 50), at, 30).positions
+				.epub,
+		).toMatchObject({ activeSeconds: 0, unitsRead: 0 });
+	});
+});
+
+describe("secondsLeft", () => {
+	it("extrapolates the pace over what is left", () => {
+		// Pages 4-10 left at 20 seconds a page.
+		expect(
+			secondsLeft({
+				pageNo: 4,
+				pageCount: 10,
+				activeSeconds: 60,
+				unitsRead: 3,
+			}),
+		).toBe(140);
+	});
+
+	it("is null until a minute of reading is measured", () => {
+		expect(
+			secondsLeft({
+				pageNo: 4,
+				pageCount: 10,
+				activeSeconds: 59,
+				unitsRead: 3,
+			}),
+		).toBeNull();
 	});
 });
 

@@ -113,8 +113,9 @@ const inProgress: Book["reading"] = {
 			charOffset: 28,
 			chapterTitle: null,
 			chapterLengths: [100, 100],
-			activeSeconds: 0,
-			unitsRead: 0,
+			// 72 characters left at 1 character a second.
+			activeSeconds: 600,
+			unitsRead: 600,
 		},
 	},
 };
@@ -126,6 +127,7 @@ export const Reading: Story = {
 
 		// (100 + 28) of 200 characters.
 		await expect(canvas.getByText("64%")).toBeInTheDocument();
+		await expect(canvas.getByText("About 1 min left")).toBeInTheDocument();
 	},
 };
 
@@ -134,9 +136,10 @@ export const Read: Story = {
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
 
-		// A full bar and a check; no percentage.
+		// A full bar and a check; no percentage or time left.
 		await expect(canvas.getByRole("img", { name: "Read" })).toBeInTheDocument();
 		await expect(canvas.queryByText(/%$/)).not.toBeInTheDocument();
+		await expect(canvas.queryByText(/left$/)).not.toBeInTheDocument();
 		await expect(
 			canvasElement.querySelector('[data-scope="progress"]'),
 		).toBeInTheDocument();

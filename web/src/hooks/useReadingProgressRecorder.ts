@@ -11,12 +11,17 @@ import { useCallback, useEffect, useRef } from "react";
 // write per second to a document, so saves wait for the reader to settle.
 export const SAVE_DELAY_MS = 3000;
 
+// Focus is sampled rather than tracked through focus/blur events: clicking
+// into the EPUB iframe blurs the window while the reader keeps focus.
+const FOCUS_SAMPLE_MS = 1000;
+
 /**
  * Returns a function that moves the book's reading progress to a location.
  * Progress is saved once no move has come for {@link SAVE_DELAY_MS}, and at
  * once when the page is hidden or the caller unmounts, so leaving the reader
- * never drops the last page. `initial` is the progress as loaded; moves before
- * it arrives are ignored.
+ * never drops the last page. Each move passes on the time the page had focus
+ * since the move before, which the pace counts. `initial` is the progress as
+ * loaded; moves before it arrives are ignored.
  */
 export function useReadingProgressRecorder(
 	userId: string,
@@ -30,6 +35,7 @@ export function useReadingProgressRecorder(
 		readingRef.current = initial;
 	}
 	const unsavedRef = useRef(false);
+	const focusedMsRef = useRef(0);
 	const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
 	const flush = useCallback(() => {
@@ -43,6 +49,15 @@ export function useReadingProgressRecorder(
 				console.error("Failed to save reading progress", error);
 			});
 	}, [userId, bookId]);
+
+	useEffect(() => {
+		const id = setInterval(() => {
+			if (document.visibilityState === "visible" && document.hasFocus()) {
+				focusedMsRef.current += FOCUS_SAMPLE_MS;
+			}
+		}, FOCUS_SAMPLE_MS);
+		return () => clearInterval(id);
+	}, []);
 
 	useEffect(() => {
 		const handleVisibilityChange = () => {
@@ -61,7 +76,14 @@ export function useReadingProgressRecorder(
 		(format: PositionedFormat, location: ReadingLocation) => {
 			const reading = readingRef.current;
 			if (!reading) return;
-			readingRef.current = withLocation(reading, format, location, new Date());
+			readingRef.current = withLocation(
+				reading,
+				format,
+				location,
+				new Date(),
+				focusedMsRef.current / 1000,
+			);
+			focusedMsRef.current = 0;
 			unsavedRef.current = true;
 			clearTimeout(timerRef.current);
 			timerRef.current = setTimeout(flush, SAVE_DELAY_MS);

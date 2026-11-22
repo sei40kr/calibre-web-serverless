@@ -22,6 +22,7 @@
 		"./models/identifier": "./models/identifier.ts",
 		"./models/bookMetadataSearch": "./models/bookMetadataSearch.ts",
 		"./models/opdsApp": "./models/opdsApp.ts",
+		"./models/readingProgress": "./models/readingProgress.ts",
 		"./repositories/bookRepository": "./repositories/bookRepository.ts",
 		"./repositories/bookFileRepository": "./repositories/bookFileRepository.ts",
 		"./repositories/bookCoverRepository": "./repositories/bookCoverRepository.ts",

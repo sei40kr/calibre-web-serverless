@@ -8,6 +8,7 @@ import {
 	IdentifierType,
 } from "@calibre-web-serverless/domain/models/identifier";
 import { Language } from "@calibre-web-serverless/domain/models/language";
+import { unreadProgress } from "@calibre-web-serverless/domain/models/readingProgress";
 import {
 	type DocumentData,
 	type DocumentSnapshot,
@@ -16,10 +17,12 @@ import {
 	Timestamp,
 } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
-import type {
-	BookDocument as BaseBookDocument,
-	BookFileDocument as BaseBookFileDocument,
-	IdentifierDocument,
+import {
+	type BookDocument as BaseBookDocument,
+	type BookFileDocument as BaseBookFileDocument,
+	type IdentifierDocument,
+	toReadingProgress,
+	unreadProgressDocument,
 } from "../../documents/book";
 import { extractedCoverPath } from "./bookCoverRepository";
 
@@ -101,6 +104,7 @@ export function toBook(snapshot: DocumentSnapshot): Book {
 		hasCustomCover: d.hasCustomCover ?? false,
 		status: d.status ?? "ready",
 		errorCode: d.errorCode ?? null,
+		reading: toReadingProgress(d.reading),
 		createdAt: d.createdAt?.toDate() ?? null,
 		updatedAt: d.updatedAt?.toDate() ?? null,
 	};
@@ -108,11 +112,17 @@ export function toBook(snapshot: DocumentSnapshot): Book {
 
 // Omits `files`/`hasProcessingFile` so a metadata write can never clobber
 // concurrent per-file state changes (those go through bookFileRepository), and
-// `bookshelfIds` for the same reason (membership is owned by the bookshelf repository).
+// `bookshelfIds` for the same reason (membership is owned by the bookshelf
+// repository), and `reading`, which a metadata write must never rewind.
 function toBookDocument(book: Book): DocumentData {
 	const document: Omit<
 		BookDocument,
-		"createdAt" | "updatedAt" | "files" | "hasProcessingFile" | "bookshelfIds"
+		| "createdAt"
+		| "updatedAt"
+		| "files"
+		| "hasProcessingFile"
+		| "bookshelfIds"
+		| "reading"
 	> & {
 		updatedAt: FieldValue;
 	} = {
@@ -205,6 +215,7 @@ interface CreateSeededBookParams {
 		| "files"
 		| "status"
 		| "errorCode"
+		| "reading"
 		| "createdAt"
 		| "updatedAt"
 	>;
@@ -237,9 +248,11 @@ export const createSeededBook = async ({
 			files: [],
 			status: "ready",
 			errorCode: null,
+			reading: unreadProgress,
 			createdAt: null,
 			updatedAt: null,
 		}),
+		reading: unreadProgressDocument,
 		files: Object.fromEntries(
 			files.map((file) => [
 				file.format,

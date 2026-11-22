@@ -12,6 +12,7 @@ import {
 	IdentifierType,
 } from "@calibre-web-serverless/domain/models/identifier";
 import { Language } from "@calibre-web-serverless/domain/models/language";
+import type { ReadingProgress } from "@calibre-web-serverless/domain/models/readingProgress";
 import type { BookRepository } from "@calibre-web-serverless/domain/repositories/bookRepository";
 import { FirebaseError } from "firebase/app";
 import {
@@ -33,12 +34,16 @@ import {
 	setDoc,
 	type Timestamp,
 	type Transaction,
+	updateDoc,
 } from "firebase/firestore";
 import { deleteObject, ref } from "firebase/storage";
-import type {
-	BookDocument as BaseBookDocument,
-	BookFileDocument as BaseBookFileDocument,
-	IdentifierDocument,
+import {
+	type BookDocument as BaseBookDocument,
+	type BookFileDocument as BaseBookFileDocument,
+	type IdentifierDocument,
+	toReadingProgress,
+	toReadingProgressDocument,
+	unreadProgressDocument,
 } from "../documents/book";
 import { db, storage } from "../lib/firebase";
 import {
@@ -86,7 +91,8 @@ const toBookFiles = (
 // clobber an in-flight format upload; file state is mutated only through the
 // per-file operations below. `bookshelfIds` is omitted for the same reason: bookshelf
 // membership is owned by bookshelfRepository, which keeps it in step with each
-// bookshelf's bookCount.
+// bookshelf's bookCount. `reading` is omitted too: only updateReadingProgress
+// writes it, so a metadata save cannot rewind progress made meanwhile.
 const bookConverter: FirestoreDataConverter<Book> = {
 	toFirestore(book: Book): DocumentData {
 		return {
@@ -112,7 +118,12 @@ const bookConverter: FirestoreDataConverter<Book> = {
 			updatedAt: serverTimestamp(),
 		} as Omit<
 			BookDocument,
-			"createdAt" | "updatedAt" | "files" | "hasProcessingFile" | "bookshelfIds"
+			| "createdAt"
+			| "updatedAt"
+			| "files"
+			| "hasProcessingFile"
+			| "bookshelfIds"
+			| "reading"
 		> & {
 			updatedAt: FieldValue;
 		};
@@ -147,6 +158,7 @@ const bookConverter: FirestoreDataConverter<Book> = {
 			hasCustomCover: d.hasCustomCover ?? false,
 			status: d.status ?? "ready",
 			errorCode: d.errorCode ?? null,
+			reading: toReadingProgress(d.reading),
 			createdAt: d.createdAt?.toDate() ?? null,
 			updatedAt: d.updatedAt?.toDate() ?? null,
 		};
@@ -278,6 +290,7 @@ const createBook = async ({ userId, file, onProgress }: CreateBookParams) => {
 		hasCustomCover: false,
 		status: "processing",
 		errorCode: null,
+		reading: unreadProgressDocument,
 		createdAt: serverTimestamp(),
 		updatedAt: serverTimestamp(),
 	};
@@ -392,6 +405,17 @@ const updateBook = async (userId: string, book: Book) => {
 	});
 };
 
+// The SDK stores `lastReadAt` (a Date) as a Timestamp; positions are plain data.
+const updateReadingProgress = async (
+	userId: string,
+	bookId: string,
+	reading: ReadingProgress,
+): Promise<void> => {
+	await updateDoc(doc(db, "users", userId, "books", bookId), {
+		reading: toReadingProgressDocument(reading),
+	});
+};
+
 const deleteBook = async (userId: string, bookId: string): Promise<void> => {
 	const bookRef = doc(db, "users", userId, "books", bookId);
 
@@ -484,5 +508,6 @@ export const bookRepository: BookRepository = {
 	subscribeToBook,
 	createBook,
 	updateBook,
+	updateReadingProgress,
 	deleteBook,
 };

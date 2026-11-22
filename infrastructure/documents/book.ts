@@ -3,6 +3,13 @@ import type {
 	BookFileStatus,
 	BookProcessingErrorCode,
 } from "@calibre-web-serverless/domain/models/bookFile";
+import {
+	lastReadIn,
+	type ReadingPositions,
+	type ReadingProgress,
+	type ReadingStatus,
+	unreadProgress,
+} from "@calibre-web-serverless/domain/models/readingProgress";
 
 export interface IdentifierDocument {
 	type: string;
@@ -19,6 +26,48 @@ export interface BookFileDocument<Time> {
 	errorCode: BookProcessingErrorCode | null;
 	addedAt: Time | null;
 }
+
+/** Positions are plain numbers and strings, so they are stored as is. */
+export interface ReadingProgressDocument<Time> {
+	status: ReadingStatus;
+	lastReadAt: Time | null;
+	lastFormat: keyof ReadingPositions | null;
+	positions: ReadingPositions;
+}
+
+// An unread book still stores every field: sorting by `lastReadAt` drops
+// documents without it.
+export const unreadProgressDocument: ReadingProgressDocument<never> = {
+	status: "unread",
+	lastReadAt: null,
+	lastFormat: null,
+	positions: {},
+};
+
+export const toReadingProgressDocument = (
+	reading: ReadingProgress,
+): ReadingProgressDocument<Date> =>
+	reading.status === "unread" ? unreadProgressDocument : reading;
+
+/**
+ * The progress a stored document holds. One that contradicts itself, which
+ * only a write from outside this repository could leave, keeps what is
+ * consistent in it: a book read with no position stays read, anything else
+ * reads as unread.
+ */
+export const toReadingProgress = (
+	d: ReadingProgressDocument<{ toDate(): Date }> | undefined,
+): ReadingProgress => {
+	const lastReadAt = d?.lastReadAt?.toDate();
+	if (!d || d.status === "unread" || !lastReadAt) return unreadProgress;
+	const current = d.lastFormat
+		? lastReadIn(d.lastFormat, d.positions ?? {})
+		: null;
+	if (current) return { status: d.status, lastReadAt, ...current };
+	return d.status === "read"
+		? { status: "read", lastReadAt, lastFormat: null, positions: {} }
+		: unreadProgress;
+};
 
 /**
  * Firestore document schema for a book. Generic over the timestamp
@@ -54,6 +103,8 @@ export interface BookDocument<Time> {
 	hasCustomCover: boolean;
 	status: BookStatus;
 	errorCode: BookProcessingErrorCode | null;
+	/** Absent on books created before reading progress existed: unread. */
+	reading?: ReadingProgressDocument<Time>;
 	createdAt: Time | null;
 	updatedAt: Time | null;
 }

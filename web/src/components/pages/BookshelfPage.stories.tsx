@@ -1,5 +1,6 @@
 import type { Book } from "@calibre-web-serverless/domain/models/book";
 import type { Bookshelf } from "@calibre-web-serverless/domain/models/bookshelf";
+import { unreadProgress } from "@calibre-web-serverless/domain/models/readingProgress";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, fn, userEvent, within } from "storybook/test";
 import { BookshelfPage } from "./BookshelfPage";
@@ -49,6 +50,7 @@ const baseBook: Book = {
 	hasCustomCover: false,
 	status: "ready",
 	errorCode: null,
+	reading: unreadProgress,
 	createdAt: new Date("2024-01-01"),
 	updatedAt: new Date("2024-01-01"),
 };

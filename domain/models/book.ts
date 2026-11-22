@@ -1,6 +1,7 @@
 import type { BookFile, BookProcessingErrorCode } from "./bookFile";
 import type { Identifier } from "./identifier";
 import type { Language } from "./language";
+import type { ReadingProgress } from "./readingProgress";
 
 /**
  * Lifecycle of the book as a whole. "processing" and "error" only describe
@@ -34,6 +35,7 @@ export interface Book {
 	hasCustomCover: boolean;
 	status: BookStatus;
 	errorCode: BookProcessingErrorCode | null;
+	reading: ReadingProgress;
 	createdAt: Date | null;
 	updatedAt: Date | null;
 }

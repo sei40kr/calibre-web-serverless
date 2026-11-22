@@ -1,6 +1,7 @@
 import type { Book } from "../models/book";
 import type { BookFileFormat } from "../models/bookFile";
 import type { BookFilter, BookSort } from "../models/bookQuery";
+import type { ReadingProgress } from "../models/readingProgress";
 
 export interface BookRepository {
 	hasBooks(userId: string): Promise<boolean>;
@@ -40,5 +41,15 @@ export interface BookRepository {
 		onProgress?: (bytesTransferred: number, totalBytes: number) => void;
 	}): Promise<{ bookId: string; format: BookFileFormat }>;
 	updateBook(userId: string, book: Book): Promise<void>;
+	/**
+	 * Replace the book's reading progress. `updateBook` never writes it, so a
+	 * metadata save cannot rewind progress; this in turn leaves `updatedAt`
+	 * alone, since reading is not a metadata edit.
+	 */
+	updateReadingProgress(
+		userId: string,
+		bookId: string,
+		reading: ReadingProgress,
+	): Promise<void>;
 	deleteBook(userId: string, bookId: string): Promise<void>;
 }

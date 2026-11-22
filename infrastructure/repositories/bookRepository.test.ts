@@ -1,7 +1,11 @@
 import type { Book } from "@calibre-web-serverless/domain/models/book";
 import { ISBN13 } from "@calibre-web-serverless/domain/models/identifier";
 import { Language } from "@calibre-web-serverless/domain/models/language";
-import { doc, getDoc } from "firebase/firestore";
+import {
+	type ReadingProgress,
+	unreadProgress,
+} from "@calibre-web-serverless/domain/models/readingProgress";
+import { deleteField, doc, getDoc, updateDoc } from "firebase/firestore";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { db } from "../lib/firebase";
 import { clearFirestore } from "../testing/clearFirestore";
@@ -216,6 +220,118 @@ describe("bookRepository", () => {
 			const author2Ref = doc(db, "users", userId, "authors", author2.id);
 			const author2After = await getDoc(author2Ref);
 			expect(author2After.data()?.bookCount).toBe(1);
+		});
+	});
+
+	describe("updateReadingProgress", () => {
+		const progress: ReadingProgress = {
+			status: "reading",
+			lastReadAt: new Date("2026-11-01T10:00:00Z"),
+			lastFormat: "epub",
+			positions: {
+				epub: {
+					chapterNo: 2,
+					charOffset: 1200,
+					chapterTitle: "CHAPTER I. Down the Rabbit-Hole",
+					chapterLengths: [300, 9000, 8000],
+					activeSeconds: 120,
+					unitsRead: 1500,
+				},
+				pdf: { pageNo: 3, pageCount: 40, activeSeconds: 0, unitsRead: 0 },
+			},
+		};
+
+		it("starts a new book unread", async () => {
+			const { bookId } = await bookRepository.createBook({
+				userId,
+				file: createTestFile("book.epub"),
+			});
+
+			const book = await bookRepository.getBook(userId, bookId);
+			expect(book?.reading).toEqual(unreadProgress);
+		});
+
+		it("round-trips progress and leaves updatedAt alone", async () => {
+			const { bookId } = await bookRepository.createBook({
+				userId,
+				file: createTestFile("book.epub"),
+			});
+			const before = await bookRepository.getBook(userId, bookId);
+
+			await bookRepository.updateReadingProgress(userId, bookId, progress);
+
+			const book = await bookRepository.getBook(userId, bookId);
+			expect(book?.reading).toEqual(progress);
+			expect(book?.updatedAt).toEqual(before?.updatedAt);
+		});
+
+		it("is not rewound by a metadata save from a stale copy", async () => {
+			const { bookId } = await bookRepository.createBook({
+				userId,
+				file: createTestFile("book.epub"),
+			});
+			const stale = await bookRepository.getBook(userId, bookId);
+			if (!stale) throw new Error("book not created");
+
+			await bookRepository.updateReadingProgress(userId, bookId, progress);
+			await bookRepository.updateBook(userId, { ...stale, title: "Edited" });
+
+			const book = await bookRepository.getBook(userId, bookId);
+			expect(book?.title).toBe("Edited");
+			expect(book?.reading).toEqual(progress);
+		});
+
+		it("reads a book stored before progress existed as unread", async () => {
+			const { bookId } = await bookRepository.createBook({
+				userId,
+				file: createTestFile("book.epub"),
+			});
+			await updateDoc(doc(db, "users", userId, "books", bookId), {
+				reading: deleteField(),
+			});
+
+			const book = await bookRepository.getBook(userId, bookId);
+			expect(book?.reading).toEqual(unreadProgress);
+		});
+
+		it("keeps every field of a book marked unread, so it still sorts", async () => {
+			const { bookId } = await bookRepository.createBook({
+				userId,
+				file: createTestFile("book.epub"),
+			});
+			await bookRepository.updateReadingProgress(userId, bookId, progress);
+
+			await bookRepository.updateReadingProgress(
+				userId,
+				bookId,
+				unreadProgress,
+			);
+
+			const stored = await getDoc(doc(db, "users", userId, "books", bookId));
+			expect(stored.get("reading")).toEqual({
+				status: "unread",
+				lastReadAt: null,
+				lastFormat: null,
+				positions: {},
+			});
+		});
+
+		it("reads a book being read without its position as unread", async () => {
+			const { bookId } = await bookRepository.createBook({
+				userId,
+				file: createTestFile("book.epub"),
+			});
+			await updateDoc(doc(db, "users", userId, "books", bookId), {
+				reading: {
+					status: "reading",
+					lastReadAt: new Date(),
+					lastFormat: "epub",
+					positions: {},
+				},
+			});
+
+			const book = await bookRepository.getBook(userId, bookId);
+			expect(book?.reading).toEqual(unreadProgress);
 		});
 	});
 

@@ -1,6 +1,7 @@
 import { BookFileError } from "@calibre-web-serverless/domain/errors/bookFileError";
 import { StorageError } from "@calibre-web-serverless/domain/errors/storageError";
 import type { Book } from "@calibre-web-serverless/domain/models/book";
+import { unreadProgress } from "@calibre-web-serverless/domain/models/readingProgress";
 import type { BookRepository } from "@calibre-web-serverless/domain/repositories/bookRepository";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -48,6 +49,7 @@ const makeBook = (overrides: Partial<Book>): Book => ({
 	hasCustomCover: false,
 	status: "processing",
 	errorCode: null,
+	reading: unreadProgress,
 	createdAt: null,
 	updatedAt: null,
 	...overrides,

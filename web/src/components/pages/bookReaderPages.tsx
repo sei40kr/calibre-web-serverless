@@ -28,6 +28,9 @@ export interface BookReaderPageProps {
 	savedPositions: ReadingPositions;
 	/** Called whenever the reader shows another location. */
 	onLocationChange: (location: ReadingLocation) => void;
+	read: boolean;
+	/** Called on request, and when the reader shows the end of a book not yet read. */
+	onMarkRead: () => void;
 	onBack: () => void;
 }
 

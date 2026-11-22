@@ -27,6 +27,8 @@ const meta = {
 		onChapterNoChange: fn(),
 		savedPosition: null,
 		onLocationChange: fn(),
+		read: false,
+		onMarkRead: fn(),
 		onBack: fn(),
 	},
 } satisfies Meta<typeof EpubReaderPage>;

@@ -16,10 +16,20 @@ vi.mock(
 
 const save = vi.mocked(bookRepository.updateReadingProgress);
 
-const render = () =>
-	renderHook(() =>
+const render = () => {
+	const hook = renderHook(() =>
 		useReadingProgressRecorder("user-1", "book-1", unreadProgress),
 	);
+	return {
+		...hook,
+		result: {
+			get current() {
+				return hook.result.current.record;
+			},
+		},
+		markRead: () => hook.result.current.markRead(),
+	};
+};
 
 describe("useReadingProgressRecorder", () => {
 	beforeEach(() => {
@@ -82,6 +92,30 @@ describe("useReadingProgressRecorder", () => {
 				},
 			}),
 		);
+	});
+
+	it("saves a mark as read at once, keeping the position", () => {
+		const { result, markRead } = render();
+		act(() => {
+			result.current("pdf", { pageNo: 2, pageCount: 10 });
+			markRead();
+		});
+
+		expect(save).toHaveBeenCalledTimes(1);
+		expect(save).toHaveBeenCalledWith(
+			"user-1",
+			"book-1",
+			expect.objectContaining({
+				status: "read",
+				positions: {
+					pdf: expect.objectContaining({ pageNo: 2 }),
+				},
+			}),
+		);
+
+		// Already read: nothing more to save.
+		act(() => markRead());
+		expect(save).toHaveBeenCalledTimes(1);
 	});
 
 	it("saves at once when the page is hidden", () => {

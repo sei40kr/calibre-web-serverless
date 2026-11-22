@@ -32,6 +32,8 @@ export interface BookshelfPageProps {
 	sort: BookSort;
 	onSortChange: (sort: BookSort) => void;
 	onRemoveBook: (book: Book) => Promise<void>;
+	onMarkRead: (book: Book) => void;
+	onMarkUnread: (book: Book) => void;
 	onToggleBookshelf: (
 		book: Book,
 		bookshelf: Bookshelf,
@@ -49,6 +51,8 @@ export function BookshelfPage({
 	sort,
 	onSortChange,
 	onRemoveBook,
+	onMarkRead,
+	onMarkUnread,
 	onToggleBookshelf,
 	onSignOut,
 }: BookshelfPageProps) {
@@ -83,6 +87,8 @@ export function BookshelfPage({
 					bookshelves={bookshelves}
 					onToggleBookshelf={onToggleBookshelf}
 					onRemoveFromBookshelf={onRemoveBook}
+					onMarkRead={onMarkRead}
+					onMarkUnread={onMarkUnread}
 					emptyState={
 						<EmptyState
 							icon={<LuBookmark />}

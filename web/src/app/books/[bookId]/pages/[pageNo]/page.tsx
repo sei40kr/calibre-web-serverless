@@ -92,7 +92,11 @@ function BookReaderRouteContent({
 		[router, bookId, requestedFormat],
 	);
 
-	const record = useReadingProgressRecorder(userId, bookId, book?.reading);
+	const { record, markRead } = useReadingProgressRecorder(
+		userId,
+		bookId,
+		book?.reading,
+	);
 	const handleLocationChange = useCallback(
 		(location: ReadingLocation) => record(format, location),
 		[record, format],
@@ -144,6 +148,8 @@ function BookReaderRouteContent({
 			onPageNoChange={goToPage}
 			savedPositions={readingPositions(book.reading)}
 			onLocationChange={handleLocationChange}
+			read={book.reading.status === "read"}
+			onMarkRead={markRead}
 			onBack={() => router.push("/dashboard")}
 		/>
 	);

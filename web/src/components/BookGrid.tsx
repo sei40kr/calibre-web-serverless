@@ -28,6 +28,8 @@ interface BookGridProps {
 	) => Promise<void>;
 	/** Offers to take each book off the bookshelf being viewed. */
 	onRemoveFromBookshelf?: (book: Book) => Promise<void>;
+	onMarkRead?: (book: Book) => void;
+	onMarkUnread?: (book: Book) => void;
 	/** Replaces the default "no books" state (e.g. for an empty bookshelf). */
 	emptyState?: ReactNode;
 }
@@ -53,6 +55,8 @@ export function BookGrid({
 	bookshelves,
 	onToggleBookshelf,
 	onRemoveFromBookshelf,
+	onMarkRead,
+	onMarkUnread,
 	emptyState,
 }: BookGridProps) {
 	if (loading) {
@@ -110,6 +114,8 @@ export function BookGrid({
 								? () => onRemoveFromBookshelf(book)
 								: undefined
 						}
+						onMarkRead={onMarkRead ? () => onMarkRead(book) : undefined}
+						onMarkUnread={onMarkUnread ? () => onMarkUnread(book) : undefined}
 					/>
 				);
 			})}

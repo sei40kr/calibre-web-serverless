@@ -222,3 +222,10 @@ export function readingFraction(reading: ReadingProgress): number | null {
 	const position = currentPosition(reading);
 	return position ? locationFraction(position) : null;
 }
+
+/** Marks the book read, wherever it was left, as of `at`. */
+export function markedRead(reading: ReadingProgress, at: Date): ReadProgress {
+	return reading.status === "unread"
+		? { status: "read", lastReadAt: at, lastFormat: null, positions: {} }
+		: { ...reading, status: "read", lastReadAt: at };
+}

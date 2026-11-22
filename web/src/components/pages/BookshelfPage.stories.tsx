@@ -82,6 +82,8 @@ const meta = {
 		sort: { key: "createdAt", direction: "desc" },
 		onSortChange: fn(),
 		onRemoveBook: fn(async () => {}),
+		onMarkRead: fn(),
+		onMarkUnread: fn(),
 		onToggleBookshelf: fn(async () => {}),
 		onSignOut: fn(),
 	},
@@ -101,15 +103,22 @@ export const Default: Story = {
 		await expect(canvas.getByText("I Am a Cat")).toBeInTheDocument();
 
 		// Bookshelf views take books off the bookshelf rather than deleting them.
-		await expect(
-			canvas.queryByRole("button", { name: /delete book/i }),
-		).not.toBeInTheDocument();
-		const removeButtons = canvas.getAllByRole("button", {
-			name: /remove from bookshelf/i,
+		const body = within(canvasElement.ownerDocument.body);
+		const actionButtons = canvas.getAllByRole("button", {
+			name: /book actions/i,
 		});
-		await expect(removeButtons).toHaveLength(2);
+		await expect(actionButtons).toHaveLength(2);
+		await userEvent.click(actionButtons[1]);
+		await expect(
+			await body.findByRole("menuitem", { name: /remove from bookshelf/i }),
+		).toBeInTheDocument();
+		await expect(
+			body.queryByRole("menuitem", { name: /^delete$/i }),
+		).not.toBeInTheDocument();
 
-		await userEvent.click(removeButtons[1]);
+		await userEvent.click(
+			body.getByRole("menuitem", { name: /remove from bookshelf/i }),
+		);
 		await expect(args.onRemoveBook).toHaveBeenCalledWith(books[1]);
 	},
 };

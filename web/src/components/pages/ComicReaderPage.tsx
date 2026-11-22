@@ -27,6 +27,9 @@ export interface ComicReaderPageProps {
 	onPageNoChange: (pageNo: number) => void;
 	/** Called whenever another page or spread is shown, with its first page. */
 	onLocationChange: (location: PageLocation) => void;
+	read: boolean;
+	/** Called on request, and when the end of a book not yet read is shown. */
+	onMarkRead: () => void;
 	onBack: () => void;
 }
 
@@ -50,6 +53,8 @@ export function ComicReaderPage({
 	pageNo,
 	onPageNoChange,
 	onLocationChange,
+	read,
+	onMarkRead,
 	onBack,
 }: ComicReaderPageProps) {
 	const {
@@ -135,6 +140,9 @@ export function ComicReaderPage({
 		<BookReaderShell
 			title={title}
 			onBack={onBack}
+			read={read}
+			atEnd={shown && !canGoForward}
+			onMarkRead={onMarkRead}
 			progress={
 				shown && pageCount !== null
 					? locationFraction({ pageNo: firstShown, pageCount })

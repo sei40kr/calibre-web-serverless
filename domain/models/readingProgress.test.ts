@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
 	locationFraction,
 	MAX_SECONDS_PER_PAGE,
+	markedRead,
 	type ReadingProgress,
 	type ReadProgress,
 	readingFraction,
@@ -258,5 +259,31 @@ describe("ReadingProgress", () => {
 		// @ts-expect-error An unread book has no position.
 		const invalid: ReadingProgress = unreadWithPosition;
 		expect(invalid.status).toBe("unread");
+	});
+});
+
+describe("markedRead", () => {
+	it("marks an unread book read with no position", () => {
+		expect(markedRead(unreadProgress, at)).toEqual({
+			status: "read",
+			lastReadAt: at,
+			lastFormat: null,
+			positions: {},
+		});
+	});
+
+	it("keeps the positions of the book marked read", () => {
+		const reading = withLocation(
+			unreadProgress,
+			"pdf",
+			{ pageNo: 3, pageCount: 10 },
+			at,
+		);
+		const later = new Date("2026-11-02T10:00:00Z");
+		expect(markedRead(reading, later)).toEqual({
+			...reading,
+			status: "read",
+			lastReadAt: later,
+		});
 	});
 });

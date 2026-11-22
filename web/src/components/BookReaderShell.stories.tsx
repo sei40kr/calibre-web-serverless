@@ -12,6 +12,9 @@ const meta = {
 	args: {
 		title: "Alice's Adventures in Wonderland",
 		onBack: fn(),
+		read: false,
+		atEnd: false,
+		onMarkRead: fn(),
 		pageTurn: {
 			indicator: "1 / 12",
 			// At the first page: no page to turn back to.
@@ -92,5 +95,35 @@ export const WithoutPageTurnControls: Story = {
 		await expect(
 			canvas.queryByRole("button", { name: /previous page/i }),
 		).not.toBeInTheDocument();
+	},
+};
+
+export const MarkAsRead: Story = {
+	args: { progress: 0.08 },
+	play: async ({ canvasElement, args }) => {
+		const canvas = within(canvasElement);
+
+		await expect(canvas.getByText("8%")).toBeInTheDocument();
+		await expect(args.onMarkRead).not.toHaveBeenCalled();
+		await userEvent.click(canvas.getByRole("button", { name: "Mark as read" }));
+		await expect(args.onMarkRead).toHaveBeenCalledOnce();
+	},
+};
+
+export const AtEnd: Story = {
+	args: { atEnd: true },
+	play: async ({ args }) => {
+		// Showing the end of a book not yet read marks it read.
+		await expect(args.onMarkRead).toHaveBeenCalledOnce();
+	},
+};
+
+export const Read: Story = {
+	args: { read: true, atEnd: true },
+	play: async ({ canvasElement, args }) => {
+		const canvas = within(canvasElement);
+
+		await expect(canvas.getByRole("button", { name: "Read" })).toBeDisabled();
+		await expect(args.onMarkRead).not.toHaveBeenCalled();
 	},
 };

@@ -22,6 +22,7 @@ import { useBookshelfMembership } from "@/hooks/useBookshelfMembership";
 import { useBookshelves } from "@/hooks/useBookshelves";
 import { useBooksInProgress } from "@/hooks/useBooksInProgress";
 import { usePublishers } from "@/hooks/usePublishers";
+import { useReadingStatus } from "@/hooks/useReadingStatus";
 import { useSeries } from "@/hooks/useSeries";
 import { useTags } from "@/hooks/useTags";
 import { buildBookFacets } from "@/lib/bookFacets";
@@ -68,6 +69,7 @@ function DashboardContent({
 
 	const { bookshelves } = useBookshelves(user.uid);
 	const { setBookOnBookshelf } = useBookshelfMembership(user.uid);
+	const { markRead, markUnread } = useReadingStatus(user.uid);
 	const handleToggleBookshelf = useCallback(
 		(book: Book, bookshelf: Bookshelf, member: boolean) =>
 			setBookOnBookshelf(book, bookshelf, member),
@@ -155,6 +157,8 @@ function DashboardContent({
 						isFiltering={filtering}
 						bookshelves={bookshelves}
 						onToggleBookshelf={handleToggleBookshelf}
+						onMarkRead={markRead}
+						onMarkUnread={markUnread}
 					/>
 				</VStack>
 			</Container>

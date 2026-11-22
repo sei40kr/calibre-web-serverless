@@ -13,6 +13,7 @@ import { useBookFilter } from "@/hooks/useBookFilter";
 import { useBooks } from "@/hooks/useBooks";
 import { useBookshelfMembership } from "@/hooks/useBookshelfMembership";
 import { useBookshelves } from "@/hooks/useBookshelves";
+import { useReadingStatus } from "@/hooks/useReadingStatus";
 
 export default function BookshelfRoute() {
 	// Served as a static shell for any bookshelf id (see layout.tsx), so the route
@@ -58,6 +59,7 @@ function BookshelfRouteContent({
 	const bookCoverInfos = useBookCoverUrls(books);
 
 	const { setBookOnBookshelf } = useBookshelfMembership(userId);
+	const { markRead, markUnread } = useReadingStatus(userId);
 
 	const handleRemoveBook = useCallback(
 		async (book: Book) => {
@@ -93,6 +95,8 @@ function BookshelfRouteContent({
 			sort={sort}
 			onSortChange={setSort}
 			onRemoveBook={handleRemoveBook}
+			onMarkRead={markRead}
+			onMarkUnread={markUnread}
 			onToggleBookshelf={handleToggleBookshelf}
 			onSignOut={signOut}
 		/>

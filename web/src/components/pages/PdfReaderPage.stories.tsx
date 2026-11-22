@@ -19,6 +19,8 @@ const meta = {
 		pageNo: 1,
 		onPageNoChange: fn(),
 		onLocationChange: fn(),
+		read: false,
+		onMarkRead: fn(),
 		onBack: fn(),
 	},
 } satisfies Meta<typeof PdfReaderPage>;

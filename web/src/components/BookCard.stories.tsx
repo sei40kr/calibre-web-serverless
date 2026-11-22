@@ -173,7 +173,7 @@ export const Processing: Story = {
 
 		await expect(canvas.getByText("Processing...")).toBeInTheDocument();
 		await expect(
-			canvas.queryByRole("link", { name: /edit book/i }),
+			canvas.queryByRole("button", { name: /book actions/i }),
 		).not.toBeInTheDocument();
 	},
 };
@@ -213,7 +213,12 @@ export const DeleteConfirmed: Story = {
 		const canvas = within(canvasElement);
 		const body = within(canvasElement.ownerDocument.body);
 
-		await userEvent.click(canvas.getByRole("button", { name: /delete book/i }));
+		await userEvent.click(
+			canvas.getByRole("button", { name: /book actions/i }),
+		);
+		await userEvent.click(
+			await body.findByRole("menuitem", { name: /delete/i }),
+		);
 
 		const dialog = await body.findByRole("alertdialog");
 		await userEvent.click(
@@ -229,7 +234,12 @@ export const DeleteCancelled: Story = {
 		const canvas = within(canvasElement);
 		const body = within(canvasElement.ownerDocument.body);
 
-		await userEvent.click(canvas.getByRole("button", { name: /delete book/i }));
+		await userEvent.click(
+			canvas.getByRole("button", { name: /book actions/i }),
+		);
+		await userEvent.click(
+			await body.findByRole("menuitem", { name: /delete/i }),
+		);
 
 		const dialog = await body.findByRole("alertdialog");
 		await userEvent.click(
@@ -349,7 +359,10 @@ export const AddToBookshelf: Story = {
 		const body = within(canvasElement.ownerDocument.body);
 
 		await userEvent.click(
-			canvas.getByRole("button", { name: /add to bookshelf/i }),
+			canvas.getByRole("button", { name: /book actions/i }),
+		);
+		await userEvent.click(
+			await body.findByRole("menuitem", { name: /add to bookshelf/i }),
 		);
 
 		// Membership is reflected as checked items.
@@ -384,7 +397,10 @@ export const NoBookshelvesYet: Story = {
 		const body = within(canvasElement.ownerDocument.body);
 
 		await userEvent.click(
-			canvas.getByRole("button", { name: /add to bookshelf/i }),
+			canvas.getByRole("button", { name: /book actions/i }),
+		);
+		await userEvent.click(
+			await body.findByRole("menuitem", { name: /add to bookshelf/i }),
 		);
 
 		await expect(
@@ -400,14 +416,68 @@ export const OnBookshelf: Story = {
 	},
 	play: async ({ canvasElement, args }) => {
 		const canvas = within(canvasElement);
+		const body = within(canvasElement.ownerDocument.body);
 
+		await userEvent.click(
+			canvas.getByRole("button", { name: /book actions/i }),
+		);
 		await expect(
-			canvas.queryByRole("button", { name: /delete book/i }),
+			await body.findByRole("menuitem", { name: /remove from bookshelf/i }),
+		).toBeInTheDocument();
+		await expect(
+			body.queryByRole("menuitem", { name: /^delete$/i }),
 		).not.toBeInTheDocument();
 
 		await userEvent.click(
-			canvas.getByRole("button", { name: /remove from bookshelf/i }),
+			body.getByRole("menuitem", { name: /remove from bookshelf/i }),
 		);
 		await expect(args.onRemoveFromBookshelf).toHaveBeenCalled();
+	},
+};
+
+export const MarkReadingBook: Story = {
+	args: {
+		book: { ...mockBook, reading: inProgress },
+		onMarkRead: fn(),
+		onMarkUnread: fn(),
+	},
+	play: async ({ canvasElement, args }) => {
+		const canvas = within(canvasElement);
+		const body = within(canvasElement.ownerDocument.body);
+
+		await userEvent.click(
+			canvas.getByRole("button", { name: /book actions/i }),
+		);
+		await userEvent.click(
+			await body.findByRole("menuitem", { name: "Mark as read" }),
+		);
+		await expect(args.onMarkRead).toHaveBeenCalled();
+
+		await userEvent.click(
+			canvas.getByRole("button", { name: /book actions/i }),
+		);
+		await userEvent.click(
+			await body.findByRole("menuitem", { name: "Mark as unread" }),
+		);
+		await expect(args.onMarkUnread).toHaveBeenCalled();
+	},
+};
+
+export const MarkUnreadAndReadBooks: Story = {
+	args: { onMarkRead: fn(), onMarkUnread: fn() },
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		const body = within(canvasElement.ownerDocument.body);
+
+		// An unread book can only be marked read.
+		await userEvent.click(
+			canvas.getByRole("button", { name: /book actions/i }),
+		);
+		await expect(
+			await body.findByRole("menuitem", { name: "Mark as read" }),
+		).toBeInTheDocument();
+		await expect(
+			body.queryByRole("menuitem", { name: "Mark as unread" }),
+		).not.toBeInTheDocument();
 	},
 };

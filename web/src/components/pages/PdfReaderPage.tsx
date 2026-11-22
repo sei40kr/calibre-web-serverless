@@ -26,6 +26,9 @@ export interface PdfReaderPageProps {
 	onPageNoChange: (pageNo: number) => void;
 	/** Called whenever another page is shown. */
 	onLocationChange: (location: PageLocation) => void;
+	read: boolean;
+	/** Called on request, and when the end of a book not yet read is shown. */
+	onMarkRead: () => void;
 	onBack: () => void;
 }
 
@@ -37,6 +40,8 @@ export function PdfReaderPage({
 	pageNo,
 	onPageNoChange,
 	onLocationChange,
+	read,
+	onMarkRead,
 	onBack,
 }: PdfReaderPageProps) {
 	const {
@@ -84,6 +89,9 @@ export function PdfReaderPage({
 		<BookReaderShell
 			title={title}
 			onBack={onBack}
+			read={read}
+			atEnd={pageCount !== null && displayedPageNo >= pageCount}
+			onMarkRead={onMarkRead}
 			progress={
 				pageCount === null
 					? undefined

@@ -32,6 +32,9 @@ export interface EpubReaderPageProps {
 	savedPosition: EpubPosition | null;
 	/** Called whenever another page is shown, once chapter lengths are known. */
 	onLocationChange: (location: EpubLocation) => void;
+	read: boolean;
+	/** Called on request, and when the end of a book not yet read is shown. */
+	onMarkRead: () => void;
 	onBack: () => void;
 }
 
@@ -44,6 +47,8 @@ export function EpubReaderPage({
 	onChapterNoChange,
 	savedPosition,
 	onLocationChange,
+	read,
+	onMarkRead,
 	onBack,
 }: EpubReaderPageProps) {
 	const {
@@ -226,6 +231,9 @@ export function EpubReaderPage({
 			title={title}
 			subtitle={chapterTitle}
 			progress={location ? locationFraction(location) : undefined}
+			read={read}
+			atEnd={chapterCount !== null && pageCount !== null && !canGoForward}
+			onMarkRead={onMarkRead}
 			onBack={onBack}
 			pageTurn={
 				chapterCount === null

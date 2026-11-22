@@ -1,8 +1,20 @@
 "use client";
 
-import { Box, HStack, IconButton, Progress, Text } from "@chakra-ui/react";
-import type { ReactNode } from "react";
-import { LuArrowLeft, LuChevronLeft, LuChevronRight } from "react-icons/lu";
+import {
+	Box,
+	Button,
+	HStack,
+	IconButton,
+	Progress,
+	Text,
+} from "@chakra-ui/react";
+import { type ReactNode, useEffect } from "react";
+import {
+	LuArrowLeft,
+	LuCheck,
+	LuChevronLeft,
+	LuChevronRight,
+} from "react-icons/lu";
 
 interface PageTurnButton {
 	label: string;
@@ -27,6 +39,11 @@ interface BookReaderShellProps {
 	subtitle?: string | null;
 	/** Fraction of the book read, in [0, 1]; omit while unknown. */
 	progress?: number;
+	/** Whether the book is marked read. */
+	read: boolean;
+	/** Whether the end of the book is shown, which marks it read. */
+	atEnd: boolean;
+	onMarkRead: () => void;
 	onBack: () => void;
 	/** Omit while there is nothing to page through (loading, error, no file). */
 	pageTurn?: PageTurnControls;
@@ -40,11 +57,18 @@ export function BookReaderShell({
 	title,
 	subtitle,
 	progress,
+	read,
+	atEnd,
+	onMarkRead,
 	onBack,
 	pageTurn,
 	actions,
 	children,
 }: BookReaderShellProps) {
+	useEffect(() => {
+		if (atEnd && !read) onMarkRead();
+	}, [atEnd, read, onMarkRead]);
+
 	return (
 		<Box display="flex" flexDirection="column" height="100dvh">
 			<HStack px={4} py={2} gap={3} borderBottomWidth="1px">
@@ -107,6 +131,15 @@ export function BookReaderShell({
 						{Math.round(progress * 100)}%
 					</Text>
 				)}
+				<Button
+					variant="outline"
+					size="sm"
+					disabled={read}
+					onClick={onMarkRead}
+				>
+					<LuCheck />
+					{read ? "Read" : "Mark as read"}
+				</Button>
 			</HStack>
 			{progress !== undefined && (
 				<Progress.Root size="xs" value={progress * 100} colorPalette="blue">

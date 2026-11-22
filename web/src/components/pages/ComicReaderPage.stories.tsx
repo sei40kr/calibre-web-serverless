@@ -20,6 +20,8 @@ const meta = {
 		pageNo: 1,
 		onPageNoChange: fn(),
 		onLocationChange: fn(),
+		read: false,
+		onMarkRead: fn(),
 		onBack: fn(),
 	},
 	// Each story starts in single-page view regardless of earlier toggles.
@@ -102,6 +104,21 @@ export const KeyboardNavigation: Story = {
 		await expect(args.onPageNoChange).toHaveBeenCalledWith(3);
 		await userEvent.keyboard("{ArrowLeft}");
 		await expect(args.onPageNoChange).toHaveBeenCalledWith(1);
+	},
+};
+
+export const LastPageMarksRead: Story = {
+	args: {
+		pageNo: 8,
+	},
+	play: async ({ canvasElement, args }) => {
+		const canvas = within(canvasElement);
+
+		await waitFor(
+			() => expect(canvas.getByText("8 / 8")).toBeInTheDocument(),
+			COMIC_RENDER_TIMEOUT,
+		);
+		await waitFor(() => expect(args.onMarkRead).toHaveBeenCalled());
 	},
 };
 

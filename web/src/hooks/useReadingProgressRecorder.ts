@@ -1,4 +1,5 @@
 import {
+	markedRead,
 	type PositionedFormat,
 	type ReadingLocation,
 	type ReadingProgress,
@@ -16,7 +17,8 @@ export const SAVE_DELAY_MS = 3000;
 const FOCUS_SAMPLE_MS = 1000;
 
 /**
- * Returns a function that moves the book's reading progress to a location.
+ * Returns `record`, which moves the book's reading progress to a location,
+ * and `markRead`, which marks the book read and saves at once.
  * Progress is saved once no move has come for {@link SAVE_DELAY_MS}, and at
  * once when the page is hidden or the caller unmounts, so leaving the reader
  * never drops the last page. Each move passes on the time the page had focus
@@ -72,7 +74,15 @@ export function useReadingProgressRecorder(
 		};
 	}, [flush]);
 
-	return useCallback(
+	const markRead = useCallback(() => {
+		const reading = readingRef.current;
+		if (!reading || reading.status === "read") return;
+		readingRef.current = markedRead(reading, new Date());
+		unsavedRef.current = true;
+		flush();
+	}, [flush]);
+
+	const record = useCallback(
 		(format: PositionedFormat, location: ReadingLocation) => {
 			const reading = readingRef.current;
 			if (!reading) return;
@@ -90,4 +100,6 @@ export function useReadingProgressRecorder(
 		},
 		[flush],
 	);
+
+	return { record, markRead };
 }

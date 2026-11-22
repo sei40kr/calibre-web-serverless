@@ -18,6 +18,7 @@ const meta = {
 		fileLoading: false,
 		pageNo: 1,
 		onPageNoChange: fn(),
+		onLocationChange: fn(),
 		onBack: fn(),
 	},
 } satisfies Meta<typeof PdfReaderPage>;
@@ -41,6 +42,15 @@ export const FirstPage: Story = {
 		await expect(
 			canvas.getByRole("button", { name: /previous page/i }),
 		).toBeDisabled();
+		await waitFor(() =>
+			expect(args.onLocationChange).toHaveBeenCalledWith({
+				pageNo: 1,
+				pageCount: expect.any(Number),
+			}),
+		);
+		await expect(
+			canvas.getByRole("progressbar", { name: /reading progress/i }),
+		).toBeInTheDocument();
 
 		await userEvent.click(canvas.getByRole("button", { name: /next page/i }));
 		await expect(args.onPageNoChange).toHaveBeenCalledWith(2);

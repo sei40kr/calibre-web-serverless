@@ -1,6 +1,6 @@
 "use client";
 
-import { Box, HStack, IconButton, Text } from "@chakra-ui/react";
+import { Box, HStack, IconButton, Progress, Text } from "@chakra-ui/react";
 import type { ReactNode } from "react";
 import { LuArrowLeft, LuChevronLeft, LuChevronRight } from "react-icons/lu";
 
@@ -23,6 +23,10 @@ interface PageTurnControls {
 
 interface BookReaderShellProps {
 	title: string;
+	/** Where in the book the reader is, such as the chapter title. */
+	subtitle?: string | null;
+	/** Fraction of the book read, in [0, 1]; omit while unknown. */
+	progress?: number;
 	onBack: () => void;
 	/** Omit while there is nothing to page through (loading, error, no file). */
 	pageTurn?: PageTurnControls;
@@ -34,6 +38,8 @@ interface BookReaderShellProps {
 /** Full-height reader frame: header with back/title/page controls, content below. */
 export function BookReaderShell({
 	title,
+	subtitle,
+	progress,
 	onBack,
 	pageTurn,
 	actions,
@@ -50,9 +56,16 @@ export function BookReaderShell({
 				>
 					<LuArrowLeft />
 				</IconButton>
-				<Text fontWeight="medium" truncate flex="1" title={title}>
-					{title}
-				</Text>
+				<Box flex="1" minW={0}>
+					<Text textStyle="sm" fontWeight="medium" truncate title={title}>
+						{title}
+					</Text>
+					{subtitle && (
+						<Text textStyle="xs" color="fg.muted" truncate title={subtitle}>
+							{subtitle}
+						</Text>
+					)}
+				</Box>
 				{actions}
 				{pageTurn && (
 					<HStack gap={1}>
@@ -85,7 +98,23 @@ export function BookReaderShell({
 						</IconButton>
 					</HStack>
 				)}
+				{progress !== undefined && (
+					<Text
+						textStyle="sm"
+						color="fg.muted"
+						fontVariantNumeric="tabular-nums"
+					>
+						{Math.round(progress * 100)}%
+					</Text>
+				)}
 			</HStack>
+			{progress !== undefined && (
+				<Progress.Root size="xs" value={progress * 100} colorPalette="blue">
+					<Progress.Track borderRadius={0} aria-label="Reading progress">
+						<Progress.Range />
+					</Progress.Track>
+				</Progress.Root>
+			)}
 
 			<Box flex="1" minH={0} bg="bg.muted">
 				{children}

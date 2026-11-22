@@ -99,3 +99,55 @@ export function currentPosition(
 	if (reading.status === "unread" || reading.lastFormat === null) return null;
 	return reading.positions[reading.lastFormat] ?? null;
 }
+
+/** A position without the pace measured at it. */
+export type EpubLocation = Omit<EpubPosition, keyof ReadingPace>;
+export type PageLocation = Omit<PagePosition, keyof ReadingPace>;
+export type ReadingLocation = EpubLocation | PageLocation;
+
+/**
+ * Moves the book to `location` in `format`, keeping the pace measured there.
+ * Opening an unread book starts it; a read one stays read.
+ */
+export function withLocation(
+	reading: ReadingProgress,
+	format: PositionedFormat,
+	location: ReadingLocation,
+	at: Date,
+): InProgress | ReadProgress {
+	const positions = readingPositions(reading);
+	const previous = positions[format];
+	const position = {
+		activeSeconds: previous?.activeSeconds ?? 0,
+		unitsRead: previous?.unitsRead ?? 0,
+		...location,
+	};
+	// Never null: the position in `format` was just set.
+	const current = lastReadIn(format, {
+		...positions,
+		[format]: position,
+	}) as LastReadIn;
+	return reading.status === "read"
+		? { status: "read", lastReadAt: at, ...current }
+		: { status: "reading", lastReadAt: at, ...current };
+}
+
+/**
+ * How far through the book a location is, in [0, 1]. EPUB counts the
+ * characters before the screen; pages count the current one as read, so the
+ * last page is 1.
+ */
+export function locationFraction(location: ReadingLocation): number {
+	if ("pageNo" in location) {
+		return location.pageCount > 0
+			? Math.min(location.pageNo / location.pageCount, 1)
+			: 0;
+	}
+	const { chapterLengths, chapterNo, charOffset } = location;
+	const total = chapterLengths.reduce((sum, length) => sum + length, 0);
+	if (total === 0) return 0;
+	const before = chapterLengths
+		.slice(0, chapterNo - 1)
+		.reduce((sum, length) => sum + length, 0);
+	return Math.min((before + charOffset) / total, 1);
+}

@@ -1,6 +1,10 @@
 "use client";
 
 import { comicSpreads } from "@calibre-web-serverless/domain/models/comicArchive";
+import {
+	locationFraction,
+	type PageLocation,
+} from "@calibre-web-serverless/domain/models/readingProgress";
 import { Box, Center, IconButton, Image } from "@chakra-ui/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { LuBookOpen } from "react-icons/lu";
@@ -21,6 +25,8 @@ export interface ComicReaderPageProps {
 	pageNo: number;
 	/** Called to move to another page; the caller updates the URL. */
 	onPageNoChange: (pageNo: number) => void;
+	/** Called whenever another page or spread is shown, with its first page. */
+	onLocationChange: (location: PageLocation) => void;
 	onBack: () => void;
 }
 
@@ -43,6 +49,7 @@ export function ComicReaderPage({
 	fileLoading,
 	pageNo,
 	onPageNoChange,
+	onLocationChange,
 	onBack,
 }: ComicReaderPageProps) {
 	const {
@@ -116,11 +123,23 @@ export function ComicReaderPage({
 	const canGoBackward = spreadIndex > 0;
 	const firstShown = (shownPages[0] ?? 0) + 1;
 	const lastShown = (shownPages.at(-1) ?? 0) + 1;
+	const shown = pageCount !== null && shownPages.length > 0;
+
+	useEffect(() => {
+		if (shown && pageCount !== null) {
+			onLocationChange({ pageNo: firstShown, pageCount });
+		}
+	}, [shown, firstShown, pageCount, onLocationChange]);
 
 	return (
 		<BookReaderShell
 			title={title}
 			onBack={onBack}
+			progress={
+				shown && pageCount !== null
+					? locationFraction({ pageNo: firstShown, pageCount })
+					: undefined
+			}
 			actions={
 				pages && (
 					<IconButton

@@ -13,8 +13,18 @@ export interface EpubBook {
 	 */
 	pageProgression: "ltr" | "rtl";
 	chapterCount: number;
+	/**
+	 * TOC title per chapter. A chapter the TOC does not point at continues the
+	 * one before it (a chapter split across files), so it takes that title.
+	 */
+	chapterTitles: (string | null)[];
 	/** Returns the rewritten XHTML of the 0-based linear spine item. */
 	loadChapter(chapterIndex: number): Promise<string>;
+	/**
+	 * Reading-text length of every chapter, as {@link chapterTextNodes} counts
+	 * it in the rendered chapter. Parses every chapter, so it is slow.
+	 */
+	chapterLengths(): Promise<number[]>;
 	/** Revokes every blob URL handed out by loadChapter. */
 	dispose(): void;
 }
@@ -59,6 +69,83 @@ function firstByTagName(root: Document | Element, tagName: string) {
 	return root.getElementsByTagNameNS("*", tagName)[0] ?? null;
 }
 
+const EPUB_OPS_NAMESPACE = "http://www.idpf.org/2007/ops";
+
+/**
+ * The chapter's reading text as text nodes in document order, each with the
+ * offset of its first character. Style and script text is not reading text.
+ */
+export function chapterTextNodes(body: HTMLElement): {
+	nodes: { node: Text; start: number }[];
+	length: number;
+} {
+	const doc = body.ownerDocument;
+	const walker = doc.createTreeWalker(body, NodeFilter.SHOW_TEXT, {
+		acceptNode: (node) =>
+			node.parentElement?.closest("style, script")
+				? NodeFilter.FILTER_REJECT
+				: NodeFilter.FILTER_ACCEPT,
+	});
+	const nodes: { node: Text; start: number }[] = [];
+	let length = 0;
+	for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+		const text = node as Text;
+		nodes.push({ node: text, start: length });
+		length += text.length;
+	}
+	return { nodes, length };
+}
+
+/** TOC entries in reading order, from the EPUB 3 nav or else the EPUB 2 NCX. */
+async function readToc(
+	zip: JSZip,
+	navPath: string | null,
+	ncxPath: string | null,
+): Promise<{ path: string; title: string }[]> {
+	const entry = (fromPath: string, href: string | null, title: string) =>
+		href ? [{ path: resolveZipPath(fromPath, href), title: title.trim() }] : [];
+
+	const navText = navPath && (await zip.file(navPath)?.async("string"));
+	if (navPath && navText) {
+		const navs = [...parseXml(navText).getElementsByTagNameNS("*", "nav")];
+		const toc =
+			navs.find((nav) =>
+				nav
+					.getAttributeNS(EPUB_OPS_NAMESPACE, "type")
+					?.split(/\s+/)
+					.includes("toc"),
+			) ?? navs[0];
+		if (toc) {
+			return [...toc.getElementsByTagNameNS("*", "a")].flatMap((a) =>
+				entry(navPath, a.getAttribute("href"), a.textContent ?? ""),
+			);
+		}
+	}
+
+	const ncxText = ncxPath && (await zip.file(ncxPath)?.async("string"));
+	if (ncxPath && ncxText) {
+		// Document order is reading order: a navPoint's own label and content
+		// precede its children.
+		return [
+			...parseXml(ncxText).getElementsByTagNameNS("*", "navPoint"),
+		].flatMap((point) =>
+			entry(
+				ncxPath,
+				firstByTagName(point, "content")?.getAttribute("src") ?? null,
+				firstByTagName(point, "text")?.textContent ?? "",
+			),
+		);
+	}
+	return [];
+}
+
+/** Falls back to the HTML parser for chapters that are not well-formed XHTML. */
+function parseChapter(text: string): Document {
+	const doc = new DOMParser().parseFromString(text, "application/xhtml+xml");
+	if (doc.getElementsByTagName("parsererror").length === 0) return doc;
+	return new DOMParser().parseFromString(text, "text/html");
+}
+
 export async function openEpub(data: ArrayBuffer): Promise<EpubBook> {
 	const zip = await JSZip.loadAsync(data);
 
@@ -81,11 +168,17 @@ export async function openEpub(data: ArrayBuffer): Promise<EpubBook> {
 	const opfDoc = parseXml(opfText);
 
 	const pathsByItemId = new Map<string, string>();
+	let navPath: string | null = null;
 	const manifest = firstByTagName(opfDoc, "manifest");
 	for (const item of manifest?.getElementsByTagNameNS("*", "item") ?? []) {
 		const id = item.getAttribute("id");
 		const href = item.getAttribute("href");
-		if (id && href) pathsByItemId.set(id, resolveZipPath(opfPath, href));
+		if (!id || !href) continue;
+		const path = resolveZipPath(opfPath, href);
+		pathsByItemId.set(id, path);
+		if (item.getAttribute("properties")?.split(/\s+/).includes("nav")) {
+			navPath = path;
+		}
 	}
 
 	const spine = firstByTagName(opfDoc, "spine");
@@ -101,6 +194,19 @@ export async function openEpub(data: ArrayBuffer): Promise<EpubBook> {
 	}
 	if (chapterPaths.length === 0) {
 		throw new Error("Invalid EPUB: empty spine");
+	}
+
+	const titlesByPath = new Map<string, string>();
+	for (const { path, title } of await readToc(
+		zip,
+		navPath,
+		pathsByItemId.get(spine?.getAttribute("toc") ?? "") ?? null,
+	)) {
+		if (title && !titlesByPath.has(path)) titlesByPath.set(path, title);
+	}
+	const chapterTitles: (string | null)[] = [];
+	for (const path of chapterPaths) {
+		chapterTitles.push(titlesByPath.get(path) ?? chapterTitles.at(-1) ?? null);
 	}
 
 	const blobUrls: string[] = [];
@@ -177,17 +283,17 @@ export async function openEpub(data: ArrayBuffer): Promise<EpubBook> {
 		}
 	}
 
-	async function loadChapter(chapterIndex: number): Promise<string> {
-		const path = chapterPaths[chapterIndex];
+	async function readChapter(path: string): Promise<string> {
 		const text = await zip.file(path)?.async("string");
 		if (text === undefined) {
 			throw new Error(`Invalid EPUB: missing chapter file at ${path}`);
 		}
+		return text;
+	}
 
-		let doc = new DOMParser().parseFromString(text, "application/xhtml+xml");
-		if (doc.getElementsByTagName("parsererror").length > 0) {
-			doc = new DOMParser().parseFromString(text, "text/html");
-		}
+	async function loadChapter(chapterIndex: number): Promise<string> {
+		const path = chapterPaths[chapterIndex];
+		const doc = parseChapter(await readChapter(path));
 
 		// Scripts have no business in the reader, sandboxed or not.
 		for (const script of doc.querySelectorAll("script")) {
@@ -214,7 +320,23 @@ export async function openEpub(data: ArrayBuffer): Promise<EpubBook> {
 	return {
 		pageProgression,
 		chapterCount: chapterPaths.length,
+		chapterTitles,
 		loadChapter,
+		async chapterLengths() {
+			const lengths: number[] = [];
+			for (const path of chapterPaths) {
+				// Reparse the serialization as HTML, as the reader's srcDoc iframe
+				// does, so whitespace handling matches the rendered chapter.
+				const html = new DOMParser().parseFromString(
+					new XMLSerializer().serializeToString(
+						parseChapter(await readChapter(path)),
+					),
+					"text/html",
+				);
+				lengths.push(chapterTextNodes(html.body).length);
+			}
+			return lengths;
+		},
 		dispose() {
 			for (const url of blobUrls) {
 				URL.revokeObjectURL(url);

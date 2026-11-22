@@ -32,7 +32,10 @@ import {
 	LuTrash2,
 	LuTriangleAlert,
 } from "react-icons/lu";
-import { readableBookFormats } from "@/components/pages/bookReaderPages";
+import {
+	readableBookFormats,
+	readerHref,
+} from "@/components/pages/bookReaderPages";
 import {
 	DialogBody,
 	DialogCloseTrigger,
@@ -144,7 +147,10 @@ export function BookCard({
 			    neighboring card, unclickable. With several readable formats it
 			    opens a chooser dialog instead of linking directly. */}
 			{readableFormats.length === 1 ? (
-				<Link href={`/books/${book.id}/pages/1`} aria-label="Read book">
+				<Link
+					href={readerHref(book, readableFormats[0])}
+					aria-label="Read book"
+				>
 					{cover}
 				</Link>
 			) : readableFormats.length > 1 ? (
@@ -282,7 +288,7 @@ export function BookCard({
 							<VStack gap={2} align="stretch">
 								{readableFormats.map((format) => (
 									<Button key={format} asChild variant="outline">
-										<Link href={`/books/${book.id}/pages/1?format=${format}`}>
+										<Link href={readerHref(book, format)}>
 											{format.toUpperCase()}
 										</Link>
 									</Button>

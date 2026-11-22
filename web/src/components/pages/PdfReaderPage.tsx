@@ -1,5 +1,9 @@
 "use client";
 
+import {
+	locationFraction,
+	type PageLocation,
+} from "@calibre-web-serverless/domain/models/readingProgress";
 import { Box, Center } from "@chakra-ui/react";
 import type { PDFDocumentProxy, RenderTask } from "pdfjs-dist";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -20,6 +24,8 @@ export interface PdfReaderPageProps {
 	pageNo: number;
 	/** Called to move to another page; the caller updates the URL. */
 	onPageNoChange: (pageNo: number) => void;
+	/** Called whenever another page is shown. */
+	onLocationChange: (location: PageLocation) => void;
 	onBack: () => void;
 }
 
@@ -30,6 +36,7 @@ export function PdfReaderPage({
 	fileLoading,
 	pageNo,
 	onPageNoChange,
+	onLocationChange,
 	onBack,
 }: PdfReaderPageProps) {
 	const {
@@ -67,10 +74,21 @@ export function PdfReaderPage({
 	const displayedPageNo =
 		pageCount === null ? pageNo : Math.min(pageNo, pageCount);
 
+	useEffect(() => {
+		if (pageCount !== null) {
+			onLocationChange({ pageNo: displayedPageNo, pageCount });
+		}
+	}, [displayedPageNo, pageCount, onLocationChange]);
+
 	return (
 		<BookReaderShell
 			title={title}
 			onBack={onBack}
+			progress={
+				pageCount === null
+					? undefined
+					: locationFraction({ pageNo: displayedPageNo, pageCount })
+			}
 			pageTurn={
 				pageCount === null
 					? undefined

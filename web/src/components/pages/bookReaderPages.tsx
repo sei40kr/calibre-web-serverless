@@ -1,8 +1,14 @@
+import type { Book } from "@calibre-web-serverless/domain/models/book";
 import {
 	type BookFile,
 	type BookFileFormat,
 	readyFiles,
 } from "@calibre-web-serverless/domain/models/bookFile";
+import {
+	type ReadingLocation,
+	type ReadingPositions,
+	readingPositions,
+} from "@calibre-web-serverless/domain/models/readingProgress";
 import type { ComponentType } from "react";
 import { ComicReaderPage } from "./ComicReaderPage";
 import { EpubReaderPage } from "./EpubReaderPage";
@@ -18,6 +24,10 @@ export interface BookReaderPageProps {
 	 * (PDF/CBZ: a page, EPUB: a spine chapter). */
 	pageNo: number;
 	onPageNoChange: (pageNo: number) => void;
+	/** Positions saved for the book, as of opening it. */
+	savedPositions: ReadingPositions;
+	/** Called whenever the reader shows another location. */
+	onLocationChange: (location: ReadingLocation) => void;
 	onBack: () => void;
 }
 
@@ -25,6 +35,7 @@ export interface BookReaderPageProps {
 function EpubBookReaderPage({
 	pageNo,
 	onPageNoChange,
+	savedPositions,
 	...rest
 }: BookReaderPageProps) {
 	return (
@@ -32,6 +43,7 @@ function EpubBookReaderPage({
 			{...rest}
 			chapterNo={pageNo}
 			onChapterNoChange={onPageNoChange}
+			savedPosition={savedPositions.epub ?? null}
 		/>
 	);
 }
@@ -58,4 +70,15 @@ export function readableBookFormats(files: BookFile[]): ReadableBookFormat[] {
 	return (Object.keys(READER_PAGES_BY_FORMAT) as ReadableBookFormat[]).filter(
 		(format) => ready.has(format),
 	);
+}
+
+/** Opens the reader in `format` where the book was last read in it. */
+export function readerHref(book: Book, format: ReadableBookFormat): string {
+	const position = readingPositions(book.reading)[format];
+	const pageNo = !position
+		? 1
+		: "chapterNo" in position
+			? position.chapterNo
+			: position.pageNo;
+	return `/books/${book.id}/pages/${pageNo}?format=${format}`;
 }

@@ -19,6 +19,7 @@ const meta = {
 		fileLoading: false,
 		pageNo: 1,
 		onPageNoChange: fn(),
+		onLocationChange: fn(),
 		onBack: fn(),
 	},
 	// Each story starts in single-page view regardless of earlier toggles.
@@ -42,6 +43,13 @@ export const FirstPage: Story = {
 			COMIC_RENDER_TIMEOUT,
 		);
 		await expect(canvas.getByRole("img", { name: "Page 1" })).toBeVisible();
+		await waitFor(() =>
+			expect(args.onLocationChange).toHaveBeenCalledWith({
+				pageNo: 1,
+				pageCount: 8,
+			}),
+		);
+		await expect(canvas.getByText("13%")).toBeInTheDocument();
 
 		// Left to right: the left arrow goes back, and there is nothing before
 		// the cover.

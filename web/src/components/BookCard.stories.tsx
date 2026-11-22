@@ -96,7 +96,10 @@ export const Default: Story = {
 
 		// A single readable format links straight into the reader.
 		const readLink = canvas.getByRole("link", { name: /read book/i });
-		await expect(readLink).toHaveAttribute("href", "/books/book-001/pages/1");
+		await expect(readLink).toHaveAttribute(
+			"href",
+			"/books/book-001/pages/1?format=epub",
+		);
 	},
 };
 
@@ -209,7 +212,10 @@ export const PdfFormat: Story = {
 		await expect(canvas.getByText("PDF")).toBeInTheDocument();
 
 		const readLink = canvas.getByRole("link", { name: /read book/i });
-		await expect(readLink).toHaveAttribute("href", "/books/book-001/pages/1");
+		await expect(readLink).toHaveAttribute(
+			"href",
+			"/books/book-001/pages/1?format=pdf",
+		);
 	},
 };
 
@@ -241,6 +247,21 @@ export const MultipleFormats: Story = {
 					addedAt: new Date("2024-01-03"),
 				},
 			],
+			reading: {
+				status: "reading",
+				lastReadAt: new Date("2024-02-01"),
+				lastFormat: "epub",
+				positions: {
+					epub: {
+						chapterNo: 3,
+						charOffset: 1200,
+						chapterTitle: "CHAPTER I. Down the Rabbit-Hole",
+						chapterLengths: [100, 200, 9000],
+						activeSeconds: 0,
+						unitsRead: 0,
+					},
+				},
+			},
 		},
 		coverUrl: coverPath,
 		coverLoading: false,
@@ -254,12 +275,12 @@ export const MultipleFormats: Story = {
 		await expect(canvas.queryByText("MOBI")).not.toBeInTheDocument();
 
 		// Several readable formats: the cover opens a format chooser instead
-		// of linking directly.
+		// of linking directly. Each format resumes at its own saved position.
 		await userEvent.click(canvas.getByRole("button", { name: /read book/i }));
 		const dialog = await body.findByRole("dialog");
 		await expect(
 			within(dialog).getByRole("link", { name: "EPUB" }),
-		).toHaveAttribute("href", "/books/book-001/pages/1?format=epub");
+		).toHaveAttribute("href", "/books/book-001/pages/3?format=epub");
 		await expect(
 			within(dialog).getByRole("link", { name: "PDF" }),
 		).toHaveAttribute("href", "/books/book-001/pages/1?format=pdf");

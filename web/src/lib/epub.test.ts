@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { openEpub } from "./epub";
+import { chapterTextNodes, openEpub } from "./epub";
 
 // vitest runs from the repo root in CI but from web/ locally.
 const fixturesDir = existsSync("fixtures") ? "fixtures" : "../fixtures";
@@ -49,6 +49,31 @@ describe("openEpub", () => {
 		const book = await openEpub(await loadFixture("rashomon"));
 		expect(book.pageProgression).toBe("rtl");
 		expect(book.chapterCount).toBe(3);
+	});
+
+	it("titles chapters from the nav TOC, carrying a title over untitled files", async () => {
+		const book = await openEpub(await loadFixture("alice-in-wonderland"));
+		expect(book.chapterTitles).toHaveLength(15);
+		// The cover wrapper comes before any TOC entry.
+		expect(book.chapterTitles[0]).toBeNull();
+		expect(book.chapterTitles[2]).toBe("CHAPTER I. Down the Rabbit-Hole");
+	});
+
+	it("takes titles from the toc nav, not the landmarks nav", async () => {
+		const book = await openEpub(await loadFixture("rashomon"));
+		expect(book.chapterTitles).toEqual(["羅生門", "羅生門", "羅生門"]);
+	});
+
+	it("measures the reading text of every chapter", async () => {
+		const book = await openEpub(await loadFixture("rashomon"));
+		const lengths = await book.chapterLengths();
+		expect(lengths).toHaveLength(3);
+		const html = new DOMParser().parseFromString(
+			await book.loadChapter(1),
+			"text/html",
+		);
+		expect(lengths[1]).toBe(chapterTextNodes(html.body).length);
+		expect(lengths[1]).toBeGreaterThan(1000);
 	});
 
 	it("defaults to ltr page progression", async () => {

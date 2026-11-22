@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { expect, fn, userEvent, waitFor, within } from "storybook/test";
+import { expect, fn, mocked, userEvent, waitFor, within } from "storybook/test";
 import { EpubReaderPage } from "./EpubReaderPage";
 
 // Served from the fixtures directory (see .storybook/main.ts staticDirs).
@@ -25,6 +25,8 @@ const meta = {
 		fileLoading: false,
 		chapterNo: 1,
 		onChapterNoChange: fn(),
+		savedPosition: null,
+		onLocationChange: fn(),
 		onBack: fn(),
 	},
 } satisfies Meta<typeof EpubReaderPage>;
@@ -101,6 +103,63 @@ export const KeyboardNavigation: Story = {
 		).toBeInTheDocument();
 		await userEvent.keyboard("{ArrowLeft}");
 		await expect(args.onChapterNoChange).toHaveBeenCalledWith(2);
+	},
+};
+
+// Alice's third spine chapter is "CHAPTER I. Down the Rabbit-Hole".
+const SAVED_CHAR_OFFSET = 6000;
+
+export const ResumesAtSavedCharacter: Story = {
+	args: {
+		chapterNo: 3,
+		savedPosition: {
+			chapterNo: 3,
+			charOffset: SAVED_CHAR_OFFSET,
+			chapterTitle: "CHAPTER I. Down the Rabbit-Hole",
+			// Not this book's chapter count, so the reader measures them itself.
+			chapterLengths: [],
+			activeSeconds: 0,
+			unitsRead: 0,
+		},
+	},
+	play: async ({ canvasElement, args }) => {
+		const canvas = within(canvasElement);
+
+		// The saved character is well past the chapter's first page.
+		await waitFor(
+			() =>
+				expect(
+					canvas.getByText(/^3 \/ 15 · p\. ([2-9]|\d\d+) \/ \d+$/),
+				).toBeInTheDocument(),
+			EPUB_RENDER_TIMEOUT,
+		);
+		await expect(
+			canvas.getByText("CHAPTER I. Down the Rabbit-Hole"),
+		).toBeInTheDocument();
+
+		// The reported location starts at the page showing the saved character.
+		await waitFor(() =>
+			expect(args.onLocationChange).toHaveBeenLastCalledWith(
+				expect.objectContaining({
+					chapterNo: 3,
+					chapterTitle: "CHAPTER I. Down the Rabbit-Hole",
+					chapterLengths: expect.arrayContaining([expect.any(Number)]),
+				}),
+			),
+		);
+		const { charOffset, chapterLengths } =
+			mocked(args.onLocationChange).mock.lastCall?.[0] ?? {};
+		await expect(chapterLengths).toHaveLength(15);
+		await expect(charOffset).toBeLessThanOrEqual(SAVED_CHAR_OFFSET);
+		await expect(charOffset).toBeGreaterThan(SAVED_CHAR_OFFSET - 3000);
+
+		// Turning the page reports the next page's first character.
+		await userEvent.keyboard("{ArrowRight}");
+		await waitFor(() =>
+			expect(
+				mocked(args.onLocationChange).mock.lastCall?.[0].charOffset,
+			).toBeGreaterThan(SAVED_CHAR_OFFSET),
+		);
 	},
 };
 

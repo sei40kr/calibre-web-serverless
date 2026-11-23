@@ -13,6 +13,70 @@
 				"function": "opds"
 			},
 			{
+				"regex": "^/books/[^/]+\\.txt$",
+				"destination": "/books/__shell__.txt"
+			},
+			{
+				"regex": "^/books/[^/]+/__next\\._tree\\.txt$",
+				"destination": "/books/__shell__/__next._tree.txt"
+			},
+			{
+				"regex": "^/books/[^/]+/__next\\._full\\.txt$",
+				"destination": "/books/__shell__/__next._full.txt"
+			},
+			{
+				"regex": "^/books/[^/]+/__next\\..+\\.__PAGE__\\.txt$",
+				"destination": "/books/__shell__/__next.books.$d$bookId.!KGRldGFpbHMp.__PAGE__.txt"
+			},
+			{
+				"regex": "^/dashboard/books/[^/]+/edit\\.txt$",
+				"destination": "/dashboard/books/__shell__/edit.txt"
+			},
+			{
+				"regex": "^/dashboard/books/[^/]+/edit/__next\\._tree\\.txt$",
+				"destination": "/dashboard/books/__shell__/edit/__next._tree.txt"
+			},
+			{
+				"regex": "^/dashboard/books/[^/]+/edit/__next\\._full\\.txt$",
+				"destination": "/dashboard/books/__shell__/edit/__next._full.txt"
+			},
+			{
+				"regex": "^/dashboard/books/[^/]+/edit/__next\\..+\\.__PAGE__\\.txt$",
+				"destination": "/dashboard/books/__shell__/edit/__next.dashboard.books.$d$bookId.edit.__PAGE__.txt"
+			},
+			{
+				"regex": "^/dashboard/bookshelves/[^/]+\\.txt$",
+				"destination": "/dashboard/bookshelves/__shell__.txt"
+			},
+			{
+				"regex": "^/dashboard/bookshelves/[^/]+/__next\\._tree\\.txt$",
+				"destination": "/dashboard/bookshelves/__shell__/__next._tree.txt"
+			},
+			{
+				"regex": "^/dashboard/bookshelves/[^/]+/__next\\._full\\.txt$",
+				"destination": "/dashboard/bookshelves/__shell__/__next._full.txt"
+			},
+			{
+				"regex": "^/dashboard/bookshelves/[^/]+/__next\\..+\\.__PAGE__\\.txt$",
+				"destination": "/dashboard/bookshelves/__shell__/__next.dashboard.!KGxpYnJhcnkp.bookshelves.$d$bookshelfId.__PAGE__.txt"
+			},
+			{
+				"regex": "^/books/[^/]+/pages/[^/]+\\.txt$",
+				"destination": "/books/__shell__/pages/__shell__.txt"
+			},
+			{
+				"regex": "^/books/[^/]+/pages/[^/]+/__next\\._tree\\.txt$",
+				"destination": "/books/__shell__/pages/__shell__/__next._tree.txt"
+			},
+			{
+				"regex": "^/books/[^/]+/pages/[^/]+/__next\\._full\\.txt$",
+				"destination": "/books/__shell__/pages/__shell__/__next._full.txt"
+			},
+			{
+				"regex": "^/books/[^/]+/pages/[^/]+/__next\\..+\\.__PAGE__\\.txt$",
+				"destination": "/books/__shell__/pages/__shell__/__next.books.$d$bookId.pages.$d$pageNo.__PAGE__.txt"
+			},
+			{
 				"regex": "^/books/[^/]+/?$",
 				"destination": "/books/__shell__.html"
 			},

@@ -46,7 +46,9 @@ jobs:
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('bun.lock') }}
-      - run: bun x playwright install chromium --with-deps
+      # Use the workspace's pinned Playwright; `bun x` at the root has none and
+      # fetches the latest, whose browser revision the tests can't launch.
+      - run: ./web/node_modules/.bin/playwright install chromium --with-deps
       - uses: actions/setup-node@v4
         with:
           node-version: 22

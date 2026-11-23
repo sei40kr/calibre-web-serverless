@@ -52,6 +52,13 @@ jobs:
         run: printf '%s\n' "$WEB_ENV" >>"$GITHUB_ENV"
       # Produces the static export in web/out, served as plain Firebase Hosting.
       - run: bun run build
+      # The shell rewrites in firebase.json name files Next.js generates (route
+      # group names are base64url-encoded into them), so a route or Next.js
+      # change can silently break client-side navigation to dynamic routes.
+      - run: |
+          jq -r '.hosting.rewrites[].destination // empty' firebase.json | while read -r d; do
+            [ -f "web/out$d" ] || { echo "::error::Rewrite destination web/out$d does not exist"; exit 1; }
+          done
       # Bundle the Cloud Functions (extractBookMetadata, resizeBookCover, opds)
       # into a single esbuild bundle.
       - run: bun run --filter @calibre-web-serverless/functions build

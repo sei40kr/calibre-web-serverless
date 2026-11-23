@@ -210,13 +210,6 @@ export const VerticalJapaneseBook: Story = {
 			EPUB_RENDER_TIMEOUT,
 		);
 
-		// The chapter is rendered with the book's own vertical writing mode.
-		const body = chapterBody(canvasElement);
-		await expect(body).toBeTruthy();
-		await expect(body && getComputedStyle(body).writingMode).toBe(
-			"vertical-rl",
-		);
-
 		// The book reads right-to-left, so the next page is to the left: the
 		// chevron buttons swap sides compared to an ltr book.
 		await expect(
@@ -241,6 +234,14 @@ export const VerticalJapaneseBookKeyboardNavigation: Story = {
 			() =>
 				expect(canvas.getByText(/^2 \/ 3 · p\. 1 \/ \d+$/)).toBeInTheDocument(),
 			EPUB_RENDER_TIMEOUT,
+		);
+
+		// The chapter is rendered with the book's own vertical writing mode.
+		// (Chapter 1, the title page, is horizontal.)
+		const body = chapterBody(canvasElement);
+		await expect(body).toBeTruthy();
+		await expect(body && getComputedStyle(body).writingMode).toBe(
+			"vertical-rl",
 		);
 
 		// rtl book: the left arrow turns forward, within the chapter.

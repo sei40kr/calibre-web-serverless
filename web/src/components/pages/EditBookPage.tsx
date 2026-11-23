@@ -626,8 +626,13 @@ export function EditBookPage({
 			initialItems: authorItems,
 			filter: contains,
 		});
+	// The tags input and combobox share one <input>; one shared copy of its
+	// text keeps either from writing a stale copy back over what was typed.
+	const [authorInputValue, setAuthorInputValue] = useState("");
 	const authorTags = useTagsInput({
 		value: watchedAuthorNames,
+		inputValue: authorInputValue,
+		onInputValueChange: (e) => setAuthorInputValue(e.inputValue),
 		onValueChange: (e) =>
 			setValue("authorNames", e.value, { shouldDirty: true }),
 		ids: {
@@ -641,7 +646,11 @@ export function EditBookPage({
 			control: `author_control_${authorUid}`,
 		},
 		collection: authorCollection,
-		onInputValueChange: (e) => filterAuthors(e.inputValue),
+		inputValue: authorInputValue,
+		onInputValueChange: (e) => {
+			setAuthorInputValue(e.inputValue);
+			filterAuthors(e.inputValue);
+		},
 		value: [],
 		allowCustomValue: true,
 		onValueChange: (e) => {
@@ -668,15 +677,22 @@ export function EditBookPage({
 		initialItems: tagItems,
 		filter: contains,
 	});
+	const [tagInputValue, setTagInputValue] = useState("");
 	const tagTags = useTagsInput({
 		value: watchedTagNames,
+		inputValue: tagInputValue,
+		onInputValueChange: (e) => setTagInputValue(e.inputValue),
 		onValueChange: (e) => setValue("tagNames", e.value, { shouldDirty: true }),
 		ids: { input: `tag_input_${tagUid}`, control: `tag_control_${tagUid}` },
 	});
 	const tagCombobox = useCombobox({
 		ids: { input: `tag_input_${tagUid}`, control: `tag_control_${tagUid}` },
 		collection: tagCollection,
-		onInputValueChange: (e) => filterTags(e.inputValue),
+		inputValue: tagInputValue,
+		onInputValueChange: (e) => {
+			setTagInputValue(e.inputValue);
+			filterTags(e.inputValue);
+		},
 		value: [],
 		allowCustomValue: true,
 		onValueChange: (e) => {

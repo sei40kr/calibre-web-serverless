@@ -9,7 +9,7 @@ import {
 	useListCollection,
 	useTagsInput,
 } from "@chakra-ui/react";
-import { type RefObject, useEffect, useId } from "react";
+import { type RefObject, useEffect, useId, useState } from "react";
 import {
 	ComboboxContent,
 	ComboboxEmpty,
@@ -78,9 +78,16 @@ export function ComboboxFilterSection({
 	const labelOf = (value: string): string =>
 		options.find((option) => option.value === value)?.label ?? value;
 
+	// Both machines drive the same <input>. Each keeping its own copy of the
+	// text lets tags-input's synchronous update commit the combobox's lagging
+	// copy mid-keystroke, which the combobox writes back over the typed text.
+	const [inputValue, setInputValue] = useState("");
+
 	const tags = useTagsInput({
 		ids,
 		value: selected,
+		inputValue,
+		onInputValueChange: (details) => setInputValue(details.inputValue),
 		disabled,
 		editable: false,
 		onValueChange: (details) => onChange(details.value),
@@ -97,7 +104,11 @@ export function ComboboxFilterSection({
 		disabled,
 		value: [],
 		selectionBehavior: "clear",
-		onInputValueChange: (details) => filter(details.inputValue),
+		inputValue,
+		onInputValueChange: (details) => {
+			setInputValue(details.inputValue);
+			filter(details.inputValue);
+		},
 		onValueChange: (details) => {
 			const value = details.value[0];
 			if (value) {

@@ -141,13 +141,18 @@ export function BookReaderShell({
 					{read ? "Read" : "Mark as read"}
 				</Button>
 			</HStack>
-			{progress !== undefined && (
-				<Progress.Root size="xs" value={progress * 100} colorPalette="blue">
-					<Progress.Track borderRadius={0} aria-label="Reading progress">
-						<Progress.Range />
-					</Progress.Track>
-				</Progress.Root>
-			)}
+			{/* Hidden rather than omitted while unknown: the bar appearing would
+			    shrink the content and make the reader repaginate. */}
+			<Progress.Root
+				size="xs"
+				value={(progress ?? 0) * 100}
+				colorPalette="blue"
+				visibility={progress === undefined ? "hidden" : undefined}
+			>
+				<Progress.Track borderRadius={0} aria-label="Reading progress">
+					<Progress.Range />
+				</Progress.Track>
+			</Progress.Root>
 
 			<Box flex="1" minH={0} bg="bg.muted">
 				{children}

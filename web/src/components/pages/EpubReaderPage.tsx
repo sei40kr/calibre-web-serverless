@@ -6,7 +6,7 @@ import {
 	locationFraction,
 } from "@calibre-web-serverless/domain/models/readingProgress";
 import { Box, Center } from "@chakra-ui/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BookReaderLoading } from "@/components/BookReaderLoading";
 import { BookReaderShell } from "@/components/BookReaderShell";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -60,27 +60,51 @@ export function EpubReaderPage({
 	const chapterCount = epubBook?.chapterCount ?? null;
 	const displayedChapterNo =
 		chapterCount === null ? chapterNo : Math.min(chapterNo, chapterCount);
-
-	// Within-chapter position. `page` is a request that the view clamps once
-	// the chapter is measured, so "last page of the previous chapter" can be
-	// requested before its page count is known.
-	const [page, setPage] = useState(0);
-	const [pageCount, setPageCount] = useState<number | null>(null);
-	const entryPageRef = useRef(0);
-	// Only the chapter opened first resumes at the saved character; moving to
-	// another chapter clears it.
-	const entryCharOffsetRef = useRef(
-		savedPosition?.chapterNo === chapterNo ? savedPosition.charOffset : null,
-	);
 	const chapterIndex = displayedChapterNo - 1;
 
-	const savedChapterLengthsRef = useRef(savedPosition?.chapterLengths);
+	// The saved character only applies when the book opens at its chapter.
+	const [position, setPosition] = useState<ReaderPosition | null>(() =>
+		savedPosition?.chapterNo === chapterNo
+			? { chapterIndex: chapterNo - 1, charOffset: savedPosition.charOffset }
+			: null,
+	);
+	// Tagged with its chapter so the previous chapter's pagination is never
+	// applied to the next one.
+	const [pagination, setPagination] = useState<{
+		chapterIndex: number;
+		paginator: Paginator;
+	} | null>(null);
+	const paginator =
+		pagination?.chapterIndex === chapterIndex ? pagination.paginator : null;
+	const handlePaginate = useCallback(
+		(paginator: Paginator) => setPagination({ chapterIndex, paginator }),
+		[chapterIndex],
+	);
+
+	// A chapter reached without a position (through the URL) opens at its
+	// start.
+	const page = useMemo(() => {
+		if (!paginator) return null;
+		const at = position?.chapterIndex === chapterIndex ? position : null;
+		if (at?.page?.paginator === paginator) return at.page.page;
+		const charOffset = at?.charOffset ?? 0;
+		return charOffset === "end"
+			? paginator.pageCount - 1
+			: paginator.pageOf(charOffset);
+	}, [paginator, position, chapterIndex]);
+	const pageCount = paginator?.pageCount ?? null;
+	const displayedPage = page ?? 0;
+	const shownCharOffset = useMemo(
+		() => (paginator && page !== null ? paginator.offsetOfPage(page) : null),
+		[paginator, page],
+	);
+
+	const [savedChapterLengths] = useState(savedPosition?.chapterLengths);
 	const [chapterLengths, setChapterLengths] = useState<number[] | null>(null);
 	useEffect(() => {
 		if (!epubBook) return;
-		const saved = savedChapterLengthsRef.current;
-		if (saved?.length === epubBook.chapterCount) {
-			setChapterLengths(saved);
+		if (savedChapterLengths?.length === epubBook.chapterCount) {
+			setChapterLengths(savedChapterLengths);
 			return;
 		}
 		let active = true;
@@ -98,16 +122,8 @@ export function EpubReaderPage({
 		return () => {
 			active = false;
 		};
-	}, [epubBook]);
+	}, [epubBook, savedChapterLengths]);
 
-	// Tagged with its chapter so a chapter change never pairs the old
-	// chapter's offset with the new chapter.
-	const [shown, setShown] = useState<{
-		chapterIndex: number;
-		charOffset: number;
-	} | null>(null);
-	const shownCharOffset =
-		shown?.chapterIndex === chapterIndex ? shown.charOffset : null;
 	const chapterTitle = epubBook?.chapterTitles[chapterIndex] ?? null;
 	const location: EpubLocation | null =
 		chapterLengths && shownCharOffset !== null
@@ -135,60 +151,32 @@ export function EpubReaderPage({
 		onLocationChange,
 	]);
 
-	const handleCharOffsetChange = useCallback(
-		(charOffset: number) => setShown({ chapterIndex, charOffset }),
-		[chapterIndex],
-	);
-	const handleLayout = useCallback(
-		(nextPageCount: number, anchoredPage: number | null) => {
-			setPageCount(nextPageCount);
-			if (anchoredPage !== null) setPage(anchoredPage);
-		},
-		[],
-	);
-
-	// biome-ignore lint/correctness/useExhaustiveDependencies: reset per chapter
-	useEffect(() => {
-		setPage(entryPageRef.current);
-		setPageCount(null);
-		entryPageRef.current = 0;
-	}, [chapterIndex]);
-
-	const displayedPage = Math.min(page, Math.max((pageCount ?? 1) - 1, 0));
-
 	const goForward = useCallback(() => {
-		if (pageCount === null || chapterCount === null) return;
-		if (displayedPage < pageCount - 1) {
-			setPage(displayedPage + 1);
+		if (!paginator || page === null || chapterCount === null) return;
+		if (page < paginator.pageCount - 1) {
+			setPosition(positionAtPage(chapterIndex, paginator, page + 1));
 		} else if (displayedChapterNo < chapterCount) {
-			entryPageRef.current = 0;
-			entryCharOffsetRef.current = null;
+			setPosition({ chapterIndex: chapterIndex + 1, charOffset: 0 });
 			onChapterNoChange(displayedChapterNo + 1);
 		}
 	}, [
-		pageCount,
+		paginator,
+		page,
 		chapterCount,
-		displayedPage,
+		chapterIndex,
 		displayedChapterNo,
 		onChapterNoChange,
 	]);
 
 	const goBackward = useCallback(() => {
-		if (pageCount === null || chapterCount === null) return;
-		if (displayedPage > 0) {
-			setPage(displayedPage - 1);
+		if (!paginator || page === null) return;
+		if (page > 0) {
+			setPosition(positionAtPage(chapterIndex, paginator, page - 1));
 		} else if (displayedChapterNo > 1) {
-			entryPageRef.current = Number.MAX_SAFE_INTEGER;
-			entryCharOffsetRef.current = null;
+			setPosition({ chapterIndex: chapterIndex - 1, charOffset: "end" });
 			onChapterNoChange(displayedChapterNo - 1);
 		}
-	}, [
-		pageCount,
-		chapterCount,
-		displayedPage,
-		displayedChapterNo,
-		onChapterNoChange,
-	]);
+	}, [paginator, page, chapterIndex, displayedChapterNo, onChapterNoChange]);
 
 	// In an rtl book (Japanese vertical writing) the next page is to the left,
 	// so the physical arrows swap meaning.
@@ -271,12 +259,11 @@ export function EpubReaderPage({
 				</Center>
 			) : epubBook ? (
 				<EpubChapterView
+					key={chapterIndex}
 					epubBook={epubBook}
 					chapterIndex={chapterIndex}
 					page={displayedPage}
-					entryCharOffset={entryCharOffsetRef.current}
-					onLayout={handleLayout}
-					onCharOffsetChange={handleCharOffsetChange}
+					onPaginate={handlePaginate}
 					onKeyDown={handleKey}
 				/>
 			) : null}
@@ -296,22 +283,47 @@ interface ChapterLayout {
 	pageCount: number;
 }
 
+/** Measurements of one pagination of the shown chapter. */
+interface Paginator {
+	pageCount: number;
+	/** The page showing the character at `charOffset`. */
+	pageOf: (charOffset: number) => number;
+	/** The offset of the first character laid out on `page` or later. */
+	offsetOfPage: (page: number) => number;
+}
+
+/**
+ * The reader's place in a chapter. The character survives repagination;
+ * `page` pins the exact page while the pagination it was picked in is still
+ * current, since a page without text (a full-page image) has no character
+ * of its own. "end" is the last page, for entering a chapter backwards.
+ */
+interface ReaderPosition {
+	chapterIndex: number;
+	charOffset: number | "end";
+	page?: { paginator: Paginator; page: number };
+}
+
+function positionAtPage(
+	chapterIndex: number,
+	paginator: Paginator,
+	page: number,
+): ReaderPosition {
+	return {
+		chapterIndex,
+		charOffset: paginator.offsetOfPage(page),
+		page: { paginator, page },
+	};
+}
+
 interface EpubChapterViewProps {
 	epubBook: EpubBook;
 	/** 0-based linear spine index. */
 	chapterIndex: number;
-	/** 0-based page within the chapter, already clamped by the caller. */
+	/** 0-based page within the chapter to scroll to. */
 	page: number;
-	/** Character to open the chapter at, overriding `page`; null to keep it. */
-	entryCharOffset: number | null;
-	/**
-	 * Called after every pagination. `anchoredPage` is where the character
-	 * last shown at the top (or the entry character) landed, so the caller
-	 * keeps the reader's place across reflows; null when there is none yet.
-	 */
-	onLayout: (pageCount: number, anchoredPage: number | null) => void;
-	/** Called with the first character shown whenever the page changes. */
-	onCharOffsetChange: (charOffset: number) => void;
+	/** Called after every pagination, including reflows. */
+	onPaginate: (paginator: Paginator) => void;
 	/** Forwards key presses landing inside the iframe. */
 	onKeyDown: (key: string) => void;
 }
@@ -327,9 +339,7 @@ function EpubChapterView({
 	epubBook,
 	chapterIndex,
 	page,
-	entryCharOffset,
-	onLayout,
-	onCharOffsetChange,
+	onPaginate,
 	onKeyDown,
 }: EpubChapterViewProps) {
 	const containerRef = useRef<HTMLDivElement>(null);
@@ -342,13 +352,9 @@ function EpubChapterView({
 		height: number;
 	} | null>(null);
 	const [layout, setLayout] = useState<ChapterLayout | null>(null);
-	const entryCharOffsetRef = useRef(entryCharOffset);
-	entryCharOffsetRef.current = entryCharOffset;
-	const anchorRef = useRef<number | null>(null);
 
 	useEffect(() => {
 		let active = true;
-		anchorRef.current = entryCharOffsetRef.current;
 		setHtml(null);
 		setChapterError(false);
 		setDocLoaded(false);
@@ -423,19 +429,19 @@ function EpubChapterView({
 				: doc.documentElement.scrollWidth;
 			const pageCount = Math.max(1, Math.round(scrollSize / stride));
 			const nextLayout = { vertical: vertical ?? false, stride, pageCount };
-			const anchor = anchorRef.current;
 			setLayout(nextLayout);
-			onLayout(
+			onPaginate({
 				pageCount,
-				anchor === null
-					? null
-					: pageOfCharOffset(
-							doc,
-							nextLayout,
-							chapterTextNodes(doc.body),
-							anchor,
-						),
-			);
+				pageOf: (charOffset) =>
+					pageOfCharOffset(
+						doc,
+						nextLayout,
+						chapterTextNodes(doc.body),
+						charOffset,
+					),
+				offsetOfPage: (page) =>
+					charOffsetOfPage(doc, nextLayout, chapterTextNodes(doc.body), page),
+			});
 		};
 		apply();
 		doc.fonts?.ready.then(() => {
@@ -444,7 +450,7 @@ function EpubChapterView({
 		return () => {
 			active = false;
 		};
-	}, [docLoaded, containerSize, onLayout]);
+	}, [docLoaded, containerSize, onPaginate]);
 
 	// Key presses land in the iframe once the reader has been clicked.
 	useEffect(() => {
@@ -465,15 +471,7 @@ function EpubChapterView({
 		const offset = shownPage * layout.stride;
 		root.scrollLeft = layout.vertical ? 0 : offset;
 		root.scrollTop = layout.vertical ? offset : 0;
-		const charOffset = charOffsetOfPage(
-			doc,
-			layout,
-			chapterTextNodes(doc.body),
-			shownPage,
-		);
-		anchorRef.current = charOffset;
-		onCharOffsetChange(charOffset);
-	}, [docLoaded, layout, page, onCharOffsetChange]);
+	}, [docLoaded, layout, page]);
 
 	if (chapterError) {
 		return (
